@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Study Smart** - a full-stack student productivity web application with AI-powered quiz generation, notes management, study timetable, goals tracking, mood check-in, and calendar.
+**Study Smart** - a full-stack student productivity web application with AI-powered quiz generation, notes management, study timetable, goals tracking, mood check-in, calendar, minigames, XP/level progression, friends & chat system, public user profiles, achievements, and a cosmetics shop.
 
 ## Stack
 

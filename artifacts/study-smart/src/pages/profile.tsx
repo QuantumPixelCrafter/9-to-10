@@ -4,7 +4,7 @@ import { useGetLeaderboard, useGetAchievements, useUploadProfilePicture, useUpda
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check } from "lucide-react";
+import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -293,6 +293,49 @@ export default function ProfilePage() {
             </div>
           </div>
         </motion.div>
+
+        {/* XP / Game Level */}
+        {(() => {
+          const LEVEL_THRESHOLDS = [0,100,250,500,900,1400,2100,3000,4200,6000,8500,12000,16000,21000,27000,34000,42000,51000,61000,75000];
+          const xp = (user as any)?.xp ?? 0;
+          const gameLevel = (user as any)?.gameLevel ?? 1;
+          const currentThresh = LEVEL_THRESHOLDS[gameLevel - 1] ?? 0;
+          const nextThresh = LEVEL_THRESHOLDS[gameLevel] ?? null;
+          const xpInLevel = xp - currentThresh;
+          const xpNeeded = nextThresh !== null ? nextThresh - currentThresh : 0;
+          const progress = nextThresh !== null ? Math.min(100, Math.round((xpInLevel / xpNeeded) * 100)) : 100;
+          return (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
+              className="bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-violet-500/20 flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-violet-500" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm">Game Level</p>
+                    <p className="text-xs text-muted-foreground">{xp.toLocaleString()} XP total</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-black text-violet-500">{gameLevel}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Level</p>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">{xpInLevel.toLocaleString()} XP</span>
+                  {nextThresh !== null
+                    ? <span className="text-muted-foreground">{xpNeeded.toLocaleString()} XP to Lv.{gameLevel + 1}</span>
+                    : <span className="text-violet-500 font-bold">MAX LEVEL</span>}
+                </div>
+                <div className="h-2.5 bg-violet-500/15 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full transition-all duration-700" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+            </motion.div>
+          );
+        })()}
 
         {/* Level Picker */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}

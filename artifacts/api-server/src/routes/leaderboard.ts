@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, scoresTable, usersTable } from "@workspace/db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
+import { awardXp, getLevelProgress } from "../lib/xp";
 
 const router: IRouter = Router();
 
@@ -49,10 +50,39 @@ router.get("/leaderboard", async (req, res) => {
   const quizSubjects = [...new Set(allQuiz.filter(s => !quizLevel || s.userLevel === quizLevel).map(s => s.subject).filter(Boolean))].sort();
   const quizLevels = [...new Set(allQuiz.map(s => s.userLevel).filter(Boolean))].sort();
 
+  // XP / game level leaderboard
+  const xpBoard = await db
+    .select({
+      id: usersTable.id,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      profileImageUrl: usersTable.profileImageUrl,
+      level: usersTable.level,
+      gameLevel: usersTable.gameLevel,
+      xp: usersTable.xp,
+      equippedNametag: usersTable.equippedNametag,
+    })
+    .from(usersTable)
+    .orderBy(desc(usersTable.xp))
+    .limit(50);
+
+  const levelBoard = xpBoard.map((u, i) => ({
+    rank: i + 1,
+    userId: u.id,
+    displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || "Anonymous",
+    profileImageUrl: u.profileImageUrl ?? null,
+    level: u.level ?? null,
+    gameLevel: u.gameLevel ?? 1,
+    xp: u.xp ?? 0,
+    equippedNametag: u.equippedNametag ?? null,
+    levelProgress: getLevelProgress(u.xp ?? 0),
+  }));
+
   res.json({
     memoryMatch,
     bubblePop,
     quiz,
+    levelBoard,
     quizMeta: {
       levels: quizLevels,
       subjects: quizSubjects,
@@ -83,6 +113,19 @@ router.post("/leaderboard/scores", async (req, res) => {
     })
     .returning();
 
+  // Award XP based on game type
+  let xpAwarded = 0;
+  let levelUp: { leveledUp: boolean; newLevel: number } | null = null;
+  try {
+    if (gameType === "quiz") {
+      xpAwarded = Math.max(5, Math.floor(score * 0.25));
+    } else {
+      xpAwarded = Math.max(2, Math.floor(score * 0.05));
+    }
+    const result = await awardXp(req.user.id, xpAwarded);
+    levelUp = { leveledUp: result.leveledUp, newLevel: result.newLevel };
+  } catch {}
+
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.user.id));
 
   res.json({
@@ -95,6 +138,8 @@ router.post("/leaderboard/scores", async (req, res) => {
     subject: saved.subject ?? null,
     userLevel: saved.userLevel ?? null,
     createdAt: saved.createdAt.toISOString(),
+    xpAwarded,
+    levelUp,
   });
 });
 

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Home, BookOpen, Calendar as CalendarIcon, 
   Target, Clock, Smile, Menu,
-  BrainCircuit, Sparkles, ChevronRight, Gamepad2, Trophy, User, LogOut, Medal, ShoppingBag
+  BrainCircuit, Sparkles, ChevronRight, Gamepad2, Trophy, User, LogOut, Medal, ShoppingBag, Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -27,6 +27,7 @@ const NAV_ITEMS = [
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy, color: "text-amber-500", bg: "bg-amber-500/10" },
   { href: "/achievements", label: "Achievements", icon: Medal, color: "text-yellow-500", bg: "bg-yellow-500/10" },
   { href: "/shop", label: "Shop", icon: ShoppingBag, color: "text-rose-500", bg: "bg-rose-500/10" },
+  { href: "/friends", label: "Friends", icon: Users, color: "text-teal-500", bg: "bg-teal-500/10" },
 ];
 
 function UserAvatar({ size = "sm" }: { size?: "sm" | "md" }) {

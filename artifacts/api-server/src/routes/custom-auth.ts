@@ -38,6 +38,8 @@ function buildSessionUser(user: typeof usersTable.$inferSelect) {
     equippedBackground: user.equippedBackground,
     equippedFrame: user.equippedFrame,
     equippedNametag: user.equippedNametag,
+    xp: user.xp ?? 0,
+    gameLevel: user.gameLevel ?? 1,
   };
 }
 

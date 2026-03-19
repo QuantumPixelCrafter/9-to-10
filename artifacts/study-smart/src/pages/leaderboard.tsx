@@ -2,9 +2,12 @@ import { useState, useEffect } from "react";
 import { useGetLeaderboard } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Layout } from "@/components/layout";
-import { Brain, Leaf, Sparkles, Trophy, GraduationCap, BookOpen } from "lucide-react";
+import { Brain, Leaf, Sparkles, Trophy, GraduationCap, BookOpen, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useLocation } from "wouter";
+import { getItemDef } from "@/lib/shop-data";
+import type { LevelBoardEntry } from "@workspace/api-client-react";
 
 const ALL_LEVELS = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
 
@@ -12,6 +15,7 @@ const TABS = [
   { key: "memoryMatch", label: "Memory Match", icon: Brain, color: "text-primary", bg: "bg-primary/10", gradient: "from-primary to-violet-500" },
   { key: "bubblePop", label: "Bubble Pop", icon: Leaf, color: "text-sky-500", bg: "bg-sky-500/10", gradient: "from-sky-400 to-violet-500" },
   { key: "quiz", label: "Quiz Scores", icon: Sparkles, color: "text-amber-500", bg: "bg-amber-500/10", gradient: "from-amber-400 to-orange-500" },
+  { key: "level", label: "Level", icon: Zap, color: "text-violet-500", bg: "bg-violet-500/10", gradient: "from-violet-500 to-fuchsia-500" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -26,6 +30,7 @@ function RankBadge({ rank }: { rank: number }) {
 export default function LeaderboardPage() {
   const [tab, setTab] = useState<TabKey>("memoryMatch");
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
   const [quizLevel, setQuizLevel] = useState<string>("");
   const [quizSubject, setQuizSubject] = useState<string>("");
@@ -39,7 +44,8 @@ export default function LeaderboardPage() {
   const params = tab === "quiz" ? { quizLevel: quizLevel || undefined, quizSubject: quizSubject || undefined } : {};
   const { data: lb, isLoading } = useGetLeaderboard(params);
 
-  const entries = tab === "quiz" ? (lb?.quiz ?? []) : tab === "memoryMatch" ? (lb?.memoryMatch ?? []) : (lb?.bubblePop ?? []);
+  const entries = tab === "quiz" ? (lb?.quiz ?? []) : tab === "memoryMatch" ? (lb?.memoryMatch ?? []) : tab === "level" ? [] : (lb?.bubblePop ?? []);
+  const levelBoardEntries: LevelBoardEntry[] = tab === "level" ? ((lb as any)?.levelBoard ?? []) : [];
   const activeTab = TABS.find(t => t.key === tab)!;
   const quizMeta = lb?.quizMeta;
 
@@ -265,8 +271,58 @@ export default function LeaderboardPage() {
           )}
         </div>
 
+        {/* Level board */}
+        {tab === "level" && (
+          <div className="space-y-2">
+            {levelBoardEntries.length === 0 && !isLoading && (
+              <div className="text-center py-12 text-muted-foreground text-sm">No data yet. Earn XP by completing goals, quizzes, and achievements!</div>
+            )}
+            {levelBoardEntries.map((entry, idx) => {
+              const isMe = entry.userId === user?.id;
+              const nametag = getItemDef(entry.equippedNametag);
+              return (
+                <motion.div key={entry.userId} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}
+                  onClick={() => setLocation(`/users/${entry.userId}`)}
+                  className={cn(
+                    "flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer hover:border-border",
+                    isMe ? "bg-violet-500/5 border-violet-500/20" : "bg-card border-border/60"
+                  )}
+                >
+                  <div className="w-8 flex justify-center shrink-0">
+                    {idx === 0 ? <span className="text-xl">🥇</span>
+                      : idx === 1 ? <span className="text-xl">🥈</span>
+                      : idx === 2 ? <span className="text-xl">🥉</span>
+                      : <span className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground">{idx + 1}</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className={cn("font-bold text-sm", isMe && "text-violet-600 dark:text-violet-400")}>
+                        {entry.displayName} {isMe && "(you)"}
+                      </p>
+                      {nametag && <span className="text-sm">{nametag.emoji}</span>}
+                    </div>
+                    {/* XP bar */}
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex-1 h-1.5 bg-violet-500/15 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-violet-500 to-primary rounded-full" style={{ width: `${entry.levelProgress.progress}%` }} />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{entry.xp.toLocaleString()} XP</span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="flex items-center gap-1 text-violet-500 font-extrabold">
+                      <Zap className="w-3.5 h-3.5" /> Lv.{entry.gameLevel}
+                    </div>
+                    {entry.level && <p className="text-[10px] text-muted-foreground mt-0.5">{entry.level}</p>}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+
         {/* My rank callout if not in top 20 */}
-        {user && entries.length > 0 && !entries.find(e => e.userId === user.id) && (
+        {tab !== "level" && user && entries.length > 0 && !entries.find(e => e.userId === user.id) && (
           <div className="bg-muted/40 rounded-2xl p-4 border border-border/40 text-center text-sm text-muted-foreground">
             {tab === "quiz"
               ? "You haven't submitted a quiz score here yet. Generate an AI quiz from your notes to get on the board!"

@@ -7,6 +7,7 @@ import {
   UpdateGoalParams,
   DeleteGoalParams,
 } from "@workspace/api-zod";
+import { awardXp } from "../lib/xp";
 
 const router: IRouter = Router();
 
@@ -27,16 +28,34 @@ router.post("/goals", async (req, res) => {
 router.put("/goals/:id", async (req, res) => {
   const { id } = UpdateGoalParams.parse(req.params);
   const body = UpdateGoalBody.parse(req.body);
+
+  // Check if this update is marking as completed
+  const [existing] = await db.select().from(goalsTable).where(eq(goalsTable.id, id)).limit(1);
+  const justCompleted = body.completed === true && existing && !existing.completed;
+
   const [goal] = await db
     .update(goalsTable)
     .set(body)
     .where(eq(goalsTable.id, id))
     .returning();
+
   if (!goal) {
     res.status(404).json({ error: "Goal not found" });
     return;
   }
-  res.json(goal);
+
+  let xpAwarded: number | null = null;
+  let levelUp: { leveledUp: boolean; newLevel: number } | null = null;
+
+  if (justCompleted && req.isAuthenticated()) {
+    try {
+      const result = await awardXp(req.user.id, 50);
+      xpAwarded = 50;
+      levelUp = { leveledUp: result.leveledUp, newLevel: result.newLevel };
+    } catch {}
+  }
+
+  res.json({ ...goal, xpAwarded, levelUp });
 });
 
 router.delete("/goals/:id", async (req, res) => {

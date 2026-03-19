@@ -20,6 +20,8 @@ import Profile from "@/pages/profile";
 import Leaderboard from "@/pages/leaderboard";
 import Achievements from "@/pages/achievements";
 import Shop from "@/pages/shop";
+import Friends from "@/pages/friends";
+import UserProfile from "@/pages/user-profile";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,6 +71,8 @@ function AppRoutes() {
       <Route path="/leaderboard" component={Leaderboard} />
       <Route path="/achievements" component={Achievements} />
       <Route path="/shop" component={Shop} />
+      <Route path="/friends" component={Friends} />
+      <Route path="/users/:userId" component={UserProfile} />
       <Route component={NotFound} />
     </Switch>
   );
