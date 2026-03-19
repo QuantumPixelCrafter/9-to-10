@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useGetLeaderboard } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Layout } from "@/components/layout";
-import { Brain, Leaf, Sparkles, Trophy, GraduationCap, BookOpen, Zap, Clock, Gift } from "lucide-react";
+import { Leaf, Sparkles, Trophy, GraduationCap, BookOpen, Zap, Clock, Gift } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
@@ -12,7 +12,6 @@ import type { LevelBoardEntry } from "@workspace/api-client-react";
 const ALL_LEVELS = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
 
 const GAME_TABS = [
-  { key: "memoryMatch", label: "Memory Match", icon: Brain,     color: "text-primary",    bg: "bg-primary/10",    gradient: "from-primary to-violet-500" },
   { key: "bubblePop",   label: "Bubble Pop",   icon: Leaf,      color: "text-sky-500",    bg: "bg-sky-500/10",    gradient: "from-sky-400 to-violet-500" },
   { key: "quiz",        label: "Quiz Scores",  icon: Sparkles,  color: "text-amber-500",  bg: "bg-amber-500/10",  gradient: "from-amber-400 to-orange-500" },
 ] as const;
@@ -75,7 +74,7 @@ const SEASON_PRIZES = [
 ];
 
 export default function LeaderboardPage() {
-  const [tab, setTab] = useState<TabKey>("memoryMatch");
+  const [tab, setTab] = useState<TabKey>("bubblePop");
   const [boardType, setBoardType] = useState<BoardType>("weekly");
   const [showPrizes, setShowPrizes] = useState(false);
   const { user } = useAuth();
@@ -97,7 +96,6 @@ export default function LeaderboardPage() {
   const { data: lb, isLoading } = useGetLeaderboard(params);
 
   const entries = tab === "quiz" ? (lb?.quiz ?? [])
-    : tab === "memoryMatch" ? (lb?.memoryMatch ?? [])
     : tab === "bubblePop" ? (lb?.bubblePop ?? [])
     : [];
 
