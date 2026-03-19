@@ -280,7 +280,13 @@ function MemoryMatch() {
 }
 
 // ─── Bubble Pop Game ──────────────────────────────────────────────────
-type Bubble = { id: number; x: number; y: number; r: number; color: string; speed: number; wobble: number; wobbleOffset: number; popping: boolean };
+type Direction = "up" | "down" | "left" | "right";
+type Bubble = {
+  id: number; x: number; y: number; r: number;
+  color: string; speed: number;
+  wobble: number; wobbleOffset: number;
+  direction: Direction; isBomb: boolean;
+};
 
 const BUBBLE_COLORS = [
   "from-sky-300 to-blue-400",
@@ -293,125 +299,126 @@ const BUBBLE_COLORS = [
   "from-fuchsia-300 to-pink-500",
 ];
 
+const DIRECTIONS: Direction[] = ["up", "down", "left", "right"];
+
 let bubbleIdCounter = 0;
 
 function BubblePop() {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [score, setScore] = useState(0);
-  const [playing, setPlaying] = useState(false);
+  const [gameState, setGameState] = useState<"idle" | "playing" | "dead" | "stopped">("idle");
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
   const [finalBubbleScore, setFinalBubbleScore] = useState(0);
+  const [bombHit, setBombHit] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
   const lastSpawnRef = useRef(0);
   const bubblesRef = useRef<Bubble[]>([]);
+  const scoreRef = useRef(0);
 
   const { isAuthenticated } = useAuth();
   const submitScoreMut = useSubmitScore();
 
   const spawnBubble = useCallback(() => {
     const w = containerRef.current?.clientWidth ?? 400;
-    const r = 28 + Math.random() * 26;
+    const h = containerRef.current?.clientHeight ?? 600;
+    const r = 26 + Math.random() * 24;
+    const dir: Direction = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
+    const isBomb = Math.random() < 0.18;
+
+    let x = 0, y = 0;
+    if (dir === "up")    { x = r + Math.random() * (w - r * 2); y = h + r; }
+    if (dir === "down")  { x = r + Math.random() * (w - r * 2); y = -r; }
+    if (dir === "left")  { x = w + r; y = r + Math.random() * (h - r * 2); }
+    if (dir === "right") { x = -r;    y = r + Math.random() * (h - r * 2); }
+
+    const speedBoost = Math.floor(scoreRef.current / 10) * 0.18;
+    const base = 0.5 + Math.random() * 0.4 + speedBoost;
+    const speed = Math.min(base, 3.5);
+
     const b: Bubble = {
       id: ++bubbleIdCounter,
-      x: r + Math.random() * (w - r * 2),
-      y: (containerRef.current?.clientHeight ?? 600) + r,
-      r,
-      color: BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)],
-      speed: 0.4 + Math.random() * 0.5,
+      x, y, r, speed, direction: dir, isBomb,
+      color: isBomb ? "from-red-700 to-gray-900" : BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)],
       wobble: Math.random() * 2 - 1,
       wobbleOffset: Math.random() * Math.PI * 2,
-      popping: false,
     };
     return b;
   }, []);
 
   const tick = useCallback((ts: number) => {
-    if (ts - lastSpawnRef.current > 1200) {
+    const w = containerRef.current?.clientWidth ?? 400;
+    const h = containerRef.current?.clientHeight ?? 600;
+    const spawnInterval = Math.max(500, 1100 - Math.floor(scoreRef.current / 5) * 40);
+
+    if (ts - lastSpawnRef.current > spawnInterval) {
       lastSpawnRef.current = ts;
-      const nb = spawnBubble();
-      bubblesRef.current = [...bubblesRef.current, nb];
+      bubblesRef.current = [...bubblesRef.current, spawnBubble()];
     }
 
+    const t = Date.now() / 1000;
     bubblesRef.current = bubblesRef.current
-      .filter(b => !b.popping && b.y > -(b.r * 2))
-      .map(b => ({
-        ...b,
-        y: b.y - b.speed,
-        x: b.x + Math.sin((Date.now() / 1000) * b.wobble + b.wobbleOffset) * 0.3,
-      }));
+      .filter(b => {
+        if (b.direction === "up")    return b.y > -(b.r * 2);
+        if (b.direction === "down")  return b.y < h + b.r * 2;
+        if (b.direction === "left")  return b.x > -(b.r * 2);
+        if (b.direction === "right") return b.x < w + b.r * 2;
+        return true;
+      })
+      .map(b => {
+        const wob = Math.sin(t * b.wobble + b.wobbleOffset) * 0.4;
+        return {
+          ...b,
+          x: b.x + (b.direction === "left" ? -b.speed : b.direction === "right" ? b.speed : wob),
+          y: b.y + (b.direction === "up" ? -b.speed : b.direction === "down" ? b.speed : wob),
+        };
+      });
 
     setBubbles([...bubblesRef.current]);
     animRef.current = requestAnimationFrame(tick);
   }, [spawnBubble]);
 
   const startGame = () => {
+    scoreRef.current = 0;
     setScore(0);
     setScoreSubmitted(false);
     setFinalBubbleScore(0);
+    setBombHit(false);
     bubblesRef.current = [];
     setBubbles([]);
-    setPlaying(true);
+    setGameState("playing");
     lastSpawnRef.current = 0;
     animRef.current = requestAnimationFrame(tick);
   };
 
-  const stopGame = () => {
-    setPlaying(false);
+  const endGame = (hitBomb: boolean) => {
     cancelAnimationFrame(animRef.current);
     bubblesRef.current = [];
     setBubbles([]);
-    setScore(s => { setFinalBubbleScore(s); return s; });
+    setBombHit(hitBomb);
+    setFinalBubbleScore(scoreRef.current);
+    setGameState(hitBomb ? "dead" : "stopped");
   };
 
-  const popBubble = (id: number) => {
-    bubblesRef.current = bubblesRef.current.filter(b => b.id !== id);
+  const popBubble = (b: Bubble) => {
+    if (b.isBomb) {
+      endGame(true);
+      return;
+    }
+    bubblesRef.current = bubblesRef.current.filter(bub => bub.id !== b.id);
+    scoreRef.current += 1;
     setScore(s => s + 1);
     setBubbles([...bubblesRef.current]);
   };
 
   useEffect(() => () => cancelAnimationFrame(animRef.current), []);
 
+  const speedTier = Math.floor(finalBubbleScore / 10);
+  const isResult = gameState === "dead" || gameState === "stopped";
+
   return (
     <div className="h-full flex flex-col">
-      {!playing ? (
-        finalBubbleScore > 0 ? (
-          /* Results screen after stopping */
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 flex flex-col items-center justify-center text-center px-8 py-12">
-            <div className="text-6xl mb-5">🫧</div>
-            <h3 className="text-2xl font-bold mb-1">Great session!</h3>
-            <p className="text-muted-foreground mb-6">You popped {finalBubbleScore} bubbles</p>
-            <div className="bg-sky-500/10 rounded-2xl px-10 py-5 border border-sky-500/10 mb-6">
-              <div className="text-4xl font-extrabold text-sky-500">{finalBubbleScore}</div>
-              <div className="text-sm text-muted-foreground mt-1">bubbles popped</div>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-xs">
-              {isAuthenticated && !scoreSubmitted && (
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    await submitScoreMut.mutateAsync({ data: { gameType: "bubble-pop", score: finalBubbleScore } });
-                    setScoreSubmitted(true);
-                  }}
-                  disabled={submitScoreMut.isPending}
-                  className="rounded-xl gap-2 border-sky-500/30 text-sky-600 hover:bg-sky-500/5"
-                >
-                  <Upload className="w-4 h-4" />
-                  {submitScoreMut.isPending ? "Saving…" : "Submit Score"}
-                </Button>
-              )}
-              {scoreSubmitted && (
-                <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5 justify-center">
-                  ✓ Score submitted to leaderboard!
-                </p>
-              )}
-              <Button size="lg" className="rounded-xl bg-gradient-to-r from-sky-500 to-violet-500 hover:opacity-90 border-0 shadow-lg" onClick={startGame}>
-                <RefreshCw className="w-4 h-4 mr-2" /> Play Again
-              </Button>
-            </div>
-          </motion.div>
-        ) : (
+      {gameState === "idle" && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="flex-1 flex flex-col items-center justify-center text-center px-8 py-12">
           <div className="w-20 h-20 bg-gradient-to-br from-sky-400 to-violet-500 rounded-3xl flex items-center justify-center mb-6 mx-auto shadow-xl shadow-violet-500/20">
@@ -419,10 +426,10 @@ function BubblePop() {
           </div>
           <h3 className="text-2xl font-bold mb-3">Bubble Pop</h3>
           <p className="text-muted-foreground max-w-sm mb-8 leading-relaxed">
-            Relax and pop colorful bubbles as they float by. No pressure, no time limit — just pop as many as you like!
+            Pop bubbles flying from every direction — but <strong>avoid the bombs</strong> 💣 or it's game over! Speed ramps up the higher your score goes.
           </p>
           <div className="grid grid-cols-3 gap-4 mb-8 text-center">
-            {[["Stress-free", "No time limit"], ["Satisfying", "Pop to your heart's content"], ["Colourful", "Beautiful bubbles"]].map(([t, d]) => (
+            {[["All Directions", "Bubbles fly from every edge"], ["Avoid Bombs 💣", "One hit = game over"], ["Gets Faster", "Speed scales with score"]].map(([t, d]) => (
               <div key={t} className="bg-sky-500/5 rounded-2xl p-4 border border-sky-500/10">
                 <div className="font-bold text-sm">{t}</div>
                 <div className="text-xs text-muted-foreground mt-1">{d}</div>
@@ -430,19 +437,68 @@ function BubblePop() {
             ))}
           </div>
           <Button size="lg" className="rounded-2xl px-10 shadow-xl shadow-violet-500/20 text-base bg-gradient-to-r from-sky-500 to-violet-500 hover:opacity-90 border-0" onClick={startGame}>
-            <Play className="w-5 h-5 mr-2" /> Start Relaxing
+            <Play className="w-5 h-5 mr-2" /> Start Game
           </Button>
         </motion.div>
-        )
+      )}
 
-      ) : (
+      {isResult && (
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+          className="flex-1 flex flex-col items-center justify-center text-center px-8 py-12">
+          <div className="text-6xl mb-5">{bombHit ? "💣" : "🫧"}</div>
+          <h3 className="text-2xl font-bold mb-1">{bombHit ? "BOOM! You hit a bomb!" : "Great session!"}</h3>
+          <p className="text-muted-foreground mb-6">
+            {bombHit ? `You survived until ${finalBubbleScore} pops. Watch those bombs!` : `You popped ${finalBubbleScore} bubbles`}
+          </p>
+          <div className="bg-sky-500/10 rounded-2xl px-10 py-5 border border-sky-500/10 mb-3">
+            <div className="text-4xl font-extrabold text-sky-500">{finalBubbleScore}</div>
+            <div className="text-sm text-muted-foreground mt-1">bubbles popped</div>
+          </div>
+          {speedTier > 0 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-5">
+              ⚡ Speed level {speedTier} reached
+            </p>
+          )}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-xs">
+            {isAuthenticated && !scoreSubmitted && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  await submitScoreMut.mutateAsync({ data: { gameType: "bubble-pop", score: finalBubbleScore } });
+                  setScoreSubmitted(true);
+                }}
+                disabled={submitScoreMut.isPending}
+                className="rounded-xl gap-2 border-sky-500/30 text-sky-600 hover:bg-sky-500/5"
+              >
+                <Upload className="w-4 h-4" />
+                {submitScoreMut.isPending ? "Saving…" : "Submit Score"}
+              </Button>
+            )}
+            {scoreSubmitted && (
+              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5 justify-center">
+                ✓ Score submitted to leaderboard!
+              </p>
+            )}
+            <Button size="lg" className="rounded-xl bg-gradient-to-r from-sky-500 to-violet-500 hover:opacity-90 border-0 shadow-lg" onClick={startGame}>
+              <RefreshCw className="w-4 h-4 mr-2" /> Play Again
+            </Button>
+          </div>
+        </motion.div>
+      )}
+
+      {gameState === "playing" && (
         <div className="flex-1 flex flex-col">
           <div className="flex items-center justify-between px-2 py-3 shrink-0">
             <div className="flex items-center gap-2 bg-sky-500/10 rounded-xl px-4 py-2">
               <Star className="w-4 h-4 text-sky-500" />
               <span className="font-bold text-sky-600 dark:text-sky-400">{score} popped</span>
             </div>
-            <Button variant="ghost" size="sm" onClick={stopGame} className="rounded-xl text-muted-foreground gap-2">
+            {Math.floor(score / 10) > 0 && (
+              <div className="flex items-center gap-1 text-amber-500 text-sm font-bold bg-amber-500/10 rounded-xl px-3 py-1.5">
+                ⚡ Speed {Math.floor(score / 10)}
+              </div>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => endGame(false)} className="rounded-xl text-muted-foreground gap-2">
               <RotateCcw className="w-4 h-4" /> Stop
             </Button>
           </div>
@@ -457,13 +513,17 @@ function BubblePop() {
                 <motion.button
                   key={b.id}
                   initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 0.85 }}
-                  exit={{ scale: 1.6, opacity: 0 }}
+                  animate={{ scale: 1, opacity: b.isBomb ? 0.95 : 0.85 }}
+                  exit={b.isBomb ? { scale: 2.2, opacity: 0 } : { scale: 1.6, opacity: 0 }}
                   transition={{ duration: 0.15 }}
-                  onClick={() => popBubble(b.id)}
+                  onClick={() => popBubble(b)}
                   className={cn(
-                    "absolute rounded-full bg-gradient-to-br border border-white/30 shadow-lg cursor-pointer",
-                    "hover:scale-110 active:scale-125 transition-transform",
+                    "absolute rounded-full bg-gradient-to-br border shadow-lg cursor-pointer",
+                    "hover:scale-110 active:scale-125 transition-transform select-none",
+                    b.isBomb
+                      ? "border-red-800/60 shadow-red-900/30"
+                      : "border-white/30 hover:border-white/50"
+                    ,
                     b.color
                   )}
                   style={{
@@ -473,8 +533,14 @@ function BubblePop() {
                     top: b.y - b.r,
                   }}
                 >
-                  <div className="absolute top-[20%] left-[22%] w-[30%] h-[22%] bg-white/50 rounded-full rotate-[-30deg]" />
-                  <div className="absolute top-[35%] left-[55%] w-[15%] h-[10%] bg-white/30 rounded-full rotate-[-30deg]" />
+                  {b.isBomb ? (
+                    <div className="absolute inset-0 flex items-center justify-center text-xl select-none">💣</div>
+                  ) : (
+                    <>
+                      <div className="absolute top-[20%] left-[22%] w-[30%] h-[22%] bg-white/50 rounded-full rotate-[-30deg]" />
+                      <div className="absolute top-[35%] left-[55%] w-[15%] h-[10%] bg-white/30 rounded-full rotate-[-30deg]" />
+                    </>
+                  )}
                 </motion.button>
               ))}
             </AnimatePresence>
