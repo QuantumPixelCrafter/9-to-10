@@ -19,6 +19,7 @@ function MemoryMatch() {
   const [gameState, setGameState] = useState<"idle" | "loading" | "playing" | "won" | "noNotes">("idle");
   const [finalScore, setFinalScore] = useState(0);
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lockRef = useRef(false);
 
@@ -29,6 +30,7 @@ function MemoryMatch() {
   const startGame = async () => {
     setGameState("loading");
     setScoreSubmitted(false);
+    setSubmitError(null);
     setFinalScore(0);
     setMoves(0);
     setMatches(0);
@@ -172,13 +174,18 @@ function MemoryMatch() {
                 <div className="text-xs text-muted-foreground mt-1">Score</div>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-xs">
+            <div className="flex flex-col gap-3 justify-center w-full max-w-xs">
               {isAuthenticated && !scoreSubmitted && (
                 <Button
                   variant="outline"
                   onClick={async () => {
-                    await submitScoreMut.mutateAsync({ data: { gameType: "memory-match", score: finalScore } });
-                    setScoreSubmitted(true);
+                    setSubmitError(null);
+                    try {
+                      await submitScoreMut.mutateAsync({ data: { gameType: "memory-match", score: finalScore } });
+                      setScoreSubmitted(true);
+                    } catch (err: any) {
+                      setSubmitError(err?.message || "Failed to submit score. Please try again.");
+                    }
                   }}
                   disabled={submitScoreMut.isPending}
                   className="rounded-xl gap-2 border-amber-500/30 text-amber-600 hover:bg-amber-500/5"
@@ -186,6 +193,9 @@ function MemoryMatch() {
                   <Upload className="w-4 h-4" />
                   {submitScoreMut.isPending ? "Saving…" : "Submit Score"}
                 </Button>
+              )}
+              {submitError && (
+                <p className="text-xs text-red-500 text-center px-2">{submitError}</p>
               )}
               {scoreSubmitted && (
                 <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5 justify-center">
@@ -308,6 +318,7 @@ function BubblePop() {
   const [score, setScore] = useState(0);
   const [gameState, setGameState] = useState<"idle" | "playing" | "dead" | "stopped">("idle");
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [finalBubbleScore, setFinalBubbleScore] = useState(0);
   const [bombHit, setBombHit] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -382,6 +393,7 @@ function BubblePop() {
     scoreRef.current = 0;
     setScore(0);
     setScoreSubmitted(false);
+    setSubmitError(null);
     setFinalBubbleScore(0);
     setBombHit(false);
     bubblesRef.current = [];
@@ -459,13 +471,18 @@ function BubblePop() {
               ⚡ Speed level {speedTier} reached
             </p>
           )}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-xs">
+          <div className="flex flex-col gap-3 justify-center w-full max-w-xs">
             {isAuthenticated && !scoreSubmitted && (
               <Button
                 variant="outline"
                 onClick={async () => {
-                  await submitScoreMut.mutateAsync({ data: { gameType: "bubble-pop", score: finalBubbleScore } });
-                  setScoreSubmitted(true);
+                  setSubmitError(null);
+                  try {
+                    await submitScoreMut.mutateAsync({ data: { gameType: "bubble-pop", score: finalBubbleScore } });
+                    setScoreSubmitted(true);
+                  } catch (err: any) {
+                    setSubmitError(err?.message || "Failed to submit score. Please try again.");
+                  }
                 }}
                 disabled={submitScoreMut.isPending}
                 className="rounded-xl gap-2 border-sky-500/30 text-sky-600 hover:bg-sky-500/5"
@@ -473,6 +490,9 @@ function BubblePop() {
                 <Upload className="w-4 h-4" />
                 {submitScoreMut.isPending ? "Saving…" : "Submit Score"}
               </Button>
+            )}
+            {submitError && (
+              <p className="text-xs text-red-500 text-center px-2">{submitError}</p>
             )}
             {scoreSubmitted && (
               <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5 justify-center">
