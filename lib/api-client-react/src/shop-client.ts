@@ -61,3 +61,13 @@ export function useUploadProfilePicture() {
       }),
   });
 }
+
+export function useUpdateName() {
+  return useMutation({
+    mutationFn: ({ firstName, lastName }: { firstName: string; lastName?: string }) =>
+      customFetch<{ user: unknown }>("/api/auth/profile", {
+        method: "PUT",
+        body: JSON.stringify({ firstName, lastName }),
+      }),
+  });
+}

@@ -1,10 +1,10 @@
 import { useState, useRef } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useGetLeaderboard, useGetAchievements, useUploadProfilePicture } from "@workspace/api-client-react";
+import { useGetLeaderboard, useGetAchievements, useUploadProfilePicture, useUpdateName } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera } from "lucide-react";
+import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -65,8 +65,12 @@ export default function ProfilePage() {
   const { data: lb } = useGetLeaderboard();
   const { data: achData } = useGetAchievements();
   const uploadPicMut = useUploadProfilePicture();
+  const updateNameMut = useUpdateName();
   const [savingLevel, setSavingLevel] = useState(false);
   const [uploadingPic, setUploadingPic] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameFirst, setNameFirst] = useState("");
+  const [nameLast, setNameLast] = useState("");
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -107,6 +111,28 @@ export default function ProfilePage() {
       toast({ title: "Failed to update level", variant: "destructive" });
     } finally {
       setSavingLevel(false);
+    }
+  };
+
+  const handleStartEditName = () => {
+    setNameFirst(user?.firstName ?? "");
+    setNameLast(user?.lastName ?? "");
+    setEditingName(true);
+  };
+
+  const handleSaveName = async () => {
+    const first = nameFirst.trim();
+    if (!first) {
+      toast({ title: "First name is required", variant: "destructive" });
+      return;
+    }
+    try {
+      await updateNameMut.mutateAsync({ firstName: first, lastName: nameLast.trim() || undefined });
+      toast({ title: "Name updated!" });
+      setEditingName(false);
+      window.location.reload();
+    } catch {
+      toast({ title: "Failed to update name", variant: "destructive" });
     }
   };
 
@@ -195,25 +221,64 @@ export default function ProfilePage() {
                 </button>
               </div>
 
-              <div className="pb-1 flex-1">
-                <div className="flex items-center flex-wrap gap-2">
-                  <h2 className="text-2xl font-bold">{displayName}</h2>
-                  {nametagDef && (
-                    <span className="inline-flex items-center gap-1 bg-gradient-to-r from-primary/20 to-accent/20 border border-primary/20 text-xs font-bold px-2 py-0.5 rounded-full">
-                      {nametagDef.emoji} {nametagDef.name}
-                    </span>
-                  )}
-                </div>
-                {user?.email && (
-                  <p className="text-muted-foreground text-sm flex items-center gap-1.5 mt-0.5">
-                    <Mail className="w-3.5 h-3.5" /> {user.email}
-                  </p>
-                )}
-                {user?.level && (
-                  <span className="mt-1.5 inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
-                    <GraduationCap className="w-3 h-3" />
-                    {user.level} — {LEVELS.find(l => l.code === user.level)?.group}
-                  </span>
+              <div className="pb-1 flex-1 min-w-0">
+                {editingName ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        autoFocus
+                        value={nameFirst}
+                        onChange={e => setNameFirst(e.target.value)}
+                        placeholder="First name"
+                        className="flex-1 min-w-0 rounded-xl border border-border bg-background px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+                        onKeyDown={e => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setEditingName(false); }}
+                      />
+                      <input
+                        value={nameLast}
+                        onChange={e => setNameLast(e.target.value)}
+                        placeholder="Last name"
+                        className="flex-1 min-w-0 rounded-xl border border-border bg-background px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+                        onKeyDown={e => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setEditingName(false); }}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" className="rounded-xl gap-1.5 h-7 px-3 text-xs" onClick={handleSaveName} disabled={updateNameMut.isPending}>
+                        <Check className="w-3 h-3" /> Save
+                      </Button>
+                      <Button size="sm" variant="outline" className="rounded-xl gap-1.5 h-7 px-3 text-xs" onClick={() => setEditingName(false)}>
+                        <X className="w-3 h-3" /> Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center flex-wrap gap-2">
+                      <h2 className="text-2xl font-bold">{displayName}</h2>
+                      <button
+                        onClick={handleStartEditName}
+                        className="w-6 h-6 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
+                        title="Edit name"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                      {nametagDef && (
+                        <span className="inline-flex items-center gap-1 bg-gradient-to-r from-primary/20 to-accent/20 border border-primary/20 text-xs font-bold px-2 py-0.5 rounded-full">
+                          {nametagDef.emoji} {nametagDef.name}
+                        </span>
+                      )}
+                    </div>
+                    {user?.email && (
+                      <p className="text-muted-foreground text-sm flex items-center gap-1.5 mt-0.5">
+                        <Mail className="w-3.5 h-3.5" /> {user.email}
+                      </p>
+                    )}
+                    {user?.level && (
+                      <span className="mt-1.5 inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
+                        <GraduationCap className="w-3 h-3" />
+                        {user.level} — {LEVELS.find(l => l.code === user.level)?.group}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             </div>

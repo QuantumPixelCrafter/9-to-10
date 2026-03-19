@@ -130,7 +130,7 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
     return;
   }
 
-  const { level } = req.body;
+  const { level, firstName, lastName } = req.body;
   const validLevels = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
 
   if (level !== undefined && level !== null && !validLevels.includes(level)) {
@@ -138,9 +138,19 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
     return;
   }
 
+  if (firstName !== undefined && (typeof firstName !== "string" || firstName.trim().length === 0)) {
+    res.status(400).json({ error: "First name cannot be empty." });
+    return;
+  }
+
+  const updates: Partial<typeof usersTable.$inferInsert> = { updatedAt: new Date() };
+  if (level !== undefined) updates.level = level ?? null;
+  if (firstName !== undefined) updates.firstName = firstName.trim();
+  if (lastName !== undefined) updates.lastName = lastName?.trim() || null;
+
   const [updated] = await db
     .update(usersTable)
-    .set({ level: level ?? null, updatedAt: new Date() })
+    .set(updates)
     .where(eq(usersTable.id, req.user.id))
     .returning();
 
