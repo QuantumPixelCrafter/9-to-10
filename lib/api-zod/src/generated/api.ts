@@ -311,6 +311,27 @@ export const DeleteGoalParams = zod.object({
 });
 
 /**
+ * @summary Generate revision flashcard pairs from all notes using AI
+ */
+export const GenerateRevisionCardsBody = zod.object({
+  count: zod
+    .number()
+    .optional()
+    .describe("Number of pairs to generate (default 8)"),
+});
+
+export const GenerateRevisionCardsResponse = zod.object({
+  cards: zod.array(
+    zod.object({
+      id: zod.number(),
+      term: zod.string(),
+      definition: zod.string(),
+    }),
+  ),
+  subject: zod.string().optional(),
+});
+
+/**
  * @summary List mood check-ins
  */
 export const ListMoodsResponseItem = zod.object({

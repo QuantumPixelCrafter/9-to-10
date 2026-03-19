@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Home, BookOpen, Calendar as CalendarIcon, 
   Target, Clock, Smile, Menu, X, 
-  BrainCircuit, Sparkles, ChevronRight
+  BrainCircuit, Sparkles, ChevronRight, Gamepad2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { href: "/goals", label: "Goals", icon: Target, color: "text-accent", bg: "bg-accent/10" },
   { href: "/calendar", label: "Calendar", icon: CalendarIcon, color: "text-purple-500", bg: "bg-purple-500/10" },
   { href: "/mood", label: "Mood Check-in", icon: Smile, color: "text-pink-500", bg: "bg-pink-500/10" },
+  { href: "/games", label: "Minigames", icon: Gamepad2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
 ];
 
 export function Layout({ children, title, actions }: LayoutProps) {

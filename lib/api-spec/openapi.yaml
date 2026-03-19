@@ -362,6 +362,25 @@ paths:
         "204":
           description: Deleted
 
+  /games/revision-cards:
+    post:
+      operationId: generateRevisionCards
+      tags: [quiz]
+      summary: Generate revision flashcard pairs from all notes using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRevisionCardsBody"
+      responses:
+        "200":
+          description: Generated revision cards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevisionCardsResponse"
+
   /moods:
     get:
       operationId: listMoods
@@ -680,3 +699,37 @@ components:
           type: string
       required:
         - mood
+
+    GenerateRevisionCardsBody:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Number of pairs to generate (default 8)
+      required: []
+
+    RevisionCard:
+      type: object
+      properties:
+        id:
+          type: integer
+        term:
+          type: string
+        definition:
+          type: string
+      required:
+        - id
+        - term
+        - definition
+
+    RevisionCardsResponse:
+      type: object
+      properties:
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/RevisionCard"
+        subject:
+          type: string
+      required:
+        - cards

@@ -23,12 +23,14 @@ import type {
   CreateScheduleBody,
   CreateSubjectBody,
   GenerateQuizBody,
+  GenerateRevisionCardsBody,
   Goal,
   HealthStatus,
   ListNotesParams,
   Mood,
   Note,
   Quiz,
+  RevisionCardsResponse,
   Schedule,
   Subject,
   UpdateGoalBody,
@@ -1618,6 +1620,93 @@ export const useDeleteGoal = <
   TContext
 > => {
   return useMutation(getDeleteGoalMutationOptions(options));
+};
+
+/**
+ * @summary Generate revision flashcard pairs from all notes using AI
+ */
+export const getGenerateRevisionCardsUrl = () => {
+  return `/api/games/revision-cards`;
+};
+
+export const generateRevisionCards = async (
+  generateRevisionCardsBody: GenerateRevisionCardsBody,
+  options?: RequestInit,
+): Promise<RevisionCardsResponse> => {
+  return customFetch<RevisionCardsResponse>(getGenerateRevisionCardsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(generateRevisionCardsBody),
+  });
+};
+
+export const getGenerateRevisionCardsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateRevisionCards>>,
+    TError,
+    { data: BodyType<GenerateRevisionCardsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateRevisionCards>>,
+  TError,
+  { data: BodyType<GenerateRevisionCardsBody> },
+  TContext
+> => {
+  const mutationKey = ["generateRevisionCards"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateRevisionCards>>,
+    { data: BodyType<GenerateRevisionCardsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return generateRevisionCards(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateRevisionCardsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateRevisionCards>>
+>;
+export type GenerateRevisionCardsMutationBody =
+  BodyType<GenerateRevisionCardsBody>;
+export type GenerateRevisionCardsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Generate revision flashcard pairs from all notes using AI
+ */
+export const useGenerateRevisionCards = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateRevisionCards>>,
+    TError,
+    { data: BodyType<GenerateRevisionCardsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateRevisionCards>>,
+  TError,
+  { data: BodyType<GenerateRevisionCardsBody> },
+  TContext
+> => {
+  return useMutation(getGenerateRevisionCardsMutationOptions(options));
 };
 
 /**

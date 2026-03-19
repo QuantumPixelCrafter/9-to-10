@@ -161,6 +161,22 @@ export interface CreateMoodBody {
   note?: string;
 }
 
+export interface GenerateRevisionCardsBody {
+  /** Number of pairs to generate (default 8) */
+  count?: number;
+}
+
+export interface RevisionCard {
+  id: number;
+  term: string;
+  definition: string;
+}
+
+export interface RevisionCardsResponse {
+  cards: RevisionCard[];
+  subject?: string;
+}
+
 export type ListNotesParams = {
   subjectId?: number;
 };

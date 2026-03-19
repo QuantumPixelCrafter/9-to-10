@@ -10,6 +10,7 @@ import Timetable from "@/pages/timetable";
 import Goals from "@/pages/goals";
 import Calendar from "@/pages/calendar";
 import Mood from "@/pages/mood";
+import Games from "@/pages/games";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/goals" component={Goals} />
       <Route path="/calendar" component={Calendar} />
       <Route path="/mood" component={Mood} />
+      <Route path="/games" component={Games} />
       <Route component={NotFound} />
     </Switch>
   );
