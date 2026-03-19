@@ -391,7 +391,7 @@ function BubblePop() {
     if (gameStateRef.current !== "playing") return;
     const w = containerRef.current?.clientWidth ?? 400;
     const h = containerRef.current?.clientHeight ?? 600;
-    const spawnInterval = Math.max(750, 1800 - Math.floor(scoreRef.current / 5) * 40);
+    const spawnInterval = Math.max(450, 1200 - Math.floor(scoreRef.current / 5) * 35);
 
     if (!hellModeRef.current && scoreRef.current >= 150) {
       activateHellMode();
@@ -610,7 +610,7 @@ function BubblePop() {
                   <div className="absolute top-[20%] left-[22%] w-[30%] h-[22%] bg-white/50 rounded-full rotate-[-30deg]" />
                   <div className="absolute top-[35%] left-[55%] w-[15%] h-[10%] bg-white/30 rounded-full rotate-[-30deg]" />
                   {b.isBomb && (
-                    <div className="absolute bottom-[8%] right-[10%] text-[6px] opacity-15 select-none leading-none">💣</div>
+                    <div className="absolute bottom-[8%] right-[10%] text-[11px] opacity-60 select-none leading-none">💣</div>
                   )}
                 </motion.button>
               ))}
