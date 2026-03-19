@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
-import { useGenerateRevisionCards } from "@workspace/api-client-react";
-import { Brain, Gamepad2, Sparkles, Trophy, Timer, RefreshCw, Play, RotateCcw, Leaf, Star } from "lucide-react";
+import { useGenerateRevisionCards, useSubmitScore } from "@workspace/api-client-react";
+import { useAuth } from "@workspace/replit-auth-web";
+import { Brain, Gamepad2, Sparkles, Trophy, Timer, RefreshCw, Play, RotateCcw, Leaf, Star, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -16,13 +17,19 @@ function MemoryMatch() {
   const [moves, setMoves] = useState(0);
   const [seconds, setSeconds] = useState(0);
   const [gameState, setGameState] = useState<"idle" | "loading" | "playing" | "won" | "noNotes">("idle");
+  const [finalScore, setFinalScore] = useState(0);
+  const [scoreSubmitted, setScoreSubmitted] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lockRef = useRef(false);
 
+  const { isAuthenticated } = useAuth();
   const genMut = useGenerateRevisionCards();
+  const submitScoreMut = useSubmitScore();
 
   const startGame = async () => {
     setGameState("loading");
+    setScoreSubmitted(false);
+    setFinalScore(0);
     setMoves(0);
     setMatches(0);
     setSeconds(0);
@@ -70,6 +77,14 @@ function MemoryMatch() {
             if (next === (newCards.length / 2)) {
               setGameState("won");
               if (timerRef.current) clearInterval(timerRef.current);
+              setSeconds(s => {
+                setMoves(mv => {
+                  const computed = Math.max(50, 1000 - s * 3 - mv * 15);
+                  setFinalScore(computed);
+                  return mv;
+                });
+                return s;
+              });
             }
             return next;
           });
@@ -142,20 +157,45 @@ function MemoryMatch() {
               🏆
             </motion.div>
             <h3 className="text-3xl font-bold mb-2">You won!</h3>
-            <p className="text-muted-foreground mb-8">All {matches} pairs matched</p>
-            <div className="flex gap-6 mb-8 justify-center">
-              <div className="bg-primary/10 rounded-2xl p-5 text-center min-w-[90px]">
-                <div className="text-2xl font-bold text-primary">{fmt(seconds)}</div>
+            <p className="text-muted-foreground mb-6">All {matches} pairs matched</p>
+            <div className="flex gap-4 mb-6 justify-center">
+              <div className="bg-primary/10 rounded-2xl p-4 text-center min-w-[80px]">
+                <div className="text-xl font-bold text-primary">{fmt(seconds)}</div>
                 <div className="text-xs text-muted-foreground mt-1">Time</div>
               </div>
-              <div className="bg-primary/10 rounded-2xl p-5 text-center min-w-[90px]">
-                <div className="text-2xl font-bold text-primary">{moves}</div>
+              <div className="bg-primary/10 rounded-2xl p-4 text-center min-w-[80px]">
+                <div className="text-xl font-bold text-primary">{moves}</div>
                 <div className="text-xs text-muted-foreground mt-1">Moves</div>
               </div>
+              <div className="bg-amber-500/10 rounded-2xl p-4 text-center min-w-[80px] border border-amber-500/20">
+                <div className="text-xl font-bold text-amber-500">{finalScore}</div>
+                <div className="text-xs text-muted-foreground mt-1">Score</div>
+              </div>
             </div>
-            <Button size="lg" className="rounded-2xl px-10 shadow-xl shadow-primary/20" onClick={startGame}>
-              <RefreshCw className="w-5 h-5 mr-2" /> Play Again
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-xs">
+              {isAuthenticated && !scoreSubmitted && (
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    await submitScoreMut.mutateAsync({ data: { gameType: "memory-match", score: finalScore } });
+                    setScoreSubmitted(true);
+                  }}
+                  disabled={submitScoreMut.isPending}
+                  className="rounded-xl gap-2 border-amber-500/30 text-amber-600 hover:bg-amber-500/5"
+                >
+                  <Upload className="w-4 h-4" />
+                  {submitScoreMut.isPending ? "Saving…" : "Submit Score"}
+                </Button>
+              )}
+              {scoreSubmitted && (
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5 justify-center">
+                  ✓ Score submitted to leaderboard!
+                </p>
+              )}
+              <Button size="lg" className="rounded-xl px-8 shadow-xl shadow-primary/20" onClick={startGame}>
+                <RefreshCw className="w-5 h-5 mr-2" /> Play Again
+              </Button>
+            </div>
           </motion.div>
         )}
 
@@ -259,10 +299,15 @@ function BubblePop() {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [score, setScore] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [scoreSubmitted, setScoreSubmitted] = useState(false);
+  const [finalBubbleScore, setFinalBubbleScore] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
   const lastSpawnRef = useRef(0);
   const bubblesRef = useRef<Bubble[]>([]);
+
+  const { isAuthenticated } = useAuth();
+  const submitScoreMut = useSubmitScore();
 
   const spawnBubble = useCallback(() => {
     const w = containerRef.current?.clientWidth ?? 400;
@@ -302,6 +347,8 @@ function BubblePop() {
 
   const startGame = () => {
     setScore(0);
+    setScoreSubmitted(false);
+    setFinalBubbleScore(0);
     bubblesRef.current = [];
     setBubbles([]);
     setPlaying(true);
@@ -314,6 +361,7 @@ function BubblePop() {
     cancelAnimationFrame(animRef.current);
     bubblesRef.current = [];
     setBubbles([]);
+    setScore(s => { setFinalBubbleScore(s); return s; });
   };
 
   const popBubble = (id: number) => {
@@ -327,6 +375,43 @@ function BubblePop() {
   return (
     <div className="h-full flex flex-col">
       {!playing ? (
+        finalBubbleScore > 0 ? (
+          /* Results screen after stopping */
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+            className="flex-1 flex flex-col items-center justify-center text-center px-8 py-12">
+            <div className="text-6xl mb-5">🫧</div>
+            <h3 className="text-2xl font-bold mb-1">Great session!</h3>
+            <p className="text-muted-foreground mb-6">You popped {finalBubbleScore} bubbles</p>
+            <div className="bg-sky-500/10 rounded-2xl px-10 py-5 border border-sky-500/10 mb-6">
+              <div className="text-4xl font-extrabold text-sky-500">{finalBubbleScore}</div>
+              <div className="text-sm text-muted-foreground mt-1">bubbles popped</div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-xs">
+              {isAuthenticated && !scoreSubmitted && (
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    await submitScoreMut.mutateAsync({ data: { gameType: "bubble-pop", score: finalBubbleScore } });
+                    setScoreSubmitted(true);
+                  }}
+                  disabled={submitScoreMut.isPending}
+                  className="rounded-xl gap-2 border-sky-500/30 text-sky-600 hover:bg-sky-500/5"
+                >
+                  <Upload className="w-4 h-4" />
+                  {submitScoreMut.isPending ? "Saving…" : "Submit Score"}
+                </Button>
+              )}
+              {scoreSubmitted && (
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5 justify-center">
+                  ✓ Score submitted to leaderboard!
+                </p>
+              )}
+              <Button size="lg" className="rounded-xl bg-gradient-to-r from-sky-500 to-violet-500 hover:opacity-90 border-0 shadow-lg" onClick={startGame}>
+                <RefreshCw className="w-4 h-4 mr-2" /> Play Again
+              </Button>
+            </div>
+          </motion.div>
+        ) : (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="flex-1 flex flex-col items-center justify-center text-center px-8 py-12">
           <div className="w-20 h-20 bg-gradient-to-br from-sky-400 to-violet-500 rounded-3xl flex items-center justify-center mb-6 mx-auto shadow-xl shadow-violet-500/20">
@@ -348,6 +433,8 @@ function BubblePop() {
             <Play className="w-5 h-5 mr-2" /> Start Relaxing
           </Button>
         </motion.div>
+        )
+
       ) : (
         <div className="flex-1 flex flex-col">
           <div className="flex items-center justify-between px-2 py-3 shrink-0">

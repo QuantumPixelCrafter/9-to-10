@@ -8,6 +8,132 @@
 import * as zod from "zod";
 
 /**
+ * @summary Get the currently authenticated user
+ */
+export const GetCurrentAuthUserHeader = zod.object({
+  Authorization: zod
+    .string()
+    .optional()
+    .describe("Opaque session token — `Bearer <sid>`."),
+});
+
+export const GetCurrentAuthUserResponse = zod.object({
+  user: zod.union([
+    zod.object({
+      id: zod.string(),
+      email: zod.string().nullable(),
+      firstName: zod.string().nullable(),
+      lastName: zod.string().nullable(),
+      profileImageUrl: zod.string().nullable(),
+    }),
+    zod.null(),
+  ]),
+});
+
+/**
+ * @summary Start the browser OIDC login flow
+ */
+export const BeginBrowserLoginQueryParams = zod.object({
+  returnTo: zod.coerce.string().optional(),
+});
+
+/**
+ * @summary Clear the session and begin OIDC logout
+ */
+export const LogoutBrowserSessionHeader = zod.object({
+  Authorization: zod
+    .string()
+    .optional()
+    .describe("Opaque session token — `Bearer <sid>`."),
+});
+
+/**
+ * @summary Exchange a mobile OIDC code for a session token
+ */
+export const ExchangeMobileAuthorizationCodeBody = zod.object({
+  code: zod.string(),
+  code_verifier: zod.string(),
+  redirect_uri: zod.string(),
+  state: zod.string(),
+  nonce: zod.string().optional(),
+});
+
+export const ExchangeMobileAuthorizationCodeResponse = zod.object({
+  token: zod.string(),
+});
+
+/**
+ * @summary Delete a mobile session token
+ */
+export const LogoutMobileSessionHeader = zod.object({
+  Authorization: zod
+    .string()
+    .optional()
+    .describe("Opaque session token — `Bearer <sid>`."),
+});
+
+export const LogoutMobileSessionResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Get top scores for all game types
+ */
+export const GetLeaderboardResponse = zod.object({
+  memoryMatch: zod.array(
+    zod.object({
+      id: zod.number(),
+      userId: zod.string(),
+      displayName: zod.string(),
+      profileImageUrl: zod.string().nullish(),
+      gameType: zod.enum(["memory-match", "bubble-pop", "quiz"]),
+      score: zod.number(),
+      createdAt: zod.date(),
+    }),
+  ),
+  bubblePop: zod.array(
+    zod.object({
+      id: zod.number(),
+      userId: zod.string(),
+      displayName: zod.string(),
+      profileImageUrl: zod.string().nullish(),
+      gameType: zod.enum(["memory-match", "bubble-pop", "quiz"]),
+      score: zod.number(),
+      createdAt: zod.date(),
+    }),
+  ),
+  quiz: zod.array(
+    zod.object({
+      id: zod.number(),
+      userId: zod.string(),
+      displayName: zod.string(),
+      profileImageUrl: zod.string().nullish(),
+      gameType: zod.enum(["memory-match", "bubble-pop", "quiz"]),
+      score: zod.number(),
+      createdAt: zod.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Submit a score (authenticated)
+ */
+export const SubmitScoreBody = zod.object({
+  gameType: zod.enum(["memory-match", "bubble-pop", "quiz"]),
+  score: zod.number(),
+});
+
+export const SubmitScoreResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  displayName: zod.string(),
+  profileImageUrl: zod.string().nullish(),
+  gameType: zod.enum(["memory-match", "bubble-pop", "quiz"]),
+  score: zod.number(),
+  createdAt: zod.date(),
+});
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

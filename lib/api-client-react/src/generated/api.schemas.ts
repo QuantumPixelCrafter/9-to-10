@@ -5,6 +5,78 @@
  * Study Smart API
  * OpenAPI spec version: 0.1.0
  */
+export interface AuthUser {
+  id: string;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  firstName: string | null;
+  /** @nullable */
+  lastName: string | null;
+  /** @nullable */
+  profileImageUrl: string | null;
+}
+
+export interface AuthUserEnvelope {
+  user: AuthUser | null;
+}
+
+export interface ExchangeMobileAuthorizationCodeBody {
+  code: string;
+  code_verifier: string;
+  redirect_uri: string;
+  state: string;
+  nonce?: string;
+}
+
+export interface ExchangeMobileAuthorizationCodeResponse {
+  token: string;
+}
+
+export interface LogoutMobileSessionResponse {
+  success: boolean;
+}
+
+export type LeaderboardEntryGameType =
+  (typeof LeaderboardEntryGameType)[keyof typeof LeaderboardEntryGameType];
+
+export const LeaderboardEntryGameType = {
+  "memory-match": "memory-match",
+  "bubble-pop": "bubble-pop",
+  quiz: "quiz",
+} as const;
+
+export interface LeaderboardEntry {
+  id: number;
+  userId: string;
+  displayName: string;
+  /** @nullable */
+  profileImageUrl?: string | null;
+  gameType: LeaderboardEntryGameType;
+  score: number;
+  createdAt: string;
+}
+
+export interface LeaderboardResponse {
+  memoryMatch: LeaderboardEntry[];
+  bubblePop: LeaderboardEntry[];
+  quiz: LeaderboardEntry[];
+}
+
+export type SubmitScoreBodyGameType =
+  (typeof SubmitScoreBodyGameType)[keyof typeof SubmitScoreBodyGameType];
+
+export const SubmitScoreBodyGameType = {
+  "memory-match": "memory-match",
+  "bubble-pop": "bubble-pop",
+  quiz: "quiz",
+} as const;
+
+export interface SubmitScoreBody {
+  gameType: SubmitScoreBodyGameType;
+  score: number;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -176,6 +248,15 @@ export interface RevisionCardsResponse {
   cards: RevisionCard[];
   subject?: string;
 }
+
+/**
+ * Opaque session token — `Bearer <sid>`.
+ */
+export type AuthorizationSessionHeaderParameter = string;
+
+export type BeginBrowserLoginParams = {
+  returnTo?: string;
+};
 
 export type ListNotesParams = {
   subjectId?: number;
