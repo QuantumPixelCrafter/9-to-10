@@ -310,25 +310,44 @@ const BUBBLE_COLORS = [
 ];
 
 const DIRECTIONS: Direction[] = ["up", "down", "left", "right"];
+const MAX_LIVES = 5;
 
 let bubbleIdCounter = 0;
 
 function BubblePop() {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [score, setScore] = useState(0);
+  const [lives, setLives] = useState(MAX_LIVES);
   const [gameState, setGameState] = useState<"idle" | "playing" | "dead" | "stopped">("idle");
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [finalBubbleScore, setFinalBubbleScore] = useState(0);
-  const [bombHit, setBombHit] = useState(false);
+  const [shakeHeart, setShakeHeart] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
   const lastSpawnRef = useRef(0);
   const bubblesRef = useRef<Bubble[]>([]);
   const scoreRef = useRef(0);
+  const livesRef = useRef(MAX_LIVES);
+  const gameStateRef = useRef<"idle" | "playing" | "dead" | "stopped">("idle");
 
   const { isAuthenticated } = useAuth();
   const submitScoreMut = useSubmitScore();
+
+  const loseLife = useCallback(() => {
+    livesRef.current -= 1;
+    setLives(livesRef.current);
+    setShakeHeart(true);
+    setTimeout(() => setShakeHeart(false), 400);
+    if (livesRef.current <= 0) {
+      cancelAnimationFrame(animRef.current);
+      bubblesRef.current = [];
+      setBubbles([]);
+      setFinalBubbleScore(scoreRef.current);
+      gameStateRef.current = "dead";
+      setGameState("dead");
+    }
+  }, []);
 
   const spawnBubble = useCallback(() => {
     const w = containerRef.current?.clientWidth ?? 400;
@@ -343,9 +362,9 @@ function BubblePop() {
     if (dir === "left")  { x = w + r; y = r + Math.random() * (h - r * 2); }
     if (dir === "right") { x = -r;    y = r + Math.random() * (h - r * 2); }
 
-    const speedBoost = Math.floor(scoreRef.current / 10) * 0.18;
-    const base = 0.5 + Math.random() * 0.4 + speedBoost;
-    const speed = Math.min(base, 3.5);
+    const speedBoost = Math.floor(scoreRef.current / 10) * 0.2;
+    const base = 1.2 + Math.random() * 0.5 + speedBoost;
+    const speed = Math.min(base, 5.0);
 
     const b: Bubble = {
       id: ++bubbleIdCounter,
@@ -358,9 +377,10 @@ function BubblePop() {
   }, []);
 
   const tick = useCallback((ts: number) => {
+    if (gameStateRef.current !== "playing") return;
     const w = containerRef.current?.clientWidth ?? 400;
     const h = containerRef.current?.clientHeight ?? 600;
-    const spawnInterval = Math.max(500, 1100 - Math.floor(scoreRef.current / 5) * 40);
+    const spawnInterval = Math.max(450, 1050 - Math.floor(scoreRef.current / 5) * 40);
 
     if (ts - lastSpawnRef.current > spawnInterval) {
       lastSpawnRef.current = ts;
@@ -368,16 +388,20 @@ function BubblePop() {
     }
 
     const t = Date.now() / 1000;
+    const escaped: Bubble[] = [];
+
     bubblesRef.current = bubblesRef.current
       .filter(b => {
-        if (b.direction === "up")    return b.y > -(b.r * 2);
-        if (b.direction === "down")  return b.y < h + b.r * 2;
-        if (b.direction === "left")  return b.x > -(b.r * 2);
-        if (b.direction === "right") return b.x < w + b.r * 2;
-        return true;
+        const gone =
+          (b.direction === "up"    && b.y < -(b.r * 2)) ||
+          (b.direction === "down"  && b.y > h + b.r * 2) ||
+          (b.direction === "left"  && b.x < -(b.r * 2)) ||
+          (b.direction === "right" && b.x > w + b.r * 2);
+        if (gone && !b.isBomb) escaped.push(b);
+        return !gone;
       })
       .map(b => {
-        const wob = Math.sin(t * b.wobble + b.wobbleOffset) * 0.4;
+        const wob = Math.sin(t * b.wobble + b.wobbleOffset) * 0.5;
         return {
           ...b,
           x: b.x + (b.direction === "left" ? -b.speed : b.direction === "right" ? b.speed : wob),
@@ -386,16 +410,25 @@ function BubblePop() {
       });
 
     setBubbles([...bubblesRef.current]);
+
+    if (escaped.length > 0) {
+      for (let i = 0; i < escaped.length; i++) loseLife();
+      if (gameStateRef.current !== "playing") return;
+    }
+
     animRef.current = requestAnimationFrame(tick);
-  }, [spawnBubble]);
+  }, [spawnBubble, loseLife]);
 
   const startGame = () => {
     scoreRef.current = 0;
+    livesRef.current = MAX_LIVES;
+    gameStateRef.current = "playing";
     setScore(0);
+    setLives(MAX_LIVES);
     setScoreSubmitted(false);
     setSubmitError(null);
     setFinalBubbleScore(0);
-    setBombHit(false);
+    setShakeHeart(false);
     bubblesRef.current = [];
     setBubbles([]);
     setGameState("playing");
@@ -403,25 +436,28 @@ function BubblePop() {
     animRef.current = requestAnimationFrame(tick);
   };
 
-  const endGame = (hitBomb: boolean) => {
+  const stopGame = () => {
     cancelAnimationFrame(animRef.current);
     bubblesRef.current = [];
     setBubbles([]);
-    setBombHit(hitBomb);
     setFinalBubbleScore(scoreRef.current);
-    setGameState(hitBomb ? "dead" : "stopped");
+    gameStateRef.current = "stopped";
+    setGameState("stopped");
   };
 
-  const popBubble = (b: Bubble) => {
+  const popBubble = useCallback((b: Bubble) => {
+    if (gameStateRef.current !== "playing") return;
     if (b.isBomb) {
-      endGame(true);
+      bubblesRef.current = bubblesRef.current.filter(bub => bub.id !== b.id);
+      setBubbles([...bubblesRef.current]);
+      loseLife();
       return;
     }
     bubblesRef.current = bubblesRef.current.filter(bub => bub.id !== b.id);
     scoreRef.current += 1;
     setScore(s => s + 1);
     setBubbles([...bubblesRef.current]);
-  };
+  }, [loseLife]);
 
   useEffect(() => () => cancelAnimationFrame(animRef.current), []);
 
@@ -438,10 +474,10 @@ function BubblePop() {
           </div>
           <h3 className="text-2xl font-bold mb-3">Bubble Pop</h3>
           <p className="text-muted-foreground max-w-sm mb-8 leading-relaxed">
-            Pop bubbles flying from every direction — but <strong>avoid the bombs</strong> 💣 or it's game over! Speed ramps up the higher your score goes.
+            Pop bubbles flying from every direction — <strong>don't miss them</strong> and <strong>avoid the bombs</strong> 💣. You have <strong>5 lives ❤️</strong>!
           </p>
           <div className="grid grid-cols-3 gap-4 mb-8 text-center">
-            {[["All Directions", "Bubbles fly from every edge"], ["Avoid Bombs 💣", "One hit = game over"], ["Gets Faster", "Speed scales with score"]].map(([t, d]) => (
+            {[["5 Lives ❤️", "Miss or hit a bomb = -1 life"], ["Avoid Bombs 💣", "Pop a bomb = lose a life"], ["Gets Faster", "Speed scales with score"]].map(([t, d]) => (
               <div key={t} className="bg-sky-500/5 rounded-2xl p-4 border border-sky-500/10">
                 <div className="font-bold text-sm">{t}</div>
                 <div className="text-xs text-muted-foreground mt-1">{d}</div>
@@ -457,10 +493,10 @@ function BubblePop() {
       {isResult && (
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
           className="flex-1 flex flex-col items-center justify-center text-center px-8 py-12">
-          <div className="text-6xl mb-5">{bombHit ? "💣" : "🫧"}</div>
-          <h3 className="text-2xl font-bold mb-1">{bombHit ? "BOOM! You hit a bomb!" : "Great session!"}</h3>
+          <div className="text-6xl mb-5">{gameState === "dead" ? "💀" : "🫧"}</div>
+          <h3 className="text-2xl font-bold mb-1">{gameState === "dead" ? "Out of lives!" : "Great session!"}</h3>
           <p className="text-muted-foreground mb-6">
-            {bombHit ? `You survived until ${finalBubbleScore} pops. Watch those bombs!` : `You popped ${finalBubbleScore} bubbles`}
+            {gameState === "dead" ? `You popped ${finalBubbleScore} bubbles before running out of lives.` : `You popped ${finalBubbleScore} bubbles`}
           </p>
           <div className="bg-sky-500/10 rounded-2xl px-10 py-5 border border-sky-500/10 mb-3">
             <div className="text-4xl font-extrabold text-sky-500">{finalBubbleScore}</div>
@@ -513,12 +549,16 @@ function BubblePop() {
               <Star className="w-4 h-4 text-sky-500" />
               <span className="font-bold text-sky-600 dark:text-sky-400">{score} popped</span>
             </div>
-            {Math.floor(score / 10) > 0 && (
-              <div className="flex items-center gap-1 text-amber-500 text-sm font-bold bg-amber-500/10 rounded-xl px-3 py-1.5">
-                ⚡ Speed {Math.floor(score / 10)}
-              </div>
-            )}
-            <Button variant="ghost" size="sm" onClick={() => endGame(false)} className="rounded-xl text-muted-foreground gap-2">
+            <motion.div
+              animate={shakeHeart ? { x: [-4, 4, -4, 4, 0] } : {}}
+              transition={{ duration: 0.3 }}
+              className="flex items-center gap-0.5"
+            >
+              {Array.from({ length: MAX_LIVES }).map((_, i) => (
+                <span key={i} className={cn("text-lg transition-all", i < lives ? "opacity-100" : "opacity-20 grayscale")}>❤️</span>
+              ))}
+            </motion.div>
+            <Button variant="ghost" size="sm" onClick={stopGame} className="rounded-xl text-muted-foreground gap-2">
               <RotateCcw className="w-4 h-4" /> Stop
             </Button>
           </div>
@@ -542,8 +582,7 @@ function BubblePop() {
                     "hover:scale-110 active:scale-125 transition-transform select-none",
                     b.isBomb
                       ? "border-red-800/60 shadow-red-900/30"
-                      : "border-white/30 hover:border-white/50"
-                    ,
+                      : "border-white/30 hover:border-white/50",
                     b.color
                   )}
                   style={{
