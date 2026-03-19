@@ -52,12 +52,23 @@ router.post("/curriculum-quiz/generate", async (req, res) => {
   const diffInstruction = DIFFICULTY_INSTRUCTIONS[difficulty] ?? DIFFICULTY_INSTRUCTIONS.normal;
   const count = Math.min(Math.max(Number(questionCount) || 10, 3), 20);
 
+  const isMath = /math/i.test(subject);
+
+  const mathSection = isMath ? `
+MATHEMATICS-SPECIFIC RULES (this is a maths quiz — these override all other instructions):
+- For every calculation question, compute the answer fully step by step BEFORE writing the options
+- Write out each arithmetic step explicitly: e.g. 3x + 5 = 14 → 3x = 9 → x = 3
+- Only after computing the correct answer, write it as one of the options and set correctAnswer to its index
+- The other 3 options must be common calculation errors (e.g. sign errors, wrong order of operations), NOT random numbers
+- Re-verify: mentally substitute your answer back into the question to confirm it is correct
+- NEVER guess a numerical answer — always compute it` : "";
+
   const prompt = `Generate a ${difficulty} difficulty quiz with exactly ${count} multiple-choice questions on the topic "${topic}" within the subject "${subject}" for ${levelLabel} students.
 
 Level-appropriate instruction: ${levelInstruction}
 
 Difficulty instruction: ${diffInstruction}
-
+${mathSection}
 Important guidelines:
 - All questions must be specific to the topic "${topic}" in "${subject}"
 - Tailor vocabulary, complexity and depth to ${levelLabel} level
@@ -81,8 +92,8 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
 CRITICAL RULES — you MUST follow these exactly:
 - correctAnswer is the 0-based index (0=first option, 1=second, 2=third, 3=fourth)
 - Before finalising each question, verify: options[correctAnswer] is factually correct, and ALL other options are factually wrong
-- The explanation MUST begin with "The correct answer is '[exact text of the correct option]' because" — this forces you to confirm the index is right
-- Never mark a wrong answer as correct. If unsure about a fact, choose a different question
+- The explanation MUST begin with "The correct answer is '[exact text of the correct option]' because" and must show the full working if this is a calculation question
+- Never mark a wrong answer as correct. If unsure about a fact or calculation, choose a different question
 - Always provide exactly 4 options
 - Generate exactly ${count} questions`;
 
@@ -93,7 +104,9 @@ CRITICAL RULES — you MUST follow these exactly:
       messages: [
         {
           role: "system",
-          content: "You are a precise, accurate quiz generator. Your top priority is factual correctness — every correctAnswer index must point to the genuinely correct option. You must verify each answer before outputting. Never guess.",
+          content: isMath
+            ? "You are a precise mathematics quiz generator. You MUST compute every numerical answer step by step before writing it. Never guess or estimate a number. After computing the answer, place it in the options array and set correctAnswer to its exact 0-based index. Verify by substituting back into the original expression. Factual accuracy is your absolute top priority."
+            : "You are a precise, accurate quiz generator. Your top priority is factual correctness — every correctAnswer index must point to the genuinely correct option. You must verify each answer before outputting. Never guess.",
         },
         { role: "user", content: prompt },
       ],
