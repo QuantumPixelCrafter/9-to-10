@@ -328,7 +328,7 @@ export default function ProfilePage() {
                   <span className="text-muted-foreground">{xpInLevel.toLocaleString()} XP</span>
                   {nextThresh !== null
                     ? <span className="text-muted-foreground">{xpNeeded.toLocaleString()} XP to Lv.{gameLevel + 1}</span>
-                    : <span className="text-violet-500 font-bold">MAX LEVEL</span>}
+                    : <span className="text-violet-500 font-bold">Level 100</span>}
                 </div>
                 <div className="h-2.5 bg-violet-500/15 rounded-full overflow-hidden">
                   <div className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full transition-all duration-700" style={{ width: `${progress}%` }} />

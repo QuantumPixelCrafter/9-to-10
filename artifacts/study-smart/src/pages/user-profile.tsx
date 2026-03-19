@@ -17,7 +17,7 @@ function XpBar({ progress, level, xpInLevel, xpNeeded }: { progress: number; lev
         {xpNeeded > 0 ? (
           <span className="text-muted-foreground">{xpInLevel.toLocaleString()} / {xpNeeded.toLocaleString()} XP</span>
         ) : (
-          <span className="text-violet-500 font-bold">MAX LEVEL</span>
+          <span className="text-violet-500 font-bold">Level 100</span>
         )}
       </div>
       <div className="h-2 bg-violet-500/15 rounded-full overflow-hidden">

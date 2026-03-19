@@ -190,7 +190,6 @@ router.get("/leaderboard", async (req, res) => {
 });
 
 router.post("/leaderboard/scores", async (req, res) => {
-  console.log("[leaderboard] POST /scores - cookie header:", req.headers.cookie ?? "(none)", "parsed cookies:", JSON.stringify(req.cookies), "user:", req.user?.id ?? "none", "auth:", req.isAuthenticated());
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
     return;
