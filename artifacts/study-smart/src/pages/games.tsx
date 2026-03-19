@@ -610,7 +610,7 @@ function BubblePop() {
                   <div className="absolute top-[20%] left-[22%] w-[30%] h-[22%] bg-white/50 rounded-full rotate-[-30deg]" />
                   <div className="absolute top-[35%] left-[55%] w-[15%] h-[10%] bg-white/30 rounded-full rotate-[-30deg]" />
                   {b.isBomb && (
-                    <div className="absolute bottom-[10%] right-[12%] text-[9px] opacity-40 select-none leading-none">💣</div>
+                    <div className="absolute bottom-[8%] right-[10%] text-[6px] opacity-15 select-none leading-none">💣</div>
                   )}
                 </motion.button>
               ))}
