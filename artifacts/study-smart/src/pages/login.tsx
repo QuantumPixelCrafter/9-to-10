@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  if (isAuthenticated) {
-    setLocation("/");
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthenticated) setLocation("/");
+  }, [isAuthenticated, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +26,6 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await loginWithCredentials(email, password);
-      setLocation("/");
     } catch {
     } finally {
       setLoading(false);
