@@ -195,7 +195,7 @@ router.post("/leaderboard/scores", async (req, res) => {
     return;
   }
 
-  const { gameType, score, subject, userLevel } = req.body;
+  const { gameType, score, subject, userLevel, secondsTaken } = req.body;
   if (!gameType || typeof score !== "number") {
     res.status(400).json({ error: "gameType and score are required" });
     return;
@@ -212,6 +212,7 @@ router.post("/leaderboard/scores", async (req, res) => {
       userLevel: userLevel ?? null,
       weekKey: getWeekKey(now),
       monthKey: getMonthKey(now),
+      secondsTaken: typeof secondsTaken === "number" ? secondsTaken : null,
     })
     .returning();
 

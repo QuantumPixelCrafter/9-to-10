@@ -12,4 +12,5 @@ export interface SubmitScoreBody {
   score: number;
   subject?: string;
   userLevel?: string;
+  secondsTaken?: number;
 }

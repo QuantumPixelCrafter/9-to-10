@@ -181,7 +181,7 @@ function MemoryMatch() {
                   onClick={async () => {
                     setSubmitError(null);
                     try {
-                      await submitScoreMut.mutateAsync({ data: { gameType: "memory-match", score: finalScore } });
+                      await submitScoreMut.mutateAsync({ data: { gameType: "memory-match", score: finalScore, secondsTaken: seconds } });
                       setScoreSubmitted(true);
                     } catch (err: any) {
                       setSubmitError(err?.message || "Failed to submit score. Please try again.");

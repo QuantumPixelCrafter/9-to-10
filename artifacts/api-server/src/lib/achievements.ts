@@ -1,5 +1,6 @@
 import { db, notesTable, subjectsTable, goalsTable, schedulesTable, moodsTable, scoresTable, userAchievementsTable, usersTable } from "@workspace/db";
-import { eq, count, and } from "drizzle-orm";
+import { eq, count, and, sum, isNotNull, asc } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 export interface AchievementDef {
   key: string;
@@ -12,39 +13,74 @@ export interface AchievementDef {
 
 export const ACHIEVEMENTS: AchievementDef[] = [
   // General
-  { key: "welcome",          title: "Welcome!",          description: "Join Study Smart",                      icon: "🎉", points: 10,  category: "general" },
-  { key: "level_set",        title: "All Set",            description: "Choose your education level",           icon: "🎓", points: 20,  category: "general" },
+  { key: "welcome",          title: "Welcome!",            description: "Join Study Smart",                                                   icon: "🎉", points: 10,  category: "general" },
+  { key: "level_set",        title: "All Set",              description: "Choose your education level",                                        icon: "🎓", points: 20,  category: "general" },
+
+  // Game Level milestones
+  { key: "game_level_1",    title: "First Steps",           description: "You've begun your journey. Every legend starts somewhere.",          icon: "👣", points: 10,  category: "general" },
+  { key: "game_level_25",   title: "Rising Challenger",     description: "Your skills are sharpening, and your presence is being felt.",       icon: "⚔️", points: 75,  category: "general" },
+  { key: "game_level_50",   title: "Seasoned Warrior",      description: "Halfway to greatness—your dedication is undeniable.",                icon: "🛡️", points: 150, category: "general" },
+  { key: "game_level_75",   title: "Master of Trials",      description: "Few reach this height. You've proven your strength and resilience.", icon: "👑", points: 250, category: "general" },
+  { key: "game_level_100",  title: "Legend Eternal",        description: "The pinnacle of achievement. Your name will be remembered forever.", icon: "🌠", points: 500, category: "general" },
+
+  // Achievement Points milestones
+  { key: "points_50",       title: "Getting Started",       description: "Your first milestone—proof that progress has begun.",                icon: "💫", points: 5,   category: "general" },
+  { key: "points_500",      title: "Point Collector",       description: "You're gathering momentum, stacking up rewards with skill.",         icon: "💎", points: 10,  category: "general" },
+  { key: "points_2000",     title: "Treasure Hunter",       description: "Your dedication shines as you uncover riches of effort.",            icon: "🏅", points: 20,  category: "general" },
+  { key: "points_5000",     title: "Elite Scorer",          description: "You've reached rare heights—few achieve this level of mastery.",     icon: "🥇", points: 50,  category: "general" },
+  { key: "points_10000",    title: "Mythic Champion",       description: "The ultimate accolade. Your name echoes in legend.",                 icon: "🏆", points: 100, category: "general" },
 
   // Notes
-  { key: "first_note",       title: "First Words",        description: "Create your first note",                icon: "📝", points: 15,  category: "notes" },
-  { key: "notes_5",          title: "Note Taker",         description: "Write 5 notes",                         icon: "📚", points: 30,  category: "notes" },
-  { key: "notes_20",         title: "Knowledge Base",     description: "Write 20 notes",                        icon: "🧠", points: 75,  category: "notes" },
-  { key: "first_subject",    title: "Organized",          description: "Create your first subject",             icon: "📁", points: 15,  category: "notes" },
-  { key: "subjects_3",       title: "Multi-Subject",      description: "Create 3 or more subjects",             icon: "🗂️", points: 40,  category: "notes" },
+  { key: "first_note",       title: "First Words",          description: "Create your first note",                                            icon: "📝", points: 15,  category: "notes" },
+  { key: "notes_5",          title: "Note Taker",           description: "Write 5 notes",                                                     icon: "📚", points: 30,  category: "notes" },
+  { key: "notes_20",         title: "Knowledge Base",       description: "Write 20 notes",                                                    icon: "🧠", points: 75,  category: "notes" },
+  { key: "first_subject",    title: "Organized",            description: "Create your first subject",                                         icon: "📁", points: 15,  category: "notes" },
+  { key: "subjects_3",       title: "Multi-Subject",        description: "Create 3 or more subjects",                                         icon: "🗂️", points: 40,  category: "notes" },
 
   // Goals
-  { key: "first_goal",       title: "Goal Setter",        description: "Set your first goal",                   icon: "🎯", points: 15,  category: "goals" },
-  { key: "goal_completed",   title: "Goal Crusher",       description: "Complete your first goal",              icon: "✅", points: 30,  category: "goals" },
-  { key: "goals_5_done",     title: "Overachiever",       description: "Complete 5 goals",                      icon: "🌟", points: 75,  category: "goals" },
+  { key: "first_goal",       title: "Goal Setter",          description: "Set your first goal",                                               icon: "🎯", points: 15,  category: "goals" },
+  { key: "goal_completed",   title: "Goal Crusher",         description: "Complete your first goal",                                          icon: "✅", points: 30,  category: "goals" },
+  { key: "goals_5_done",     title: "Overachiever",         description: "Complete 5 goals",                                                  icon: "🌟", points: 75,  category: "goals" },
 
   // Timetable
-  { key: "first_event",      title: "Scheduled",          description: "Add your first timetable event",        icon: "📅", points: 15,  category: "timetable" },
-  { key: "events_5",         title: "Planner",            description: "Schedule 5 or more events",             icon: "🗓️", points: 35,  category: "timetable" },
-  { key: "exam_scheduled",   title: "Exam Ready",         description: "Add an exam event to your timetable",   icon: "📋", points: 25,  category: "timetable" },
-  { key: "eca_scheduled",    title: "All-Rounder",        description: "Schedule an ECA activity",              icon: "⚽", points: 20,  category: "timetable" },
+  { key: "first_event",      title: "Scheduled",            description: "Add your first timetable event",                                    icon: "📅", points: 15,  category: "timetable" },
+  { key: "events_5",         title: "Planner",              description: "Schedule 5 or more events",                                         icon: "🗓️", points: 35,  category: "timetable" },
+  { key: "exam_scheduled",   title: "Exam Ready",           description: "Add an exam event to your timetable",                               icon: "📋", points: 25,  category: "timetable" },
+  { key: "eca_scheduled",    title: "All-Rounder",          description: "Schedule an ECA activity",                                          icon: "⚽", points: 20,  category: "timetable" },
 
   // Mood
-  { key: "first_mood",       title: "Check-In",           description: "Log your first mood",                   icon: "😊", points: 10,  category: "mood" },
-  { key: "mood_7",           title: "Consistent",         description: "Log your mood 7 times",                 icon: "💪", points: 50,  category: "mood" },
-  { key: "mood_30",          title: "Mood Master",        description: "Log your mood 30 times",                icon: "🧘", points: 150, category: "mood" },
+  { key: "first_mood",       title: "Check-In",             description: "Log your first mood",                                               icon: "😊", points: 10,  category: "mood" },
+  { key: "mood_7",           title: "Consistent",           description: "Log your mood 7 times",                                             icon: "💪", points: 50,  category: "mood" },
+  { key: "mood_30",          title: "Mood Master",          description: "Log your mood 30 times",                                            icon: "🧘", points: 150, category: "mood" },
 
-  // Games & Quiz
-  { key: "memory_match",     title: "Memory Pro",         description: "Submit a Memory Match score",           icon: "🃏", points: 20,  category: "games" },
-  { key: "bubble_pop",       title: "Pop Star",           description: "Submit a Bubble Pop score",             icon: "🫧", points: 20,  category: "games" },
-  { key: "quiz_submitted",   title: "Quiz Time",          description: "Submit your first quiz score",          icon: "❓", points: 25,  category: "quiz" },
-  { key: "quiz_5",           title: "Quiz Regular",       description: "Submit 5 quiz scores",                  icon: "📊", points: 60,  category: "quiz" },
-  { key: "quiz_10",          title: "Quiz Master",        description: "Submit 10 quiz scores",                 icon: "🏆", points: 100, category: "quiz" },
-  { key: "all_games",        title: "Triple Threat",      description: "Play all three game types",             icon: "🎮", points: 50,  category: "games" },
+  // Quiz milestones
+  { key: "quiz_submitted",         title: "Quiz Time",          description: "Submit your first quiz score",                                  icon: "❓", points: 25,  category: "quiz" },
+  { key: "quiz_5",                 title: "Quiz Regular",       description: "Submit 5 quiz scores",                                          icon: "📊", points: 60,  category: "quiz" },
+  { key: "quiz_10",                title: "Quiz Veteran",       description: "Submit 10 quiz scores",                                         icon: "🎖️", points: 100, category: "quiz" },
+  { key: "quiz_first_attempt",     title: "First Attempt",      description: "You've taken the leap—your learning journey begins here.",      icon: "🎯", points: 15,  category: "quiz" },
+  { key: "quiz_curious_learner",   title: "Curious Learner",    description: "Your thirst for knowledge is growing stronger.",                icon: "🔍", points: 40,  category: "quiz" },
+  { key: "quiz_dedicated_scholar", title: "Dedicated Scholar",  description: "Consistency pays off—you're mastering the art of practice.",   icon: "📖", points: 100, category: "quiz" },
+  { key: "quiz_knowledge_seeker",  title: "Knowledge Seeker",   description: "A true explorer of wisdom, pushing boundaries with every test.",icon: "🧭", points: 200, category: "quiz" },
+  { key: "quiz_master_200",        title: "Quiz Master",        description: "You've conquered countless challenges—your expertise shines bright.", icon: "🎓", points: 400, category: "quiz" },
+
+  // Games — existing
+  { key: "memory_match",     title: "Memory Pro",           description: "Submit a Memory Match score",                                       icon: "🃏", points: 20,  category: "games" },
+  { key: "bubble_pop",       title: "Pop Star",             description: "Submit a Bubble Pop score",                                         icon: "🫧", points: 20,  category: "games" },
+  { key: "all_games",        title: "Triple Threat",        description: "Play all three game types",                                         icon: "🎮", points: 50,  category: "games" },
+
+  // Bubble Pop milestones (cumulative bubbles popped)
+  { key: "bubbles_10",       title: "Pop Rookie",           description: "You've started bursting bubbles—keep the streak alive!",            icon: "🫧", points: 20,  category: "games" },
+  { key: "bubbles_25",       title: "Bubble Breaker",       description: "Your popping skills are growing sharper with every tap.",           icon: "💦", points: 40,  category: "games" },
+  { key: "bubbles_50",       title: "Burst Specialist",     description: "You've proven your speed and precision in bubble popping.",         icon: "⚡", points: 75,  category: "games" },
+  { key: "bubbles_100",      title: "Bubble Storm",         description: "An unstoppable flurry—your popping power is unmatched.",           icon: "🌪️", points: 150, category: "games" },
+  { key: "bubbles_200",      title: "Bubble Deity",         description: "Beyond mortal limits—you've ascended to divine popping status.",   icon: "🔮", points: 300, category: "games" },
+
+  // Memory Match time achievements
+  { key: "memory_under_50",  title: "Swift Starter",        description: "You've proven you can finish fast—speed is on your side.",          icon: "⏱️", points: 30,  category: "games" },
+  { key: "memory_under_30",  title: "Rapid Runner",         description: "Your reflexes and focus are razor sharp.",                          icon: "🏃", points: 60,  category: "games" },
+  { key: "memory_under_20",  title: "Lightning Striker",    description: "You blaze through challenges with electrifying speed.",             icon: "⚡", points: 100, category: "games" },
+  { key: "memory_under_15",  title: "Blazing Phantom",      description: "Almost untouchable—your moves are a blur.",                        icon: "👻", points: 200, category: "games" },
+  { key: "memory_under_10",  title: "Time-Breaker",         description: "So hard, yet you did it. You've shattered the limits of possibility.", icon: "💥", points: 500, category: "games" },
 ];
 
 export interface AchievementWithStatus extends AchievementDef {
@@ -80,9 +116,11 @@ export async function checkAndAwardAchievements(userId: string): Promise<Achieve
     userScores,
     examSchedule,
     ecaSchedule,
+    [{ totalBubbles }],
+    bestMemoryTime,
   ] = await Promise.all([
     db.select({ key: userAchievementsTable.achievementKey }).from(userAchievementsTable).where(eq(userAchievementsTable.userId, userId)),
-    db.select({ level: usersTable.level }).from(usersTable).where(eq(usersTable.id, userId)),
+    db.select({ level: usersTable.level, gameLevel: usersTable.gameLevel }).from(usersTable).where(eq(usersTable.id, userId)),
     db.select({ notesCount: count() }).from(notesTable),
     db.select({ subjectsCount: count() }).from(subjectsTable),
     db.select({ goalsCount: count() }).from(goalsTable),
@@ -92,14 +130,32 @@ export async function checkAndAwardAchievements(userId: string): Promise<Achieve
     db.select({ gameType: scoresTable.gameType }).from(scoresTable).where(eq(scoresTable.userId, userId)),
     db.select({ id: schedulesTable.id }).from(schedulesTable).where(eq(schedulesTable.eventType, "exam")).limit(1),
     db.select({ id: schedulesTable.id }).from(schedulesTable).where(eq(schedulesTable.eventType, "eca")).limit(1),
+    db.select({ totalBubbles: sql<number>`coalesce(sum(${scoresTable.score}), 0)` })
+      .from(scoresTable)
+      .where(and(eq(scoresTable.userId, userId), eq(scoresTable.gameType, "bubble-pop"))),
+    db.select({ secondsTaken: scoresTable.secondsTaken })
+      .from(scoresTable)
+      .where(and(eq(scoresTable.userId, userId), eq(scoresTable.gameType, "memory-match"), isNotNull(scoresTable.secondsTaken)))
+      .orderBy(asc(scoresTable.secondsTaken))
+      .limit(1),
   ]);
 
   const alreadyEarnedSet = new Set(alreadyEarned.map(e => e.key));
 
+  // Compute total achievement points already earned
+  const earnedPointsTotal = alreadyEarned.reduce((sum, e) => {
+    const def = ACHIEVEMENTS.find(a => a.key === e.key);
+    return sum + (def?.points ?? 0);
+  }, 0);
+
   const gameTypes = new Set(userScores.map(s => s.gameType));
   const quizScoreCount = userScores.filter(s => s.gameType === "quiz").length;
+  const bubbleTotal = Number(totalBubbles ?? 0);
+  const bestMemorySecs = bestMemoryTime[0]?.secondsTaken ?? null;
+  const gameLevel = userRow?.gameLevel ?? 1;
 
   const conditions: Record<string, boolean> = {
+    // Existing
     welcome:        true,
     level_set:      !!userRow?.level,
     first_note:     notesCount >= 1,
@@ -123,6 +179,41 @@ export async function checkAndAwardAchievements(userId: string): Promise<Achieve
     quiz_5:         quizScoreCount >= 5,
     quiz_10:        quizScoreCount >= 10,
     all_games:      gameTypes.has("memory-match") && gameTypes.has("bubble-pop") && gameTypes.has("quiz"),
+
+    // Game Level milestones
+    game_level_1:   gameLevel >= 1,
+    game_level_25:  gameLevel >= 25,
+    game_level_50:  gameLevel >= 50,
+    game_level_75:  gameLevel >= 75,
+    game_level_100: gameLevel >= 100,
+
+    // Achievement Points milestones
+    points_50:      earnedPointsTotal >= 50,
+    points_500:     earnedPointsTotal >= 500,
+    points_2000:    earnedPointsTotal >= 2000,
+    points_5000:    earnedPointsTotal >= 5000,
+    points_10000:   earnedPointsTotal >= 10000,
+
+    // Quiz milestones
+    quiz_first_attempt:     quizScoreCount >= 1,
+    quiz_curious_learner:   quizScoreCount >= 10,
+    quiz_dedicated_scholar: quizScoreCount >= 50,
+    quiz_knowledge_seeker:  quizScoreCount >= 100,
+    quiz_master_200:        quizScoreCount >= 200,
+
+    // Bubble Pop milestones (cumulative bubbles)
+    bubbles_10:  bubbleTotal >= 10,
+    bubbles_25:  bubbleTotal >= 25,
+    bubbles_50:  bubbleTotal >= 50,
+    bubbles_100: bubbleTotal >= 100,
+    bubbles_200: bubbleTotal >= 200,
+
+    // Memory Match time achievements
+    memory_under_50: bestMemorySecs !== null && bestMemorySecs <= 50,
+    memory_under_30: bestMemorySecs !== null && bestMemorySecs <= 30,
+    memory_under_20: bestMemorySecs !== null && bestMemorySecs <= 20,
+    memory_under_15: bestMemorySecs !== null && bestMemorySecs <= 15,
+    memory_under_10: bestMemorySecs !== null && bestMemorySecs <= 10,
   };
 
   const newlyEarned: AchievementDef[] = [];
