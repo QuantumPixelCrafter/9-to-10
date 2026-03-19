@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useGetLeaderboard } from "@workspace/api-client-react";
+import { useGetLeaderboard, useGetAchievements } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2 } from "lucide-react";
+import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 const LEVELS = [
   { code: "P1", label: "P1", group: "Primary" },
@@ -36,8 +37,14 @@ const LEVEL_GROUPS = [
 export default function ProfilePage() {
   const { user, logout, updateLevel } = useAuth();
   const { data: lb } = useGetLeaderboard();
+  const { data: achData } = useGetAchievements();
   const [savingLevel, setSavingLevel] = useState(false);
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  const totalPoints = achData?.totalPoints ?? 0;
+  const earnedCount = achData?.achievements.filter(a => a.earned).length ?? 0;
+  const totalCount = achData?.achievements.length ?? 0;
 
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Anonymous";
   const initials = displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "?";
@@ -162,6 +169,41 @@ export default function ProfilePage() {
               Set your level so your quiz scores appear on the right leaderboard and the AI generates age-appropriate questions.
             </p>
           )}
+        </motion.div>
+
+        {/* Achievements Summary */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <button
+            onClick={() => setLocation("/achievements")}
+            className="w-full text-left bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/20 rounded-2xl p-5 hover:from-yellow-500/15 hover:to-amber-500/15 transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-yellow-500/20 flex items-center justify-center">
+                  <Medal className="w-6 h-6 text-yellow-500" />
+                </div>
+                <div>
+                  <p className="font-bold text-sm">Achievements</p>
+                  <p className="text-xs text-muted-foreground">{earnedCount} / {totalCount} unlocked</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-2xl font-black text-yellow-500">{totalPoints.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">points</p>
+                </div>
+                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 group-hover:scale-110 transition-transform" />
+              </div>
+            </div>
+            {totalCount > 0 && (
+              <div className="mt-3 h-1.5 bg-yellow-500/20 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-yellow-500 rounded-full transition-all"
+                  style={{ width: `${Math.round((earnedCount / totalCount) * 100)}%` }}
+                />
+              </div>
+            )}
+          </button>
         </motion.div>
 
         {/* Stats */}

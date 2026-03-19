@@ -52,9 +52,11 @@ artifacts-monorepo/
 
 - `subjects` - Subject folders (name, color, icon)
 - `notes` - Study notes (title, content, subjectId, lastUsedAt)
-- `schedules` - Study schedules (subject, dayOfWeek, startTime, endTime, color, notificationEnabled)
+- `schedules` - Study schedules (subject, dayOfWeek, startTime, endTime, color, notificationEnabled, eventType)
 - `goals` - Study goals (title, description, deadline, completed)
 - `moods` - Mood check-ins (mood enum, note, createdAt)
+- `scores` - Game/quiz leaderboard scores (userId, gameType, score, subject, userLevel)
+- `user_achievements` - Earned achievements per user (userId, achievementKey, earnedAt)
 
 ## API Routes (all under /api)
 

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Home, BookOpen, Calendar as CalendarIcon, 
   Target, Clock, Smile, Menu,
-  BrainCircuit, Sparkles, ChevronRight, Gamepad2, Trophy, User, LogOut
+  BrainCircuit, Sparkles, ChevronRight, Gamepad2, Trophy, User, LogOut, Medal
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { href: "/mood", label: "Mood Check-in", icon: Smile, color: "text-pink-500", bg: "bg-pink-500/10" },
   { href: "/games", label: "Minigames", icon: Gamepad2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy, color: "text-amber-500", bg: "bg-amber-500/10" },
+  { href: "/achievements", label: "Achievements", icon: Medal, color: "text-yellow-500", bg: "bg-yellow-500/10" },
 ];
 
 function UserAvatar({ size = "sm" }: { size?: "sm" | "md" }) {

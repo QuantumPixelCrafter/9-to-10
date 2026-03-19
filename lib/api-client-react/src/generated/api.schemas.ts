@@ -283,3 +283,25 @@ export type BeginBrowserLoginParams = {
 export type ListNotesParams = {
   subjectId?: number;
 };
+
+export interface Achievement {
+  key: string;
+  title: string;
+  description: string;
+  icon: string;
+  points: number;
+  category: string;
+  earned: boolean;
+  earnedAt?: string;
+}
+
+export interface AchievementsResponse {
+  achievements: Achievement[];
+  totalPoints: number;
+}
+
+export interface CheckAchievementsResponse {
+  newlyEarned: Omit<Achievement, "earned" | "earnedAt">[];
+  achievements: Achievement[];
+  totalPoints: number;
+}

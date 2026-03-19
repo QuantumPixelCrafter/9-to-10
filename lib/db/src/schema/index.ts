@@ -5,3 +5,4 @@ export * from "./schedules";
 export * from "./goals";
 export * from "./moods";
 export * from "./scores";
+export * from "./user-achievements";
