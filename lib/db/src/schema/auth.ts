@@ -27,6 +27,7 @@ export const usersTable = pgTable("users", {
   equippedNametag: varchar("equipped_nametag"),
   xp: integer("xp").notNull().default(0),
   gameLevel: integer("game_level").notNull().default(1),
+  bonusPoints: integer("bonus_points").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

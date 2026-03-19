@@ -10,6 +10,8 @@ export const scoresTable = pgTable("scores", {
   score: integer("score").notNull(),
   subject: varchar("subject"),
   userLevel: varchar("user_level"),
+  weekKey: varchar("week_key"),
+  monthKey: varchar("month_key"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

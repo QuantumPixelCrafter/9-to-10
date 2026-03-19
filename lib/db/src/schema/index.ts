@@ -9,3 +9,4 @@ export * from "./user-achievements";
 export * from "./user-inventory";
 export * from "./friendships";
 export * from "./chat-messages";
+export * from "./leaderboard-rewards";

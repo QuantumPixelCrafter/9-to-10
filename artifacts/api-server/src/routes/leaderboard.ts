@@ -1,56 +1,151 @@
 import { Router, type IRouter } from "express";
-import { db, scoresTable, usersTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { db, scoresTable, usersTable, leaderboardRewardsTable } from "@workspace/db";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { awardXp, getLevelProgress } from "../lib/xp";
+import {
+  getWeekKey, getMonthKey,
+  getPrevWeekKey, getPrevMonthKey,
+  getNextWeeklyReset, getNextMonthlyReset,
+  WEEKLY_REWARDS, SEASON_REWARDS, getRewardForRank,
+} from "../lib/period";
 
 const router: IRouter = Router();
 
-router.get("/leaderboard", async (req, res) => {
-  const quizLevel = typeof req.query.quizLevel === "string" ? req.query.quizLevel : null;
-  const quizSubject = typeof req.query.quizSubject === "string" ? req.query.quizSubject : null;
+async function distributeRewards(boardType: "weekly" | "season", periodKey: string) {
+  const already = await db
+    .select({ id: leaderboardRewardsTable.id })
+    .from(leaderboardRewardsTable)
+    .where(
+      and(
+        eq(leaderboardRewardsTable.boardType, boardType),
+        eq(leaderboardRewardsTable.periodKey, periodKey),
+      ),
+    );
+  if (already.length > 0) return;
 
-  const allScores = await db
+  const keyCol = boardType === "weekly" ? scoresTable.weekKey : scoresTable.monthKey;
+  const tiers = boardType === "weekly" ? WEEKLY_REWARDS : SEASON_REWARDS;
+
+  const rows = await db
     .select({
-      id: scoresTable.id,
       userId: scoresTable.userId,
-      gameType: scoresTable.gameType,
-      score: scoresTable.score,
-      subject: scoresTable.subject,
-      userLevel: scoresTable.userLevel,
-      createdAt: scoresTable.createdAt,
+      bestScore: sql<number>`max(${scoresTable.score})`.as("best_score"),
+    })
+    .from(scoresTable)
+    .where(eq(keyCol, periodKey))
+    .groupBy(scoresTable.userId)
+    .orderBy(desc(sql<number>`max(${scoresTable.score})`))
+    .limit(50);
+
+  await db.insert(leaderboardRewardsTable).values({ boardType, periodKey });
+
+  for (let i = 0; i < rows.length; i++) {
+    const rank = i + 1;
+    const reward = getRewardForRank(rank, tiers);
+    if (!reward) continue;
+    try {
+      await awardXp(rows[i].userId, reward.xp);
+      await db
+        .update(usersTable)
+        .set({ bonusPoints: sql`${usersTable.bonusPoints} + ${reward.coins}`, updatedAt: new Date() })
+        .where(eq(usersTable.id, rows[i].userId));
+    } catch {}
+  }
+}
+
+async function buildScoreBoard(
+  gameType: string,
+  periodKey: string,
+  isWeekly: boolean,
+  quizLevel?: string,
+  quizSubject?: string,
+) {
+  const keyCol = isWeekly ? scoresTable.weekKey : scoresTable.monthKey;
+
+  const conditions: ReturnType<typeof eq>[] = [
+    eq(scoresTable.gameType, gameType as any),
+    eq(keyCol, periodKey),
+  ];
+  if (quizLevel) conditions.push(eq(scoresTable.userLevel, quizLevel));
+  if (quizSubject) conditions.push(eq(scoresTable.subject, quizSubject));
+
+  const rows = await db
+    .select({
+      userId: scoresTable.userId,
+      bestScore: sql<number>`max(${scoresTable.score})`.as("best_score"),
+      subject: sql<string>`(array_agg(${scoresTable.subject} order by ${scoresTable.score} desc))[1]`.as("subject"),
+      userLevel: sql<string>`(array_agg(${scoresTable.userLevel} order by ${scoresTable.score} desc))[1]`.as("user_level"),
+      createdAt: sql<Date>`max(${scoresTable.createdAt})`.as("created_at"),
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
       profileImageUrl: usersTable.profileImageUrl,
     })
     .from(scoresTable)
     .leftJoin(usersTable, eq(scoresTable.userId, usersTable.id))
-    .orderBy(desc(scoresTable.score));
+    .where(and(...conditions))
+    .groupBy(
+      scoresTable.userId,
+      usersTable.firstName,
+      usersTable.lastName,
+      usersTable.profileImageUrl,
+    )
+    .orderBy(desc(sql<number>`max(${scoresTable.score})`))
+    .limit(50);
 
-  const toEntry = (row: (typeof allScores)[0]) => ({
-    id: row.id,
+  return rows.map((row, i) => ({
+    id: i + 1,
     userId: row.userId,
     displayName: [row.firstName, row.lastName].filter(Boolean).join(" ") || "Anonymous",
     profileImageUrl: row.profileImageUrl ?? null,
-    gameType: row.gameType,
-    score: row.score,
+    gameType,
+    score: row.bestScore,
     subject: row.subject ?? null,
     userLevel: row.userLevel ?? null,
-    createdAt: row.createdAt.toISOString(),
-  });
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+  }));
+}
 
-  const memoryMatch = allScores.filter(s => s.gameType === "memory-match").slice(0, 20).map(toEntry);
-  const bubblePop = allScores.filter(s => s.gameType === "bubble-pop").slice(0, 20).map(toEntry);
+router.get("/leaderboard", async (req, res) => {
+  const boardType = (req.query.boardType as string) === "season" ? "season" : "weekly";
+  const quizLevel = typeof req.query.quizLevel === "string" ? req.query.quizLevel : undefined;
+  const quizSubject = typeof req.query.quizSubject === "string" ? req.query.quizSubject : undefined;
 
-  let quizScores = allScores.filter(s => s.gameType === "quiz");
-  if (quizLevel) quizScores = quizScores.filter(s => s.userLevel === quizLevel);
-  if (quizSubject) quizScores = quizScores.filter(s => s.subject === quizSubject);
-  const quiz = quizScores.slice(0, 20).map(toEntry);
+  const now = new Date();
+  const isWeekly = boardType === "weekly";
+  const periodKey = isWeekly ? getWeekKey(now) : getMonthKey(now);
+  const prevPeriodKey = isWeekly ? getPrevWeekKey(now) : getPrevMonthKey(now);
+  const nextReset = isWeekly ? getNextWeeklyReset(now) : getNextMonthlyReset(now);
 
-  const allQuiz = allScores.filter(s => s.gameType === "quiz");
-  const quizSubjects = [...new Set(allQuiz.filter(s => !quizLevel || s.userLevel === quizLevel).map(s => s.subject).filter(Boolean))].sort();
-  const quizLevels = [...new Set(allQuiz.map(s => s.userLevel).filter(Boolean))].sort();
+  distributeRewards(boardType, prevPeriodKey).catch(() => {});
 
-  // XP / game level leaderboard
+  const [memoryMatch, bubblePop, quiz] = await Promise.all([
+    buildScoreBoard("memory-match", periodKey, isWeekly),
+    buildScoreBoard("bubble-pop", periodKey, isWeekly),
+    buildScoreBoard("quiz", periodKey, isWeekly, quizLevel, quizSubject),
+  ]);
+
+  const allQuizRows = await db
+    .select({ subject: scoresTable.subject, userLevel: scoresTable.userLevel })
+    .from(scoresTable)
+    .where(
+      and(
+        eq(scoresTable.gameType, "quiz"),
+        eq(isWeekly ? scoresTable.weekKey : scoresTable.monthKey, periodKey),
+      ),
+    );
+
+  const quizSubjects = [
+    ...new Set(
+      allQuizRows
+        .filter(r => !quizLevel || r.userLevel === quizLevel)
+        .map(r => r.subject)
+        .filter(Boolean) as string[],
+    ),
+  ].sort();
+  const quizLevels = [
+    ...new Set(allQuizRows.map(r => r.userLevel).filter(Boolean) as string[]),
+  ].sort();
+
   const xpBoard = await db
     .select({
       id: usersTable.id,
@@ -83,9 +178,13 @@ router.get("/leaderboard", async (req, res) => {
     bubblePop,
     quiz,
     levelBoard,
-    quizMeta: {
-      levels: quizLevels,
-      subjects: quizSubjects,
+    quizMeta: { levels: quizLevels, subjects: quizSubjects },
+    meta: {
+      boardType,
+      periodKey,
+      nextReset: nextReset.toISOString(),
+      weeklyRewards: WEEKLY_REWARDS,
+      seasonRewards: SEASON_REWARDS,
     },
   });
 });
@@ -102,6 +201,7 @@ router.post("/leaderboard/scores", async (req, res) => {
     return;
   }
 
+  const now = new Date();
   const [saved] = await db
     .insert(scoresTable)
     .values({
@@ -110,10 +210,11 @@ router.post("/leaderboard/scores", async (req, res) => {
       score,
       subject: subject ?? null,
       userLevel: userLevel ?? null,
+      weekKey: getWeekKey(now),
+      monthKey: getMonthKey(now),
     })
     .returning();
 
-  // Award XP based on game type
   let xpAwarded = 0;
   let levelUp: { leveledUp: boolean; newLevel: number } | null = null;
   try {

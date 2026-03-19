@@ -13,15 +13,17 @@ import {
 const router: IRouter = Router();
 
 async function getUserBalance(userId: string): Promise<number> {
-  const [earned, [{ pointsSpentRow }]] = await Promise.all([
+  const [earned, [userRow]] = await Promise.all([
     db.select({ key: userAchievementsTable.achievementKey }).from(userAchievementsTable).where(eq(userAchievementsTable.userId, userId)),
-    db.select({ pointsSpentRow: usersTable.pointsSpent }).from(usersTable).where(eq(usersTable.id, userId)),
+    db.select({ pointsSpent: usersTable.pointsSpent, bonusPoints: usersTable.bonusPoints }).from(usersTable).where(eq(usersTable.id, userId)),
   ]);
   const totalEarned = earned.reduce((sum, e) => {
     const def = ACHIEVEMENTS.find(a => a.key === e.key);
     return sum + (def?.points ?? 0);
   }, 0);
-  return Math.max(0, totalEarned - (pointsSpentRow ?? 0));
+  const bonus = userRow?.bonusPoints ?? 0;
+  const spent = userRow?.pointsSpent ?? 0;
+  return Math.max(0, totalEarned + bonus - spent);
 }
 
 router.get("/shop/items", async (req, res) => {
