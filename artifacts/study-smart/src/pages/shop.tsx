@@ -3,22 +3,24 @@ import { Layout } from "@/components/layout";
 import { useGetShop, usePurchaseItem, useEquipItem, type ShopItem } from "@workspace/api-client-react";
 import { useGetAchievements } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Star, ShoppingBag, Check, Sparkles } from "lucide-react";
+import { Star, ShoppingBag, Check, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getTitleStyle, getItemDef } from "@/lib/shop-data";
 
 const TYPE_TABS = [
-  { key: "background", label: "Backgrounds", emoji: "🖼️" },
-  { key: "frame",      label: "Frames",       emoji: "🖼️" },
-  { key: "nametag",    label: "Nametags",     emoji: "🏷️" },
+  { key: "background", label: "Backgrounds", emoji: "🖼️", desc: "Profile card backdrop" },
+  { key: "frame",      label: "Frames",       emoji: "⭕", desc: "Avatar ring border" },
+  { key: "nametag",    label: "Nametags",     emoji: "🏷️", desc: "Emoji tag next to your name" },
+  { key: "title",      label: "Titles",       emoji: "👑", desc: "Text title under your name" },
 ] as const;
+
+type TabKey = "background" | "frame" | "nametag" | "title";
 
 function BackgroundPreview({ colors, size = "lg" }: { colors?: string[]; size?: "lg" | "sm" }) {
   if (!colors || colors.length === 0) return <div className={cn("rounded-xl bg-muted", size === "lg" ? "h-20 w-full" : "h-10 w-16 rounded-lg")} />;
-  const gradient = colors.length === 1
-    ? `linear-gradient(135deg, ${colors[0]}, ${colors[0]})`
-    : `linear-gradient(135deg, ${colors.join(", ")})`;
+  const gradient = `linear-gradient(135deg, ${colors.join(", ")})`;
   return <div className={cn("rounded-xl", size === "lg" ? "h-20 w-full" : "h-10 w-16 rounded-lg")} style={{ background: gradient }} />;
 }
 
@@ -31,7 +33,7 @@ function FramePreview({ colors, size = "lg" }: { colors?: string[]; size?: "sm" 
   const gradient = `linear-gradient(135deg, ${colors.join(", ")})`;
   return (
     <div className={cn("rounded-full p-[3px] mx-auto", dim)} style={{ background: gradient }}>
-      <div className="w-full h-full rounded-full bg-gradient-to-br from-muted to-muted/60" />
+      <div className="w-full h-full rounded-full bg-card" />
     </div>
   );
 }
@@ -45,28 +47,44 @@ function NametagPreview({ item }: { item: ShopItem }) {
   );
 }
 
+function TitlePreview({ item }: { item: ShopItem }) {
+  const def = getItemDef(item.key);
+  const style = getTitleStyle(def?.titleStyle);
+  const isRainbow = def?.titleStyle === "rainbow";
+  return (
+    <div className={cn("inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold", style.bg, !isRainbow && style.text)}>
+      {isRainbow ? (
+        <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-yellow-500 to-cyan-500 font-black">
+          {item.name}
+        </span>
+      ) : item.name}
+    </div>
+  );
+}
+
 export default function ShopPage() {
   const { toast } = useToast();
   const { data: shop, isLoading } = useGetShop();
   const { data: achData } = useGetAchievements();
   const purchaseMut = usePurchaseItem();
   const equipMut = useEquipItem();
-  const [activeTab, setActiveTab] = useState<"background" | "frame" | "nametag">("background");
+  const [activeTab, setActiveTab] = useState<TabKey>("background");
 
   const balance = shop?.balance ?? 0;
   const totalEarned = achData?.totalPoints ?? 0;
-  const items = (shop?.items ?? []).filter(i => i.type === activeTab);
+  const items = (shop?.items ?? []).filter((i: ShopItem) => i.type === activeTab);
+  const activeTabMeta = TYPE_TABS.find(t => t.key === activeTab)!;
 
   const handlePurchase = (item: ShopItem) => {
     purchaseMut.mutate(item.key, {
-      onSuccess: (r) => toast({ title: `Bought "${item.name}"!`, description: `New balance: ${r.newBalance} pts` }),
+      onSuccess: (r) => toast({ title: `Bought "${item.name}"! 🎉`, description: `New balance: ${r.newBalance} pts` }),
       onError: (e: unknown) => toast({ title: "Purchase failed", description: (e as { message?: string })?.message, variant: "destructive" }),
     });
   };
 
   const handleEquip = (item: ShopItem) => {
     equipMut.mutate({ itemKey: item.equipped ? "" : item.key, slot: item.type }, {
-      onSuccess: () => toast({ title: item.equipped ? `Unequipped "${item.name}"` : `Equipped "${item.name}"!` }),
+      onSuccess: () => toast({ title: item.equipped ? `Unequipped "${item.name}"` : `Equipped "${item.name}"! ✨` }),
     });
   };
 
@@ -78,155 +96,207 @@ export default function ShopPage() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-2xl p-5 flex items-center justify-between"
+          className="bg-gradient-to-r from-amber-500 to-yellow-400 rounded-3xl p-6 text-white shadow-xl shadow-amber-500/25"
         >
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-0.5">Available Points</p>
-            <div className="flex items-baseline gap-2">
-              <p className="text-3xl font-black text-amber-500">{balance.toLocaleString()}</p>
-              <p className="text-sm text-muted-foreground">/ {totalEarned.toLocaleString()} earned</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-white/80 text-sm font-medium mb-1">Your Balance</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-4xl font-black">{balance.toLocaleString()}</p>
+                <p className="text-lg font-bold text-white/80">pts</p>
+              </div>
+              <p className="text-white/70 text-xs mt-1">{totalEarned.toLocaleString()} earned total</p>
             </div>
-          </div>
-          <div className="w-14 h-14 rounded-2xl bg-amber-500/20 flex items-center justify-center text-3xl">
-            🛍️
+            <div className="text-right">
+              <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-3xl shadow-inner mb-1">
+                🛍️
+              </div>
+              <p className="text-white/70 text-xs">
+                {(shop?.items ?? []).filter((i: ShopItem) => i.owned).length} / {(shop?.items ?? []).length} owned
+              </p>
+            </div>
           </div>
         </motion.div>
 
         {/* Equipped Cosmetics Preview */}
         {shop?.equipped && (
-          <div className="bg-card border border-border/50 rounded-2xl p-4">
-            <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Currently Equipped</p>
-            <div className="grid grid-cols-3 gap-3 text-center">
-              {(["background", "frame", "nametag"] as const).map(slot => {
-                const key = shop.equipped[slot];
-                const item = shop.items.find(i => i.key === key);
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-card border border-border/50 rounded-2xl p-4"
+          >
+            <p className="text-xs font-bold text-muted-foreground mb-3 uppercase tracking-wider">Currently Equipped</p>
+            <div className="grid grid-cols-4 gap-3 text-center">
+              {(["background", "frame", "nametag", "title"] as const).map(slot => {
+                const key = (shop.equipped as Record<string, string | null>)[slot];
+                const item = shop.items.find((i: ShopItem) => i.key === key);
+                const def = getItemDef(key);
                 return (
-                  <div key={slot} className="space-y-1">
-                    <p className="text-[10px] font-medium text-muted-foreground capitalize">{slot}</p>
+                  <div key={slot} className="space-y-1.5">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase">{slot}</p>
                     {item ? (
                       <div className="flex flex-col items-center gap-1">
                         {slot === "background" && <BackgroundPreview colors={item.colors} size="sm" />}
                         {slot === "frame" && <FramePreview colors={item.colors} size="sm" />}
                         {slot === "nametag" && <span className="text-xl">{item.emoji}</span>}
-                        <p className="text-[10px] font-semibold">{item.name}</p>
+                        {slot === "title" && (
+                          <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", getTitleStyle(def?.titleStyle).bg, getTitleStyle(def?.titleStyle).text)}>
+                            {def?.titleText ?? item.name}
+                          </span>
+                        )}
+                        <p className="text-[10px] font-medium text-muted-foreground truncate w-full">{item.name}</p>
                       </div>
                     ) : (
-                      <p className="text-[10px] text-muted-foreground/50 italic">None</p>
+                      <p className="text-[10px] text-muted-foreground/40 italic pt-1">None</p>
                     )}
                   </div>
                 );
               })}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {TYPE_TABS.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border",
+                "flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all border",
                 activeTab === tab.key
                   ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
-                  : "bg-muted/40 text-muted-foreground border-transparent hover:border-border"
+                  : "bg-muted/40 text-muted-foreground border-transparent hover:border-border hover:bg-muted"
               )}
             >
-              {tab.label}
+              <span>{tab.emoji}</span>
+              <span>{tab.label}</span>
             </button>
           ))}
+        </div>
+
+        {/* Section description */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="text-lg">{activeTabMeta.emoji}</span>
+          <span>{activeTabMeta.desc}</span>
+          <span className="ml-auto text-xs font-medium">{items.filter((i: ShopItem) => i.owned).length}/{items.length} owned</span>
         </div>
 
         {/* Items Grid */}
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-40 rounded-2xl bg-muted/40 animate-pulse" />
+              <div key={i} className="h-44 rounded-2xl bg-muted/40 animate-pulse" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {items.map((item, i) => (
-              <motion.div
-                key={item.key}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className={cn(
-                  "bg-card border rounded-2xl p-4 space-y-3 transition-all",
-                  item.equipped ? "border-primary/50 shadow-lg shadow-primary/10" : "border-border/50 hover:border-border"
-                )}
-              >
-                {/* Preview */}
-                <div className="relative">
-                  {item.type === "background" && <BackgroundPreview colors={item.colors} />}
-                  {item.type === "frame" && (
-                    <div className="flex justify-center py-2">
-                      <FramePreview colors={item.colors} />
-                    </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className={cn(
+                "grid gap-4",
+                activeTab === "title" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2"
+              )}
+            >
+              {items.map((item: ShopItem, i: number) => (
+                <motion.div
+                  key={item.key}
+                  initial={{ opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.04 }}
+                  className={cn(
+                    "bg-card border rounded-2xl p-4 space-y-3 transition-all hover:shadow-md",
+                    item.equipped
+                      ? "border-primary shadow-lg shadow-primary/10 ring-1 ring-primary/20"
+                      : "border-border/50"
                   )}
-                  {item.type === "nametag" && (
-                    <div className="flex justify-center py-3">
-                      <NametagPreview item={item} />
-                    </div>
-                  )}
-                  {item.equipped && (
-                    <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Equipped
-                    </div>
-                  )}
-                  {item.owned && !item.equipped && (
-                    <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                      Owned
-                    </div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-sm">{item.name}</p>
-                    <div className="flex items-center gap-1 text-amber-500 font-bold text-sm">
-                      <Star className="w-3.5 h-3.5 fill-amber-500" />
-                      {item.price}
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
-                </div>
-
-                {/* Action */}
-                {item.owned ? (
-                  <Button
-                    size="sm"
-                    variant={item.equipped ? "outline" : "default"}
-                    className="w-full rounded-xl"
-                    onClick={() => handleEquip(item)}
-                    disabled={equipMut.isPending}
-                  >
-                    {item.equipped ? "Unequip" : "Equip"}
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    className="w-full rounded-xl"
-                    onClick={() => handlePurchase(item)}
-                    disabled={purchaseMut.isPending || balance < item.price}
-                    variant={balance < item.price ? "outline" : "default"}
-                  >
-                    {balance < item.price ? (
-                      <span className="text-muted-foreground text-xs">Need {item.price - balance} more pts</span>
-                    ) : (
-                      <>
-                        <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />
-                        Buy for {item.price} pts
-                      </>
+                >
+                  {/* Preview */}
+                  <div className="relative">
+                    {item.type === "background" && <BackgroundPreview colors={item.colors} />}
+                    {item.type === "frame" && (
+                      <div className="flex justify-center py-3">
+                        <FramePreview colors={item.colors} />
+                      </div>
                     )}
-                  </Button>
-                )}
-              </motion.div>
-            ))}
-          </div>
+                    {item.type === "nametag" && (
+                      <div className="flex justify-center py-3">
+                        <NametagPreview item={item} />
+                      </div>
+                    )}
+                    {item.type === "title" && (
+                      <div className="flex justify-center py-4">
+                        <TitlePreview item={item} />
+                      </div>
+                    )}
+
+                    {/* Status badges */}
+                    {item.equipped && (
+                      <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Check className="w-3 h-3" /> Equipped
+                      </div>
+                    )}
+                    {item.owned && !item.equipped && (
+                      <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        Owned
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-bold text-sm truncate">{item.name}</p>
+                      <div className="shrink-0 flex items-center gap-1 text-amber-500 font-black text-sm">
+                        <Star className="w-3.5 h-3.5 fill-amber-500" />
+                        {item.price.toLocaleString()}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{item.description}</p>
+                  </div>
+
+                  {/* Action */}
+                  {item.owned ? (
+                    <Button
+                      size="sm"
+                      variant={item.equipped ? "outline" : "default"}
+                      className="w-full rounded-xl"
+                      onClick={() => handleEquip(item)}
+                      disabled={equipMut.isPending}
+                    >
+                      {item.equipped ? "Unequip" : (
+                        <><Zap className="w-3.5 h-3.5 mr-1.5" /> Equip</>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className={cn("w-full rounded-xl", balance < item.price && "opacity-70")}
+                      onClick={() => handlePurchase(item)}
+                      disabled={purchaseMut.isPending || balance < item.price}
+                      variant={balance < item.price ? "outline" : "default"}
+                    >
+                      {balance < item.price ? (
+                        <span className="text-muted-foreground text-xs">
+                          Need {(item.price - balance).toLocaleString()} more pts
+                        </span>
+                      ) : (
+                        <>
+                          <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />
+                          Buy · {item.price.toLocaleString()} pts
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </motion.div>
+              ))}
+            </motion.div>
+          </AnimatePresence>
         )}
       </div>
     </Layout>

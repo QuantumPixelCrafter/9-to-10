@@ -25,6 +25,7 @@ export const usersTable = pgTable("users", {
   equippedBackground: varchar("equipped_background"),
   equippedFrame: varchar("equipped_frame"),
   equippedNametag: varchar("equipped_nametag"),
+  equippedTitle: varchar("equipped_title"),
   xp: integer("xp").notNull().default(0),
   gameLevel: integer("game_level").notNull().default(1),
   bonusPoints: integer("bonus_points").notNull().default(0),

@@ -34,7 +34,7 @@ router.get("/shop/items", async (req, res) => {
 
   const [inventory, [userRow], balance] = await Promise.all([
     db.select({ itemKey: userInventoryTable.itemKey }).from(userInventoryTable).where(eq(userInventoryTable.userId, req.user.id)),
-    db.select({ equippedBackground: usersTable.equippedBackground, equippedFrame: usersTable.equippedFrame, equippedNametag: usersTable.equippedNametag }).from(usersTable).where(eq(usersTable.id, req.user.id)),
+    db.select({ equippedBackground: usersTable.equippedBackground, equippedFrame: usersTable.equippedFrame, equippedNametag: usersTable.equippedNametag, equippedTitle: usersTable.equippedTitle }).from(usersTable).where(eq(usersTable.id, req.user.id)),
     getUserBalance(req.user.id),
   ]);
 
@@ -46,7 +46,8 @@ router.get("/shop/items", async (req, res) => {
     equipped:
       (item.type === "background" && userRow?.equippedBackground === item.key) ||
       (item.type === "frame"      && userRow?.equippedFrame === item.key)      ||
-      (item.type === "nametag"    && userRow?.equippedNametag === item.key),
+      (item.type === "nametag"    && userRow?.equippedNametag === item.key)    ||
+      (item.type === "title"      && userRow?.equippedTitle === item.key),
   }));
 
   res.json({
@@ -56,6 +57,7 @@ router.get("/shop/items", async (req, res) => {
       background: userRow?.equippedBackground ?? null,
       frame: userRow?.equippedFrame ?? null,
       nametag: userRow?.equippedNametag ?? null,
+      title: userRow?.equippedTitle ?? null,
     },
   });
 });
@@ -110,13 +112,14 @@ router.post("/shop/equip", async (req, res) => {
     return;
   }
 
-  let update: Partial<{ equippedBackground: string | null; equippedFrame: string | null; equippedNametag: string | null }> = {};
+  let update: Partial<{ equippedBackground: string | null; equippedFrame: string | null; equippedNametag: string | null; equippedTitle: string | null }> = {};
 
   if (itemKey === "") {
     const { slot } = req.body;
     if (slot === "background") update = { equippedBackground: null };
     else if (slot === "frame") update = { equippedFrame: null };
     else if (slot === "nametag") update = { equippedNametag: null };
+    else if (slot === "title") update = { equippedTitle: null };
     else { res.status(400).json({ error: "Invalid slot" }); return; }
   } else {
     const item = getItem(itemKey);
@@ -132,6 +135,7 @@ router.post("/shop/equip", async (req, res) => {
     if (item.type === "background") update = { equippedBackground: itemKey };
     else if (item.type === "frame") update = { equippedFrame: itemKey };
     else if (item.type === "nametag") update = { equippedNametag: itemKey };
+    else if (item.type === "title") update = { equippedTitle: itemKey };
   }
 
   const [updated] = await db.update(usersTable).set({ ...update, updatedAt: new Date() }).where(eq(usersTable.id, req.user.id)).returning();
@@ -145,12 +149,13 @@ router.post("/shop/equip", async (req, res) => {
         equippedBackground: updated.equippedBackground ?? null,
         equippedFrame: updated.equippedFrame ?? null,
         equippedNametag: updated.equippedNametag ?? null,
+        equippedTitle: updated.equippedTitle ?? null,
       };
       await updateSession(sid, session);
     }
   }
 
-  res.json({ success: true, equipped: { background: updated.equippedBackground, frame: updated.equippedFrame, nametag: updated.equippedNametag } });
+  res.json({ success: true, equipped: { background: updated.equippedBackground, frame: updated.equippedFrame, nametag: updated.equippedNametag, title: updated.equippedTitle } });
 });
 
 export default router;

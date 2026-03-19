@@ -21,6 +21,7 @@ export interface AuthUser {
   equippedBackground?: string | null;
   equippedFrame?: string | null;
   equippedNametag?: string | null;
+  equippedTitle?: string | null;
 }
 
 export interface AuthUserEnvelope {
