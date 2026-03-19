@@ -173,114 +173,115 @@ export default function ProfilePage() {
             )}
           </div>
 
-          <div className="px-8 pb-8 -mt-12">
-            <div className="flex items-end gap-5 mb-5">
-              {/* Avatar with optional frame */}
-              <div className="relative shrink-0">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePicChange}
-                />
-                {frameGrad ? (
-                  <div className="rounded-2xl p-[3px] shadow-xl" style={{ background: frameGrad }}>
-                    <div className="w-20 h-20 rounded-[14px] overflow-hidden bg-card">
-                      {user?.profileImageUrl ? (
-                        <img src={user.profileImageUrl} alt={displayName} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-2xl font-bold">
-                          {initials}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-20 h-20 rounded-2xl border-4 border-card shadow-xl overflow-hidden bg-gradient-to-br from-primary to-accent">
+          {/* Avatar — overlaps banner */}
+          <div className="px-6 -mt-10 mb-3 flex items-end gap-4">
+            <div className="relative shrink-0">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePicChange}
+              />
+              {frameGrad ? (
+                <div className="rounded-2xl p-[3px] shadow-xl" style={{ background: frameGrad }}>
+                  <div className="w-20 h-20 rounded-[14px] overflow-hidden bg-card">
                     {user?.profileImageUrl ? (
                       <img src={user.profileImageUrl} alt={displayName} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">
+                      <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-2xl font-bold">
                         {initials}
                       </div>
                     )}
                   </div>
-                )}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingPic}
-                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
-                  title="Change profile picture"
-                >
-                  {uploadingPic ? (
-                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                </div>
+              ) : (
+                <div className="w-20 h-20 rounded-2xl border-4 border-card shadow-xl overflow-hidden bg-gradient-to-br from-primary to-accent">
+                  {user?.profileImageUrl ? (
+                    <img src={user.profileImageUrl} alt={displayName} className="w-full h-full object-cover" />
                   ) : (
-                    <Camera className="w-3.5 h-3.5" />
+                    <div className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">
+                      {initials}
+                    </div>
                   )}
-                </button>
-              </div>
-
-              <div className="pb-1 flex-1 min-w-0">
-                {editingName ? (
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <input
-                        autoFocus
-                        value={nameFirst}
-                        onChange={e => setNameFirst(e.target.value)}
-                        placeholder="First name"
-                        className="flex-1 min-w-0 rounded-xl border border-border bg-background px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
-                        onKeyDown={e => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setEditingName(false); }}
-                      />
-                      <input
-                        value={nameLast}
-                        onChange={e => setNameLast(e.target.value)}
-                        placeholder="Last name"
-                        className="flex-1 min-w-0 rounded-xl border border-border bg-background px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
-                        onKeyDown={e => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setEditingName(false); }}
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" className="rounded-xl gap-1.5 h-7 px-3 text-xs" onClick={handleSaveName} disabled={updateNameMut.isPending}>
-                        <Check className="w-3 h-3" /> Save
-                      </Button>
-                      <Button size="sm" variant="outline" className="rounded-xl gap-1.5 h-7 px-3 text-xs" onClick={() => setEditingName(false)}>
-                        <X className="w-3 h-3" /> Cancel
-                      </Button>
-                    </div>
-                  </div>
+                </div>
+              )}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPic}
+                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
+                title="Change profile picture"
+              >
+                {uploadingPic ? (
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <>
-                    <div className="flex items-center flex-wrap gap-2">
-                      <h2 className="text-2xl font-bold">{displayName}</h2>
-                      <button
-                        onClick={handleStartEditName}
-                        className="w-6 h-6 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
-                        title="Edit name"
-                      >
-                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                      </button>
-                      {nametagDef && (
-                        <span className="inline-flex items-center gap-1 bg-gradient-to-r from-primary/20 to-accent/20 border border-primary/20 text-xs font-bold px-2 py-0.5 rounded-full">
-                          {nametagDef.emoji} {nametagDef.name}
-                        </span>
-                      )}
-                    </div>
-                    {user?.email && (
-                      <p className="text-muted-foreground text-sm flex items-center gap-1.5 mt-0.5">
-                        <Mail className="w-3.5 h-3.5" /> {user.email}
-                      </p>
-                    )}
-                    {user?.level && (
-                      <span className="mt-1.5 inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
-                        <GraduationCap className="w-3 h-3" />
-                        {user.level} — {LEVELS.find(l => l.code === user.level)?.group}
+                  <Camera className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Name + details — always below the banner */}
+          <div className="px-6 pb-6">
+            <div className="mb-5">
+              {editingName ? (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      autoFocus
+                      value={nameFirst}
+                      onChange={e => setNameFirst(e.target.value)}
+                      placeholder="First name"
+                      className="flex-1 min-w-0 rounded-xl border border-border bg-background px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+                      onKeyDown={e => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setEditingName(false); }}
+                    />
+                    <input
+                      value={nameLast}
+                      onChange={e => setNameLast(e.target.value)}
+                      placeholder="Last name"
+                      className="flex-1 min-w-0 rounded-xl border border-border bg-background px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+                      onKeyDown={e => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setEditingName(false); }}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="rounded-xl gap-1.5 h-7 px-3 text-xs" onClick={handleSaveName} disabled={updateNameMut.isPending}>
+                      <Check className="w-3 h-3" /> Save
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-xl gap-1.5 h-7 px-3 text-xs" onClick={() => setEditingName(false)}>
+                      <X className="w-3 h-3" /> Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center flex-wrap gap-2">
+                    <h2 className="text-2xl font-bold leading-tight">{displayName}</h2>
+                    <button
+                      onClick={handleStartEditName}
+                      className="w-6 h-6 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
+                      title="Edit name"
+                    >
+                      <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                    {nametagDef && (
+                      <span className="inline-flex items-center gap-1 bg-gradient-to-r from-primary/20 to-accent/20 border border-primary/20 text-xs font-bold px-2 py-0.5 rounded-full">
+                        {nametagDef.emoji} {nametagDef.name}
                       </span>
                     )}
-                  </>
-                )}
-              </div>
+                  </div>
+                  {user?.email && (
+                    <p className="text-muted-foreground text-sm flex items-center gap-1.5 mt-1">
+                      <Mail className="w-3.5 h-3.5" /> {user.email}
+                    </p>
+                  )}
+                  {user?.level && (
+                    <span className="mt-2 inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
+                      <GraduationCap className="w-3 h-3" />
+                      {user.level} — {LEVELS.find(l => l.code === user.level)?.group}
+                    </span>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="flex gap-2">
