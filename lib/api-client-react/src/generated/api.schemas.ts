@@ -17,6 +17,10 @@ export interface AuthUser {
   profileImageUrl: string | null;
   /** @nullable */
   level: string | null;
+  pointsSpent?: number;
+  equippedBackground?: string | null;
+  equippedFrame?: string | null;
+  equippedNametag?: string | null;
 }
 
 export interface AuthUserEnvelope {

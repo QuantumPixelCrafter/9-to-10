@@ -8,6 +8,7 @@ import {
   clearSession,
   getSessionId,
   deleteSession,
+  getSession,
   SESSION_COOKIE,
   SESSION_TTL,
   type SessionData,
@@ -23,6 +24,21 @@ function setSessionCookie(res: Response, sid: string) {
     path: "/",
     maxAge: SESSION_TTL,
   });
+}
+
+function buildSessionUser(user: typeof usersTable.$inferSelect) {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    profileImageUrl: user.profileImageUrl,
+    level: user.level,
+    pointsSpent: user.pointsSpent,
+    equippedBackground: user.equippedBackground,
+    equippedFrame: user.equippedFrame,
+    equippedNametag: user.equippedNametag,
+  };
 }
 
 router.post("/auth/register", async (req: Request, res: Response) => {
@@ -64,18 +80,7 @@ router.post("/auth/register", async (req: Request, res: Response) => {
     })
     .returning();
 
-  const sessionData: SessionData = {
-    user: {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      profileImageUrl: user.profileImageUrl,
-      level: user.level,
-    },
-    access_token: "",
-  };
-
+  const sessionData: SessionData = { user: buildSessionUser(user), access_token: "" };
   const sid = await createSession(sessionData);
   setSessionCookie(res, sid);
   res.status(201).json({ user: sessionData.user });
@@ -106,18 +111,7 @@ router.post("/auth/login", async (req: Request, res: Response) => {
     return;
   }
 
-  const sessionData: SessionData = {
-    user: {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      profileImageUrl: user.profileImageUrl,
-      level: user.level,
-    },
-    access_token: "",
-  };
-
+  const sessionData: SessionData = { user: buildSessionUser(user), access_token: "" };
   const sid = await createSession(sessionData);
   setSessionCookie(res, sid);
   res.json({ user: sessionData.user });
@@ -139,7 +133,7 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
   const { level } = req.body;
   const validLevels = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
 
-  if (level !== undefined && !validLevels.includes(level)) {
+  if (level !== undefined && level !== null && !validLevels.includes(level)) {
     res.status(400).json({ error: "Invalid level." });
     return;
   }
@@ -152,21 +146,57 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
 
   const sid = getSessionId(req);
   if (sid) {
-    const sessionData: SessionData = {
-      user: {
-        id: updated.id,
-        email: updated.email,
-        firstName: updated.firstName,
-        lastName: updated.lastName,
-        profileImageUrl: updated.profileImageUrl,
-        level: updated.level,
-      },
-      access_token: "",
-    };
-    await updateSession(sid, sessionData);
+    const session = await getSession(sid);
+    if (session) {
+      session.user = buildSessionUser(updated);
+      await updateSession(sid, session);
+    }
   }
 
-  res.json({ user: { id: updated.id, email: updated.email, firstName: updated.firstName, lastName: updated.lastName, profileImageUrl: updated.profileImageUrl, level: updated.level } });
+  res.json({ user: buildSessionUser(updated) });
+});
+
+router.put("/auth/profile-picture", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const { imageData } = req.body;
+
+  if (!imageData || typeof imageData !== "string") {
+    res.status(400).json({ error: "imageData is required" });
+    return;
+  }
+
+  if (!imageData.startsWith("data:image/")) {
+    res.status(400).json({ error: "Must be a valid image data URL" });
+    return;
+  }
+
+  const base64Part = imageData.split(",")[1] ?? "";
+  const sizeInBytes = (base64Part.length * 3) / 4;
+  if (sizeInBytes > 3 * 1024 * 1024) {
+    res.status(400).json({ error: "Image too large. Max 3MB." });
+    return;
+  }
+
+  const [updated] = await db
+    .update(usersTable)
+    .set({ profileImageUrl: imageData, updatedAt: new Date() })
+    .where(eq(usersTable.id, req.user.id))
+    .returning();
+
+  const sid = getSessionId(req);
+  if (sid) {
+    const session = await getSession(sid);
+    if (session) {
+      session.user = buildSessionUser(updated);
+      await updateSession(sid, session);
+    }
+  }
+
+  res.json({ user: buildSessionUser(updated) });
 });
 
 export default router;

@@ -6,3 +6,4 @@ export * from "./goals";
 export * from "./moods";
 export * from "./scores";
 export * from "./user-achievements";
+export * from "./user-inventory";

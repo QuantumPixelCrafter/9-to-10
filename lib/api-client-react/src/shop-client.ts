@@ -1,0 +1,63 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { customFetch } from "./custom-fetch";
+
+export interface ShopItem {
+  key: string;
+  name: string;
+  type: "background" | "frame" | "nametag";
+  price: number;
+  description: string;
+  colors?: string[];
+  emoji?: string;
+  owned: boolean;
+  equipped: boolean;
+}
+
+export interface ShopResponse {
+  items: ShopItem[];
+  balance: number;
+  equipped: { background: string | null; frame: string | null; nametag: string | null };
+}
+
+export const getShopQueryKey = () => ["shop"] as const;
+
+export function useGetShop() {
+  return useQuery({
+    queryKey: getShopQueryKey(),
+    queryFn: () => customFetch<ShopResponse>("/api/shop/items"),
+  });
+}
+
+export function usePurchaseItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemKey: string) =>
+      customFetch<{ success: boolean; newBalance: number }>("/api/shop/purchase", {
+        method: "POST",
+        body: JSON.stringify({ itemKey }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: getShopQueryKey() }),
+  });
+}
+
+export function useEquipItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemKey, slot }: { itemKey: string; slot?: string }) =>
+      customFetch<{ success: boolean; equipped: Record<string, string | null> }>("/api/shop/equip", {
+        method: "POST",
+        body: JSON.stringify({ itemKey, slot }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: getShopQueryKey() }),
+  });
+}
+
+export function useUploadProfilePicture() {
+  return useMutation({
+    mutationFn: (imageData: string) =>
+      customFetch<{ user: unknown }>("/api/auth/profile-picture", {
+        method: "PUT",
+        body: JSON.stringify({ imageData }),
+      }),
+  });
+}

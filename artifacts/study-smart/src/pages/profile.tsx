@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useGetLeaderboard, useGetAchievements } from "@workspace/api-client-react";
+import { useGetLeaderboard, useGetAchievements, useUploadProfilePicture } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal } from "lucide-react";
+import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { getBgStyle, getFrameGradient, getItemDef } from "@/lib/shop-data";
 
 const LEVELS = [
   { code: "P1", label: "P1", group: "Primary" },
@@ -29,18 +30,46 @@ const LEVELS = [
 ];
 
 const LEVEL_GROUPS = [
-  { name: "Primary", color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10", selected: "bg-green-500 text-white shadow-green-500/25", levels: LEVELS.filter(l => l.group === "Primary") },
-  { name: "Secondary", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", selected: "bg-blue-500 text-white shadow-blue-500/25", levels: LEVELS.filter(l => l.group === "Secondary") },
+  { name: "Primary",    color: "text-green-600 dark:text-green-400",  bg: "bg-green-500/10",  selected: "bg-green-500 text-white shadow-green-500/25",   levels: LEVELS.filter(l => l.group === "Primary") },
+  { name: "Secondary",  color: "text-blue-600 dark:text-blue-400",    bg: "bg-blue-500/10",   selected: "bg-blue-500 text-white shadow-blue-500/25",     levels: LEVELS.filter(l => l.group === "Secondary") },
   { name: "University", color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10", selected: "bg-purple-500 text-white shadow-purple-500/25", levels: LEVELS.filter(l => l.group === "University") },
 ];
+
+function resizeImage(file: File, maxPx: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const size = Math.min(img.width, img.height, maxPx);
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d")!;
+        const sx = (img.width - Math.min(img.width, img.height)) / 2;
+        const sy = (img.height - Math.min(img.width, img.height)) / 2;
+        const sSize = Math.min(img.width, img.height);
+        ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, size, size);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = reject;
+      img.src = e.target!.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function ProfilePage() {
   const { user, logout, updateLevel } = useAuth();
   const { data: lb } = useGetLeaderboard();
   const { data: achData } = useGetAchievements();
+  const uploadPicMut = useUploadProfilePicture();
   const [savingLevel, setSavingLevel] = useState(false);
+  const [uploadingPic, setUploadingPic] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const totalPoints = achData?.totalPoints ?? 0;
   const earnedCount = achData?.achievements.filter(a => a.earned).length ?? 0;
@@ -49,18 +78,22 @@ export default function ProfilePage() {
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Anonymous";
   const initials = displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "?";
 
+  const bgStyle = getBgStyle(user?.equippedBackground);
+  const frameGrad = getFrameGradient(user?.equippedFrame);
+  const nametagDef = getItemDef(user?.equippedNametag);
+
   const myMemoryBest = lb?.memoryMatch?.filter(e => e.userId === user?.id).sort((a, b) => b.score - a.score)[0];
   const myBubbleBest = lb?.bubblePop?.filter(e => e.userId === user?.id).sort((a, b) => b.score - a.score)[0];
   const myQuizBest = lb?.quiz?.filter(e => e.userId === user?.id).sort((a, b) => b.score - a.score)[0];
 
   const memoryRank = myMemoryBest ? (lb?.memoryMatch?.findIndex(e => e.userId === user?.id) ?? -1) + 1 : null;
   const bubbleRank = myBubbleBest ? (lb?.bubblePop?.findIndex(e => e.userId === user?.id) ?? -1) + 1 : null;
-  const quizRank = myQuizBest ? (lb?.quiz?.findIndex(e => e.userId === user?.id) ?? -1) + 1 : null;
+  const quizRank   = myQuizBest   ? (lb?.quiz?.findIndex(e => e.userId === user?.id) ?? -1) + 1   : null;
 
   const stats = [
-    { label: "Memory Match", icon: Brain, best: myMemoryBest?.score, rank: memoryRank, color: "from-primary to-violet-500", bg: "bg-primary/10", text: "text-primary" },
-    { label: "Bubble Pop", icon: Leaf, best: myBubbleBest?.score, rank: bubbleRank, color: "from-sky-400 to-violet-500", bg: "bg-sky-500/10", text: "text-sky-500" },
-    { label: "Quiz", icon: Sparkles, best: myQuizBest?.score, rank: quizRank, color: "from-amber-400 to-orange-500", bg: "bg-amber-500/10", text: "text-amber-500" },
+    { label: "Memory Match", icon: Brain,    best: myMemoryBest?.score, rank: memoryRank, bg: "bg-primary/10",  text: "text-primary" },
+    { label: "Bubble Pop",   icon: Leaf,     best: myBubbleBest?.score, rank: bubbleRank, bg: "bg-sky-500/10",  text: "text-sky-500" },
+    { label: "Quiz",         icon: Sparkles, best: myQuizBest?.score,   rank: quizRank,   bg: "bg-amber-500/10",text: "text-amber-500" },
   ];
 
   const handleLevelSelect = async (code: string) => {
@@ -69,7 +102,7 @@ export default function ProfilePage() {
     setSavingLevel(true);
     try {
       await updateLevel(newLevel);
-      toast({ title: newLevel ? `Level set to ${newLevel}` : "Level cleared", description: newLevel ? "Your quizzes and leaderboard will now match your level." : "" });
+      toast({ title: newLevel ? `Level set to ${newLevel}` : "Level cleared" });
     } catch {
       toast({ title: "Failed to update level", variant: "destructive" });
     } finally {
@@ -77,28 +110,100 @@ export default function ProfilePage() {
     }
   };
 
+  const handlePicChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please select an image file", variant: "destructive" });
+      return;
+    }
+    setUploadingPic(true);
+    try {
+      const dataUrl = await resizeImage(file, 512);
+      await uploadPicMut.mutateAsync(dataUrl);
+      toast({ title: "Profile picture updated!" });
+      window.location.reload();
+    } catch {
+      toast({ title: "Failed to upload picture", variant: "destructive" });
+    } finally {
+      setUploadingPic(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <Layout title="My Profile">
       <div className="max-w-2xl mx-auto space-y-6 py-4">
+
         {/* Avatar Card */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden">
-          <div className="h-24 bg-gradient-to-r from-primary via-violet-500 to-accent" />
+          {/* Equipped background banner */}
+          <div className="h-28 relative" style={{ background: bgStyle }}>
+            {user?.equippedBackground && (
+              <span className="absolute bottom-2 right-3 text-[10px] text-white/60 font-medium">
+                {getItemDef(user.equippedBackground)?.name} background
+              </span>
+            )}
+          </div>
+
           <div className="px-8 pb-8 -mt-12">
             <div className="flex items-end gap-5 mb-5">
-              {user?.profileImageUrl ? (
-                <img
-                  src={user.profileImageUrl}
-                  alt={displayName}
-                  className="w-20 h-20 rounded-2xl border-4 border-card shadow-xl object-cover"
+              {/* Avatar with optional frame */}
+              <div className="relative shrink-0">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePicChange}
                 />
-              ) : (
-                <div className="w-20 h-20 rounded-2xl border-4 border-card shadow-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-2xl font-bold">
-                  {initials}
+                {frameGrad ? (
+                  <div className="rounded-2xl p-[3px] shadow-xl" style={{ background: frameGrad }}>
+                    <div className="w-20 h-20 rounded-[14px] overflow-hidden bg-card">
+                      {user?.profileImageUrl ? (
+                        <img src={user.profileImageUrl} alt={displayName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-2xl font-bold">
+                          {initials}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl border-4 border-card shadow-xl overflow-hidden bg-gradient-to-br from-primary to-accent">
+                    {user?.profileImageUrl ? (
+                      <img src={user.profileImageUrl} alt={displayName} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">
+                        {initials}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPic}
+                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
+                  title="Change profile picture"
+                >
+                  {uploadingPic ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+
+              <div className="pb-1 flex-1">
+                <div className="flex items-center flex-wrap gap-2">
+                  <h2 className="text-2xl font-bold">{displayName}</h2>
+                  {nametagDef && (
+                    <span className="inline-flex items-center gap-1 bg-gradient-to-r from-primary/20 to-accent/20 border border-primary/20 text-xs font-bold px-2 py-0.5 rounded-full">
+                      {nametagDef.emoji} {nametagDef.name}
+                    </span>
+                  )}
                 </div>
-              )}
-              <div className="pb-1">
-                <h2 className="text-2xl font-bold">{displayName}</h2>
                 {user?.email && (
                   <p className="text-muted-foreground text-sm flex items-center gap-1.5 mt-0.5">
                     <Mail className="w-3.5 h-3.5" /> {user.email}
@@ -112,9 +217,15 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
-            <Button onClick={logout} variant="outline" className="rounded-xl gap-2 border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive">
-              <LogOut className="w-4 h-4" /> Sign Out
-            </Button>
+
+            <div className="flex gap-2">
+              <Button onClick={() => setLocation("/shop")} variant="outline" className="rounded-xl gap-2 flex-1 border-border/60">
+                <ShoppingBag className="w-4 h-4" /> Shop
+              </Button>
+              <Button onClick={logout} variant="outline" className="rounded-xl gap-2 flex-1 border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive">
+                <LogOut className="w-4 h-4" /> Sign Out
+              </Button>
+            </div>
           </div>
         </motion.div>
 
@@ -130,7 +241,6 @@ export default function ProfilePage() {
               <p className="text-xs text-muted-foreground">Used to tailor AI quizzes and filter leaderboard scores</p>
             </div>
           </div>
-
           <div className="space-y-4">
             {LEVEL_GROUPS.map(group => (
               <div key={group.name}>
@@ -139,15 +249,10 @@ export default function ProfilePage() {
                   {group.levels.map(lvl => {
                     const isSelected = user?.level === lvl.code;
                     return (
-                      <button
-                        key={lvl.code}
-                        onClick={() => handleLevelSelect(lvl.code)}
-                        disabled={savingLevel}
+                      <button key={lvl.code} onClick={() => handleLevelSelect(lvl.code)} disabled={savingLevel}
                         className={cn(
                           "relative py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95",
-                          isSelected
-                            ? `${group.selected} shadow-lg`
-                            : `${group.bg} ${group.color} hover:opacity-80`
+                          isSelected ? `${group.selected} shadow-lg` : `${group.bg} ${group.color} hover:opacity-80`
                         )}
                       >
                         {lvl.code}
@@ -163,55 +268,61 @@ export default function ProfilePage() {
               </div>
             ))}
           </div>
-
           {!user?.level && (
-            <p className="text-xs text-muted-foreground mt-4 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 p-3 rounded-xl border border-amber-200 dark:border-amber-500/20">
+            <p className="text-xs mt-4 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 p-3 rounded-xl border border-amber-200 dark:border-amber-500/20">
               Set your level so your quiz scores appear on the right leaderboard and the AI generates age-appropriate questions.
             </p>
           )}
         </motion.div>
 
-        {/* Achievements Summary */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <button
+        {/* Achievements + Shop quick links */}
+        <div className="grid grid-cols-2 gap-3">
+          <motion.button initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             onClick={() => setLocation("/achievements")}
-            className="w-full text-left bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/20 rounded-2xl p-5 hover:from-yellow-500/15 hover:to-amber-500/15 transition-all group"
+            className="text-left bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/20 rounded-2xl p-4 hover:from-yellow-500/15 hover:to-amber-500/15 transition-all group"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-yellow-500/20 flex items-center justify-center">
-                  <Medal className="w-6 h-6 text-yellow-500" />
-                </div>
-                <div>
-                  <p className="font-bold text-sm">Achievements</p>
-                  <p className="text-xs text-muted-foreground">{earnedCount} / {totalCount} unlocked</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-2xl font-black text-yellow-500">{totalPoints.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">points</p>
-                </div>
-                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 group-hover:scale-110 transition-transform" />
-              </div>
+            <div className="flex items-center gap-2 mb-2">
+              <Medal className="w-5 h-5 text-yellow-500" />
+              <span className="font-bold text-sm">Achievements</span>
             </div>
+            <p className="text-2xl font-black text-yellow-500">{totalPoints.toLocaleString()}<span className="text-xs font-medium text-muted-foreground ml-1">pts</span></p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{earnedCount}/{totalCount} unlocked</p>
             {totalCount > 0 && (
-              <div className="mt-3 h-1.5 bg-yellow-500/20 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-yellow-500 rounded-full transition-all"
-                  style={{ width: `${Math.round((earnedCount / totalCount) * 100)}%` }}
-                />
+              <div className="mt-2 h-1.5 bg-yellow-500/20 rounded-full overflow-hidden">
+                <div className="h-full bg-yellow-500 rounded-full" style={{ width: `${Math.round((earnedCount/totalCount)*100)}%` }} />
               </div>
             )}
-          </button>
-        </motion.div>
+          </motion.button>
+
+          <motion.button initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
+            onClick={() => setLocation("/shop")}
+            className="text-left bg-gradient-to-r from-rose-500/10 to-pink-500/10 border border-rose-500/20 rounded-2xl p-4 hover:from-rose-500/15 hover:to-pink-500/15 transition-all group"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <ShoppingBag className="w-5 h-5 text-rose-500" />
+              <span className="font-bold text-sm">Shop</span>
+            </div>
+            <div className="space-y-1">
+              {user?.equippedBackground || user?.equippedFrame || user?.equippedNametag ? (
+                <>
+                  <p className="text-xs text-muted-foreground">Equipped:</p>
+                  {user.equippedBackground && <p className="text-[11px] font-medium">🖼️ {getItemDef(user.equippedBackground)?.name}</p>}
+                  {user.equippedFrame && <p className="text-[11px] font-medium">⭕ {getItemDef(user.equippedFrame)?.name} frame</p>}
+                  {user.equippedNametag && <p className="text-[11px] font-medium">{getItemDef(user.equippedNametag)?.emoji} {getItemDef(user.equippedNametag)?.name} tag</p>}
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">Buy backgrounds, frames & nametags</p>
+              )}
+            </div>
+          </motion.button>
+        </div>
 
         {/* Stats */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
           <h3 className="font-bold text-lg mb-3 px-1">My Best Scores</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {stats.map((s, i) => (
-              <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 + i * 0.06 }}
+              <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 + i * 0.06 }}
                 className="bg-card rounded-2xl border border-border/60 shadow-sm p-5">
                 <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center mb-3`}>
                   <s.icon className={`w-5 h-5 ${s.text}`} />
@@ -223,7 +334,7 @@ export default function ProfilePage() {
                     {s.rank && (
                       <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                         <Trophy className="w-3 h-3 text-amber-500" />
-                        {s.rank === 1 ? "🥇 1st place" : s.rank === 2 ? "🥈 2nd place" : s.rank === 3 ? "🥉 3rd place" : `#${s.rank} overall`}
+                        {s.rank === 1 ? "🥇 1st" : s.rank === 2 ? "🥈 2nd" : s.rank === 3 ? "🥉 3rd" : `#${s.rank}`}
                       </p>
                     )}
                   </>
@@ -260,12 +371,11 @@ export default function ProfilePage() {
           </div>
         </motion.div>
 
-        {/* Tip */}
         <div className="bg-primary/5 rounded-2xl p-5 border border-primary/10 flex gap-3">
           <Star className="w-5 h-5 text-primary shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-sm mb-1">Climb the leaderboard!</p>
-            <p className="text-sm text-muted-foreground">Play Memory Match and Bubble Pop, or take AI quizzes on your notes. Your best scores appear on the leaderboard — filtered by your level and subject so you compete with students at the same stage.</p>
+            <p className="font-semibold text-sm mb-1">Tip: Earn points, customise your profile!</p>
+            <p className="text-sm text-muted-foreground">Complete achievements to earn points, then visit the Shop to buy backgrounds, frames, and nametags for your profile.</p>
           </div>
         </div>
       </div>

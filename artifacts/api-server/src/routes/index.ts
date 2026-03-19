@@ -11,6 +11,7 @@ import goalsRouter from "./goals";
 import moodsRouter from "./moods";
 import leaderboardRouter from "./leaderboard";
 import achievementsRouter from "./achievements";
+import shopRouter from "./shop";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(goalsRouter);
 router.use(moodsRouter);
 router.use(leaderboardRouter);
 router.use(achievementsRouter);
+router.use(shopRouter);
 
 export default router;
