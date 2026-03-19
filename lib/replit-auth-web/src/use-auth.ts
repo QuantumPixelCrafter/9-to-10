@@ -9,14 +9,29 @@ interface AuthState {
   isAuthenticated: boolean;
   login: () => void;
   logout: () => void;
+  register: (data: RegisterData) => Promise<void>;
+  loginWithCredentials: (email: string, password: string) => Promise<void>;
+  authError: string | null;
+  clearAuthError: () => void;
+  refetch: () => void;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export function useAuth(): AuthState {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setIsLoading(true);
 
     fetch("/api/auth/user", { credentials: "include" })
       .then((res) => {
@@ -39,16 +54,54 @@ export function useAuth(): AuthState {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [tick]);
+
+  const refetch = useCallback(() => setTick((t) => t + 1), []);
 
   const login = useCallback(() => {
     const base = import.meta.env.BASE_URL.replace(/\/+$/, "") || "/";
     window.location.href = `/api/login?returnTo=${encodeURIComponent(base)}`;
   }, []);
 
-  const logout = useCallback(() => {
-    window.location.href = "/api/logout";
+  const loginWithCredentials = useCallback(async (email: string, password: string) => {
+    setAuthError(null);
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAuthError(data.error ?? "Login failed.");
+      throw new Error(data.error ?? "Login failed.");
+    }
+    setUser(data.user);
   }, []);
+
+  const register = useCallback(async ({ email, password, firstName, lastName }: RegisterData) => {
+    setAuthError(null);
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, password, firstName, lastName }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAuthError(data.error ?? "Registration failed.");
+      throw new Error(data.error ?? "Registration failed.");
+    }
+    setUser(data.user);
+  }, []);
+
+  const logout = useCallback(async () => {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    setUser(null);
+    window.location.href = "/";
+  }, []);
+
+  const clearAuthError = useCallback(() => setAuthError(null), []);
 
   return {
     user,
@@ -56,5 +109,10 @@ export function useAuth(): AuthState {
     isAuthenticated: !!user,
     login,
     logout,
+    register,
+    loginWithCredentials,
+    authError,
+    clearAuthError,
+    refetch,
   };
 }

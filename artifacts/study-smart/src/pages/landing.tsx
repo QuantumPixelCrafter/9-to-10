@@ -1,4 +1,4 @@
-import { useAuth } from "@workspace/replit-auth-web";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Brain, BookOpen, Target, Gamepad2, Trophy, Sparkles, ChevronRight, Clock, Smile, Calendar } from "lucide-react";
@@ -14,7 +14,7 @@ const FEATURES = [
   { icon: Trophy, title: "Leaderboard", desc: "Compete with other students across games and quizzes.", color: "from-amber-400 to-yellow-500" },
 ];
 
-export default function LandingPage({ onLogin }: { onLogin: () => void }) {
+export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Nav */}
@@ -25,14 +25,20 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
           </div>
           <span className="font-bold text-xl tracking-tight">Study Smart</span>
         </div>
-        <Button onClick={onLogin} className="rounded-full px-6 shadow-lg shadow-primary/20">
-          Sign In <ChevronRight className="w-4 h-4 ml-1" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/login">
+            <Button variant="ghost" className="rounded-full px-5">Log In</Button>
+          </Link>
+          <Link href="/signup">
+            <Button className="rounded-full px-6 shadow-lg shadow-primary/20">
+              Sign Up <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </Link>
+        </div>
       </nav>
 
       {/* Hero */}
       <section className="relative pt-32 pb-24 px-6 md:px-12 overflow-hidden">
-        {/* Background blobs */}
         <div className="absolute top-20 -left-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute top-40 -right-20 w-80 h-80 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -52,12 +58,16 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
               One app for notes, AI-generated quizzes, timetables, goal tracking, mood check-ins, and even a leaderboard to make studying fun.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" onClick={onLogin} className="rounded-2xl px-10 h-14 text-base shadow-2xl shadow-primary/25">
-                <Sparkles className="w-5 h-5 mr-2" /> Get Started — It's Free
-              </Button>
-              <Button size="lg" variant="outline" onClick={onLogin} className="rounded-2xl px-10 h-14 text-base border-2">
-                Sign In
-              </Button>
+              <Link href="/signup">
+                <Button size="lg" className="rounded-2xl px-10 h-14 text-base shadow-2xl shadow-primary/25">
+                  <Sparkles className="w-5 h-5 mr-2" /> Get Started — It's Free
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button size="lg" variant="outline" className="rounded-2xl px-10 h-14 text-base border-2">
+                  Log In
+                </Button>
+              </Link>
             </div>
           </motion.div>
 
@@ -136,9 +146,11 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
           <div className="bg-gradient-to-br from-primary/10 via-violet-500/10 to-accent/10 rounded-3xl p-12 border border-primary/10">
             <h2 className="text-4xl font-extrabold mb-4">Ready to study smart?</h2>
             <p className="text-muted-foreground mb-8 text-lg">Join students using AI-powered tools to revise more effectively and stress less.</p>
-            <Button size="lg" onClick={onLogin} className="rounded-2xl px-12 h-14 text-base shadow-2xl shadow-primary/25">
-              <Sparkles className="w-5 h-5 mr-2" /> Start for Free
-            </Button>
+            <Link href="/signup">
+              <Button size="lg" className="rounded-2xl px-12 h-14 text-base shadow-2xl shadow-primary/25">
+                <Sparkles className="w-5 h-5 mr-2" /> Start for Free
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

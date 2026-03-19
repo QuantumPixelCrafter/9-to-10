@@ -7,6 +7,8 @@ import { Sparkles } from "lucide-react";
 
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import Login from "@/pages/login";
+import Signup from "@/pages/signup";
 import Home from "@/pages/home";
 import Notes from "@/pages/notes";
 import Timetable from "@/pages/timetable";
@@ -27,7 +29,7 @@ const queryClient = new QueryClient({
 });
 
 function AppRoutes() {
-  const { isLoading, isAuthenticated, login } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
 
   if (isLoading) {
     return (
@@ -43,7 +45,13 @@ function AppRoutes() {
   }
 
   if (!isAuthenticated) {
-    return <Landing onLogin={login} />;
+    return (
+      <Switch>
+        <Route path="/login" component={Login} />
+        <Route path="/signup" component={Signup} />
+        <Route component={Landing} />
+      </Switch>
+    );
   }
 
   return (
