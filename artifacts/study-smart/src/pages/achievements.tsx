@@ -199,12 +199,22 @@ export default function AchievementsPage() {
                                 </span>
                               )}
                             </div>
-                            <p className={cn(
-                              "text-xs mt-0.5",
-                              a.earned ? "text-muted-foreground" : "text-muted-foreground/70"
-                            )}>
-                              {a.description}
-                            </p>
+                            {a.requirement && (
+                              <p className={cn(
+                                "text-xs mt-0.5 font-medium",
+                                a.earned ? "text-muted-foreground" : "text-muted-foreground/80"
+                              )}>
+                                {a.earned ? "✓ " : "→ "}{a.requirement}
+                              </p>
+                            )}
+                            {!a.requirement && (
+                              <p className={cn(
+                                "text-xs mt-0.5",
+                                a.earned ? "text-muted-foreground" : "text-muted-foreground/70"
+                              )}>
+                                {a.description}
+                              </p>
+                            )}
                           </div>
 
                           {/* Points */}
