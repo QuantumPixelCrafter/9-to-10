@@ -22,6 +22,7 @@ import Achievements from "@/pages/achievements";
 import Shop from "@/pages/shop";
 import Friends from "@/pages/friends";
 import UserProfile from "@/pages/user-profile";
+import Quiz from "@/pages/quiz";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,6 +72,7 @@ function AppRoutes() {
       <Route path="/leaderboard" component={Leaderboard} />
       <Route path="/achievements" component={Achievements} />
       <Route path="/shop" component={Shop} />
+      <Route path="/quiz" component={Quiz} />
       <Route path="/friends" component={Friends} />
       <Route path="/users/:userId" component={UserProfile} />
       <Route component={NotFound} />

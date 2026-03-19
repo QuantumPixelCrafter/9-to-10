@@ -15,6 +15,7 @@ import shopRouter from "./shop";
 import friendsRouter from "./friends";
 import chatRouter from "./chat";
 import usersRouter from "./users";
+import curriculumQuizRouter from "./curriculum-quiz";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(shopRouter);
 router.use(friendsRouter);
 router.use(chatRouter);
 router.use(usersRouter);
+router.use(curriculumQuizRouter);
 
 export default router;

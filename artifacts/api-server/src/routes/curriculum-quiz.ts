@@ -1,0 +1,113 @@
+import { Router, type IRouter } from "express";
+import { openai } from "@workspace/integrations-openai-ai-server";
+
+const router: IRouter = Router();
+
+const LEVEL_LABELS: Record<string, string> = {
+  P1:"Primary 1",P2:"Primary 2",P3:"Primary 3",P4:"Primary 4",P5:"Primary 5",P6:"Primary 6",
+  S1:"Secondary 1",S2:"Secondary 2",S3:"Secondary 3",S4:"Secondary 4",S5:"Secondary 5",S6:"Secondary 6",
+  U1:"University Year 1",U2:"University Year 2",U3:"University Year 3",U4:"University Year 4",
+};
+
+const LEVEL_INSTRUCTIONS: Record<string, string> = {
+  P1:"Use very simple vocabulary and short sentences. Focus on basic concepts suitable for a 7-year-old.",
+  P2:"Use simple language. Focus on foundational concepts for an 8-year-old.",
+  P3:"Use straightforward language appropriate for a 9-year-old student.",
+  P4:"Suitable for a 10-year-old. Questions may involve simple reasoning and application.",
+  P5:"Suitable for an 11-year-old. Include some application-level questions.",
+  P6:"Suitable for a 12-year-old preparing for PSLE. Include application and some analysis questions.",
+  S1:"Suitable for a 13-year-old secondary student. Use intermediate vocabulary.",
+  S2:"Suitable for a 14-year-old secondary student. Questions should test understanding and application.",
+  S3:"Suitable for a 15-year-old. Include analysis and some evaluation questions.",
+  S4:"Suitable for a 16-year-old preparing for O-Levels. Include rigorous exam-style questions.",
+  S5:"Suitable for a 17-year-old. Exam-level questions with detailed reasoning required.",
+  S6:"Suitable for an 18-year-old pre-university student. Advanced analysis and evaluation required.",
+  U1:"University Year 1 level. Questions should test conceptual understanding and application of theory.",
+  U2:"University Year 2 level. Expect deeper analysis and cross-topic reasoning.",
+  U3:"University Year 3 level. Advanced questions requiring synthesis and critical evaluation.",
+  U4:"Final year university level. Research-level thinking; nuanced, complex questions required.",
+};
+
+const DIFFICULTY_INSTRUCTIONS: Record<string, string> = {
+  easy:"Create straightforward questions testing basic recall and simple understanding. Avoid trick questions.",
+  normal:"Create moderately challenging questions that test understanding and application. Include some inference.",
+  difficult:"Create challenging questions requiring deep understanding, analysis, synthesis and critical thinking.",
+};
+
+router.post("/curriculum-quiz/generate", async (req, res) => {
+  const { level, subject, topic, difficulty = "normal", questionCount = 10 } = req.body;
+
+  if (!level || !subject || !topic) {
+    res.status(400).json({ error: "level, subject, and topic are required" });
+    return;
+  }
+
+  if (!LEVEL_LABELS[level]) {
+    res.status(400).json({ error: "Invalid level" });
+    return;
+  }
+
+  const levelLabel = LEVEL_LABELS[level];
+  const levelInstruction = LEVEL_INSTRUCTIONS[level];
+  const diffInstruction = DIFFICULTY_INSTRUCTIONS[difficulty] ?? DIFFICULTY_INSTRUCTIONS.normal;
+  const count = Math.min(Math.max(Number(questionCount) || 10, 3), 20);
+
+  const prompt = `You are an expert educational content creator and examiner. Generate a ${difficulty} difficulty quiz with exactly ${count} multiple-choice questions on the topic "${topic}" within the subject "${subject}" for ${levelLabel} students.
+
+Level-appropriate instruction: ${levelInstruction}
+
+Difficulty instruction: ${diffInstruction}
+
+Important guidelines:
+- All questions must be specific to the topic "${topic}" in "${subject}"
+- Tailor vocabulary, complexity and depth to ${levelLabel} level
+- Make each question unique — no repetition
+- Provide exactly 4 answer options (A, B, C, D) per question
+- Make distractors plausible but clearly wrong on reflection
+- The explanation should teach why the correct answer is right
+
+Return ONLY valid JSON in this exact format (no markdown, no extra text):
+{
+  "questions": [
+    {
+      "id": 1,
+      "question": "Question text here?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": 0,
+      "explanation": "Clear explanation of why this answer is correct and why the others are wrong."
+    }
+  ]
+}
+
+Rules:
+- correctAnswer is the 0-based index (0=A, 1=B, 2=C, 3=D)
+- Always provide exactly 4 options
+- Generate exactly ${count} questions`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.2",
+      max_completion_tokens: 8192,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const content = completion.choices[0]?.message?.content ?? "{}";
+
+    let questions;
+    try {
+      const parsed = JSON.parse(content);
+      questions = parsed.questions;
+      if (!Array.isArray(questions) || questions.length === 0) throw new Error("No questions");
+    } catch {
+      res.status(500).json({ error: "Failed to parse quiz from AI response" });
+      return;
+    }
+
+    res.json({ level, subject, topic, difficulty, questions });
+  } catch (err: any) {
+    console.error("Curriculum quiz error:", err?.message);
+    res.status(500).json({ error: "Failed to generate quiz" });
+  }
+});
+
+export default router;

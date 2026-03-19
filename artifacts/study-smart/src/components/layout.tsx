@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/games", label: "Minigames", icon: Gamepad2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy, color: "text-amber-500", bg: "bg-amber-500/10" },
   { href: "/achievements", label: "Achievements", icon: Medal, color: "text-yellow-500", bg: "bg-yellow-500/10" },
+  { href: "/quiz", label: "AI Quiz", icon: Sparkles, color: "text-amber-500", bg: "bg-amber-500/10" },
   { href: "/shop", label: "Shop", icon: ShoppingBag, color: "text-rose-500", bg: "bg-rose-500/10" },
   { href: "/friends", label: "Friends", icon: Users, color: "text-teal-500", bg: "bg-teal-500/10" },
 ];
