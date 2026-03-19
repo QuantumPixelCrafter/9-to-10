@@ -380,7 +380,7 @@ function BubblePop() {
     if (gameStateRef.current !== "playing") return;
     const w = containerRef.current?.clientWidth ?? 400;
     const h = containerRef.current?.clientHeight ?? 600;
-    const spawnInterval = Math.max(450, 1050 - Math.floor(scoreRef.current / 5) * 40);
+    const spawnInterval = Math.max(750, 1800 - Math.floor(scoreRef.current / 5) * 40);
 
     if (ts - lastSpawnRef.current > spawnInterval) {
       lastSpawnRef.current = ts;
