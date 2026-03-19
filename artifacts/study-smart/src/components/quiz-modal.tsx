@@ -1,42 +1,56 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { BrainCircuit, Sparkles, AlertCircle, CheckCircle2, XCircle, ArrowRight, Trophy } from "lucide-react";
+import { BrainCircuit, Sparkles, AlertCircle, CheckCircle2, XCircle, ArrowRight, Trophy, Upload, GraduationCap } from "lucide-react";
 import { useGenerateQuizAction } from "@/hooks/use-notes";
+import { useSubmitScore } from "@workspace/api-client-react";
+import { useAuth } from "@workspace/replit-auth-web";
 import type { Quiz, GenerateQuizBodyDifficulty } from "@workspace/api-client-react/src/generated/api.schemas";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface QuizModalProps {
   noteId: number;
+  subjectName?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
+const DIFFICULTY_MULTIPLIER: Record<string, number> = { easy: 1, normal: 1.5, difficult: 2 };
+
+function calcQuizScore(correct: number, total: number, difficulty: string): number {
+  return Math.round(correct * (DIFFICULTY_MULTIPLIER[difficulty] ?? 1) * 100);
+}
+
+export function QuizModal({ noteId, subjectName, open, onOpenChange }: QuizModalProps) {
+  const { user } = useAuth();
   const [step, setStep] = useState<'setup' | 'loading' | 'playing' | 'results'>('setup');
   const [difficulty, setDifficulty] = useState<GenerateQuizBodyDifficulty>('normal');
   const [questionCount, setQuestionCount] = useState(5);
-  
+
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [score, setScore] = useState(0);
+  const [scoreSubmitted, setScoreSubmitted] = useState(false);
 
   const generateQuizMut = useGenerateQuizAction();
+  const submitScoreMut = useSubmitScore();
 
   const handleGenerate = async () => {
     setStep('loading');
     try {
       const data = await generateQuizMut.mutateAsync({
         id: noteId,
-        data: { difficulty, questionCount }
+        data: { difficulty, questionCount, level: user?.level ?? undefined }
       });
       setQuiz(data);
       setCurrentQuestionIdx(0);
       setScore(0);
       setSelectedOption(null);
       setShowExplanation(false);
+      setScoreSubmitted(false);
       setStep('playing');
     } catch (error) {
       console.error("Failed to generate quiz", error);
@@ -48,7 +62,6 @@ export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
     if (showExplanation) return;
     setSelectedOption(optionIdx);
     setShowExplanation(true);
-    
     if (quiz && optionIdx === quiz.questions[currentQuestionIdx].correctAnswer) {
       setScore(s => s + 1);
     }
@@ -65,10 +78,32 @@ export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
     }
   };
 
+  const handleSubmitScore = async () => {
+    if (!quiz || scoreSubmitted) return;
+    const finalScore = calcQuizScore(score, quiz.questions.length, quiz.difficulty);
+    try {
+      await submitScoreMut.mutateAsync({
+        data: {
+          gameType: "quiz",
+          score: finalScore,
+          subject: subjectName || undefined,
+          userLevel: user?.level || undefined,
+        }
+      });
+      setScoreSubmitted(true);
+    } catch (err) {
+      console.error("Failed to submit score", err);
+    }
+  };
+
   const reset = () => {
     setStep('setup');
     setQuiz(null);
+    setScoreSubmitted(false);
   };
+
+  const finalScore = quiz ? calcQuizScore(score, quiz.questions.length, quiz.difficulty) : 0;
+  const pct = quiz ? Math.round((score / quiz.questions.length) * 100) : 0;
 
   return (
     <Dialog open={open} onOpenChange={(val) => {
@@ -77,7 +112,7 @@ export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
     }}>
       <DialogContent className="sm:max-w-md md:max-w-lg border-0 shadow-2xl rounded-3xl overflow-hidden p-0 gap-0 bg-background/95 backdrop-blur-xl">
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary via-secondary to-accent" />
-        
+
         <div className="p-6 md:p-8">
           <AnimatePresence mode="wait">
             {step === 'setup' && (
@@ -98,6 +133,24 @@ export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
                   </DialogDescription>
                 </div>
 
+                {/* Level indicator */}
+                {user?.level ? (
+                  <div className="bg-primary/5 border border-primary/15 rounded-xl px-4 py-3 flex items-center gap-2.5 text-sm">
+                    <GraduationCap className="w-4 h-4 text-primary" />
+                    <span className="text-muted-foreground">Questions tailored for</span>
+                    <span className="font-bold text-primary">{user.level}</span>
+                    {subjectName && <>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="font-medium">{subjectName}</span>
+                    </>}
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 p-3 rounded-xl flex items-start gap-2.5 text-sm border border-amber-200 dark:border-amber-500/20">
+                    <GraduationCap className="w-4 h-4 shrink-0 mt-0.5" />
+                    <p>Set your education level in Profile to get age-appropriate questions and appear on the right leaderboard.</p>
+                  </div>
+                )}
+
                 <div className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 p-4 rounded-xl flex items-start gap-3 text-sm border border-amber-200 dark:border-amber-500/20">
                   <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                   <p>Images inside the note are not read by the AI. Only text content will be used to generate questions.</p>
@@ -113,8 +166,8 @@ export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
                           onClick={() => setDifficulty(d)}
                           className={`
                             px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 capitalize
-                            ${difficulty === d 
-                              ? 'bg-primary text-white shadow-lg shadow-primary/25 scale-105 z-10 relative' 
+                            ${difficulty === d
+                              ? 'bg-primary text-white shadow-lg shadow-primary/25 scale-105 z-10 relative'
                               : 'bg-muted text-muted-foreground hover:bg-muted/80'}
                           `}
                         >
@@ -126,10 +179,10 @@ export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
 
                   <div>
                     <label className="text-sm font-semibold mb-2 block">Number of Questions ({questionCount})</label>
-                    <input 
-                      type="range" 
-                      min="3" max="10" 
-                      value={questionCount} 
+                    <input
+                      type="range"
+                      min="3" max="10"
+                      value={questionCount}
                       onChange={(e) => setQuestionCount(parseInt(e.target.value))}
                       className="w-full accent-primary"
                     />
@@ -140,8 +193,8 @@ export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
                   </div>
                 </div>
 
-                <Button 
-                  className="w-full py-6 rounded-xl text-base font-bold shadow-lg shadow-primary/20 transition-transform active:scale-95" 
+                <Button
+                  className="w-full py-6 rounded-xl text-base font-bold shadow-lg shadow-primary/20 transition-transform active:scale-95"
                   onClick={handleGenerate}
                 >
                   <Sparkles className="w-5 h-5 mr-2" />
@@ -167,7 +220,7 @@ export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
                 <div className="space-y-2">
                   <h3 className="text-xl font-display font-bold">Analyzing your notes...</h3>
                   <p className="text-muted-foreground text-sm max-w-[250px] mx-auto">
-                    Crafting {questionCount} customized {difficulty} questions just for you.
+                    Crafting {questionCount} customized {difficulty} questions{user?.level ? ` for ${user.level}` : ""} just for you.
                   </p>
                 </div>
               </motion.div>
@@ -199,7 +252,7 @@ export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
                     const isSelected = selectedOption === idx;
                     const isCorrect = showExplanation && idx === quiz.questions[currentQuestionIdx].correctAnswer;
                     const isWrong = showExplanation && isSelected && !isCorrect;
-                    
+
                     return (
                       <button
                         key={idx}
@@ -219,7 +272,7 @@ export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
                         {isCorrect && <CheckCircle2 className="w-5 h-5 text-green-500" />}
                         {isWrong && <XCircle className="w-5 h-5 text-red-500" />}
                       </button>
-                    )
+                    );
                   })}
                 </div>
 
@@ -231,15 +284,15 @@ export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
                       className="bg-muted p-5 rounded-2xl border border-border/50"
                     >
                       <h4 className="font-semibold text-sm mb-1 flex items-center gap-2">
-                        {selectedOption === quiz.questions[currentQuestionIdx].correctAnswer 
-                          ? <span className="text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-4 h-4"/> Correct!</span>
-                          : <span className="text-red-600 dark:text-red-400 flex items-center gap-1"><XCircle className="w-4 h-4"/> Not quite.</span>
+                        {selectedOption === quiz.questions[currentQuestionIdx].correctAnswer
+                          ? <span className="text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Correct!</span>
+                          : <span className="text-red-600 dark:text-red-400 flex items-center gap-1"><XCircle className="w-4 h-4" /> Not quite.</span>
                         }
                       </h4>
                       <p className="text-sm text-muted-foreground leading-relaxed">
                         {quiz.questions[currentQuestionIdx].explanation}
                       </p>
-                      
+
                       <Button onClick={nextQuestion} className="w-full mt-4 rounded-xl">
                         {currentQuestionIdx < quiz.questions.length - 1 ? 'Next Question' : 'See Results'}
                         <ArrowRight className="w-4 h-4 ml-2" />
@@ -255,7 +308,7 @@ export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
                 key="results"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="text-center space-y-8 py-6"
+                className="text-center space-y-6 py-4"
               >
                 <div className="relative inline-block">
                   <div className="absolute inset-0 bg-yellow-400/20 blur-2xl rounded-full" />
@@ -264,23 +317,65 @@ export function QuizModal({ noteId, open, onOpenChange }: QuizModalProps) {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <h2 className="text-3xl font-display font-bold">Quiz Complete!</h2>
                   <p className="text-muted-foreground">
                     You scored <span className="font-bold text-foreground">{score}</span> out of {quiz.questions.length}
                   </p>
+                  <p className="text-sm text-muted-foreground">
+                    ({quiz.difficulty} · {pct}% correct)
+                  </p>
                 </div>
 
-                <div className="w-full bg-muted rounded-full h-4 overflow-hidden shadow-inner">
-                  <motion.div 
-                    className="h-full bg-gradient-to-r from-primary to-accent"
+                {/* Score card */}
+                <div className={cn(
+                  "rounded-2xl p-5 border",
+                  pct >= 80 ? "bg-green-500/10 border-green-500/20" : pct >= 50 ? "bg-amber-500/10 border-amber-500/20" : "bg-red-500/10 border-red-500/20"
+                )}>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Leaderboard Score</p>
+                  <p className={cn("text-4xl font-extrabold", pct >= 80 ? "text-green-600 dark:text-green-400" : pct >= 50 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400")}>
+                    {finalScore.toLocaleString()} pts
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{score} correct × {DIFFICULTY_MULTIPLIER[quiz.difficulty] ?? 1}× {quiz.difficulty} multiplier × 100</p>
+                  {(subjectName || user?.level) && (
+                    <p className="text-xs text-muted-foreground mt-1.5 flex items-center justify-center gap-1.5 flex-wrap">
+                      {user?.level && <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full font-semibold">{user.level}</span>}
+                      {subjectName && <span className="bg-muted px-2 py-0.5 rounded-full">{subjectName}</span>}
+                    </p>
+                  )}
+                </div>
+
+                <div className="w-full bg-muted rounded-full h-3 overflow-hidden shadow-inner">
+                  <motion.div
+                    className={cn("h-full", pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500")}
                     initial={{ width: 0 }}
-                    animate={{ width: `${(score / quiz.questions.length) * 100}%` }}
+                    animate={{ width: `${pct}%` }}
                     transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
                   />
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                {/* Score submission */}
+                {user ? (
+                  scoreSubmitted ? (
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-4 flex items-center justify-center gap-2 text-green-600 dark:text-green-400 font-semibold text-sm">
+                      <CheckCircle2 className="w-5 h-5" />
+                      Score submitted to leaderboard!
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={handleSubmitScore}
+                      disabled={submitScoreMut.isPending}
+                      className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold shadow-lg shadow-amber-500/25"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {submitScoreMut.isPending ? "Submitting…" : `Submit ${finalScore.toLocaleString()} pts to Leaderboard`}
+                    </Button>
+                  )
+                ) : (
+                  <p className="text-sm text-muted-foreground">Log in to submit your score to the leaderboard.</p>
+                )}
+
+                <div className="flex gap-3">
                   <Button variant="outline" className="flex-1 rounded-xl" onClick={() => onOpenChange(false)}>
                     Close
                   </Button>

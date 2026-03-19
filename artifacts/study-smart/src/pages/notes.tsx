@@ -38,6 +38,7 @@ export default function NotesPage() {
   const [noteSubjectId, setNoteSubjectId] = useState<string>("");
 
   const [quizNoteId, setQuizNoteId] = useState<number | null>(null);
+  const [quizSubjectName, setQuizSubjectName] = useState<string>("");
   const [search, setSearch] = useState("");
 
   const handleCreateSubject = async () => {
@@ -263,7 +264,7 @@ export default function NotesPage() {
                         {/* Generate Quiz Button - clearly visible */}
                         <Button
                           className="w-full rounded-xl bg-gradient-to-r from-primary to-primary/80 text-white hover:opacity-90 shadow-md shadow-primary/20 font-semibold"
-                          onClick={() => setQuizNoteId(note.id)}
+                          onClick={() => { setQuizNoteId(note.id); setQuizSubjectName(subjects.find(s => s.id === note.subjectId)?.name ?? ""); }}
                         >
                           <Sparkles className="w-4 h-4 mr-2" />
                           Generate Quiz
@@ -404,7 +405,7 @@ export default function NotesPage() {
 
       {/* Quiz Modal */}
       {quizNoteId != null && (
-        <QuizModal noteId={quizNoteId} open={true} onOpenChange={(open) => { if (!open) setQuizNoteId(null); }} />
+        <QuizModal noteId={quizNoteId} subjectName={quizSubjectName} open={true} onOpenChange={(open) => { if (!open) setQuizNoteId(null); }} />
       )}
     </Layout>
   );

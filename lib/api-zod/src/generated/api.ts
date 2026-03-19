@@ -25,6 +25,7 @@ export const GetCurrentAuthUserResponse = zod.object({
       firstName: zod.string().nullable(),
       lastName: zod.string().nullable(),
       profileImageUrl: zod.string().nullable(),
+      level: zod.string().nullable().optional(),
     }),
     zod.null(),
   ]),
@@ -121,6 +122,8 @@ export const GetLeaderboardResponse = zod.object({
 export const SubmitScoreBody = zod.object({
   gameType: zod.enum(["memory-match", "bubble-pop", "quiz"]),
   score: zod.number(),
+  subject: zod.string().optional(),
+  userLevel: zod.string().optional(),
 });
 
 export const SubmitScoreResponse = zod.object({
@@ -283,6 +286,7 @@ export const GenerateQuizBody = zod.object({
     .min(generateQuizBodyQuestionCountMin)
     .max(generateQuizBodyQuestionCountMax)
     .optional(),
+  level: zod.string().optional(),
 });
 
 export const GenerateQuizResponse = zod.object({

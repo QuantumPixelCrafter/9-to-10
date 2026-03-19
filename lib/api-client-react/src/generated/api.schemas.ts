@@ -15,6 +15,8 @@ export interface AuthUser {
   lastName: string | null;
   /** @nullable */
   profileImageUrl: string | null;
+  /** @nullable */
+  level: string | null;
 }
 
 export interface AuthUserEnvelope {
@@ -55,12 +57,27 @@ export interface LeaderboardEntry {
   gameType: LeaderboardEntryGameType;
   score: number;
   createdAt: string;
+  /** @nullable */
+  subject?: string | null;
+  /** @nullable */
+  userLevel?: string | null;
+}
+
+export interface LeaderboardQuizMeta {
+  levels: string[];
+  subjects: string[];
 }
 
 export interface LeaderboardResponse {
   memoryMatch: LeaderboardEntry[];
   bubblePop: LeaderboardEntry[];
   quiz: LeaderboardEntry[];
+  quizMeta: LeaderboardQuizMeta;
+}
+
+export interface LeaderboardParams {
+  quizLevel?: string;
+  quizSubject?: string;
 }
 
 export type SubmitScoreBodyGameType =
@@ -75,6 +92,8 @@ export const SubmitScoreBodyGameType = {
 export interface SubmitScoreBody {
   gameType: SubmitScoreBodyGameType;
   score: number;
+  subject?: string;
+  userLevel?: string;
 }
 
 export interface HealthStatus {
@@ -134,6 +153,7 @@ export interface GenerateQuizBody {
    * @maximum 20
    */
   questionCount?: number;
+  level?: string;
 }
 
 export interface QuizQuestion {

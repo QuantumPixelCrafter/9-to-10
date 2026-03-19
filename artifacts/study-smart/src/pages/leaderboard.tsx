@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGetLeaderboard } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Layout } from "@/components/layout";
-import { Brain, Leaf, Sparkles, Trophy, Medal } from "lucide-react";
+import { Brain, Leaf, Sparkles, Trophy, GraduationCap, BookOpen } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+
+const ALL_LEVELS = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
 
 const TABS = [
   { key: "memoryMatch", label: "Memory Match", icon: Brain, color: "text-primary", bg: "bg-primary/10", gradient: "from-primary to-violet-500" },
@@ -24,10 +26,24 @@ function RankBadge({ rank }: { rank: number }) {
 export default function LeaderboardPage() {
   const [tab, setTab] = useState<TabKey>("memoryMatch");
   const { user } = useAuth();
-  const { data: lb, isLoading } = useGetLeaderboard();
 
-  const entries = lb?.[tab] ?? [];
+  const [quizLevel, setQuizLevel] = useState<string>("");
+  const [quizSubject, setQuizSubject] = useState<string>("");
+
+  useEffect(() => {
+    if (user?.level && !quizLevel) {
+      setQuizLevel(user.level);
+    }
+  }, [user?.level]);
+
+  const params = tab === "quiz" ? { quizLevel: quizLevel || undefined, quizSubject: quizSubject || undefined } : {};
+  const { data: lb, isLoading } = useGetLeaderboard(params);
+
+  const entries = tab === "quiz" ? (lb?.quiz ?? []) : tab === "memoryMatch" ? (lb?.memoryMatch ?? []) : (lb?.bubblePop ?? []);
   const activeTab = TABS.find(t => t.key === tab)!;
+  const quizMeta = lb?.quizMeta;
+
+  const availableSubjects = quizMeta?.subjects ?? [];
 
   return (
     <Layout title="Leaderboard">
@@ -57,8 +73,101 @@ export default function LeaderboardPage() {
             <Trophy className="w-6 h-6" />
             <h2 className="text-xl font-bold">{activeTab.label} Rankings</h2>
           </div>
-          <p className="text-white/70 text-sm">Top 20 scores from all students</p>
+          <p className="text-white/70 text-sm">
+            {tab === "quiz"
+              ? quizLevel
+                ? `Top scores for ${quizLevel}${quizSubject ? ` · ${quizSubject}` : " · All subjects"}`
+                : "Select a level to see scores"
+              : "Top 20 scores from all students"}
+          </p>
         </div>
+
+        {/* Quiz Filters */}
+        {tab === "quiz" && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-card rounded-2xl border border-border/60 shadow-sm p-4 space-y-3"
+          >
+            <p className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+              <GraduationCap className="w-4 h-4" /> Filter by Level & Subject
+            </p>
+
+            {/* Level picker */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Level</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  onClick={() => setQuizLevel("")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    !quizLevel ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  )}
+                >
+                  All
+                </button>
+                {ALL_LEVELS.map(l => (
+                  <button
+                    key={l}
+                    onClick={() => { setQuizLevel(l); setQuizSubject(""); }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                      quizLevel === l
+                        ? l.startsWith("P") ? "bg-green-500 text-white shadow-green-500/25 shadow-md"
+                          : l.startsWith("S") ? "bg-blue-500 text-white shadow-blue-500/25 shadow-md"
+                          : "bg-purple-500 text-white shadow-purple-500/25 shadow-md"
+                        : l.startsWith("P") ? "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20"
+                          : l.startsWith("S") ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20"
+                          : "bg-purple-500/10 text-purple-700 dark:text-purple-400 hover:bg-purple-500/20"
+                    )}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Subject picker - only show if there are subjects for this level */}
+            {quizLevel && availableSubjects.length > 0 && (
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Subject</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => setQuizSubject("")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                      !quizSubject ? "bg-amber-500 text-white shadow-amber-500/25 shadow-md" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    )}
+                  >
+                    <BookOpen className="w-3 h-3" /> All Subjects
+                  </button>
+                  {availableSubjects.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setQuizSubject(s)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                        quizSubject === s ? "bg-amber-500 text-white shadow-amber-500/25 shadow-md" : "bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
+                      )}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {quizLevel && availableSubjects.length === 0 && !isLoading && (
+              <p className="text-xs text-muted-foreground">No quiz scores yet for {quizLevel}. Be the first to submit!</p>
+            )}
+
+            {user?.level && !quizLevel && (
+              <p className="text-xs text-muted-foreground">
+                Your level is <span className="font-bold text-primary">{user.level}</span> — select it above to see your competition.
+              </p>
+            )}
+          </motion.div>
+        )}
 
         {/* Table */}
         <div className="bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden">
@@ -72,7 +181,11 @@ export default function LeaderboardPage() {
             <div className="py-20 text-center">
               <Trophy className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
               <p className="font-semibold text-lg mb-1">No scores yet</p>
-              <p className="text-muted-foreground text-sm">Be the first to play and claim the top spot!</p>
+              <p className="text-muted-foreground text-sm">
+                {tab === "quiz" && !quizLevel
+                  ? "Select a level above to filter quiz scores."
+                  : "Be the first to play and claim the top spot!"}
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-border/40">
@@ -109,15 +222,32 @@ export default function LeaderboardPage() {
                         </div>
                       )}
 
-                      {/* Name */}
+                      {/* Name + meta */}
                       <div className="flex-1 min-w-0">
                         <p className={cn("font-semibold truncate", isMe && "text-primary")}>
                           {entry.displayName}
                           {isMe && <span className="ml-2 text-xs font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">You</span>}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(entry.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                        </p>
+                        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(entry.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                          </p>
+                          {tab === "quiz" && entry.userLevel && (
+                            <span className={cn(
+                              "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                              entry.userLevel.startsWith("P") ? "bg-green-500/15 text-green-700 dark:text-green-400"
+                                : entry.userLevel.startsWith("S") ? "bg-blue-500/15 text-blue-700 dark:text-blue-400"
+                                : "bg-purple-500/15 text-purple-700 dark:text-purple-400"
+                            )}>
+                              {entry.userLevel}
+                            </span>
+                          )}
+                          {tab === "quiz" && entry.subject && (
+                            <span className="text-[10px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full">
+                              {entry.subject}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Score */}
@@ -138,7 +268,9 @@ export default function LeaderboardPage() {
         {/* My rank callout if not in top 20 */}
         {user && entries.length > 0 && !entries.find(e => e.userId === user.id) && (
           <div className="bg-muted/40 rounded-2xl p-4 border border-border/40 text-center text-sm text-muted-foreground">
-            You haven't submitted a score here yet. Play the game to get on the board!
+            {tab === "quiz"
+              ? "You haven't submitted a quiz score here yet. Generate an AI quiz from your notes to get on the board!"
+              : "You haven't submitted a score here yet. Play the game to get on the board!"}
           </div>
         )}
       </div>

@@ -558,22 +558,27 @@ export const getGetLeaderboardUrl = () => {
 };
 
 export const getLeaderboard = async (
+  params?: { quizLevel?: string; quizSubject?: string },
   options?: RequestInit,
 ): Promise<LeaderboardResponse> => {
-  return customFetch<LeaderboardResponse>(getGetLeaderboardUrl(), {
+  const qs = new URLSearchParams();
+  if (params?.quizLevel) qs.set("quizLevel", params.quizLevel);
+  if (params?.quizSubject) qs.set("quizSubject", params.quizSubject);
+  const url = qs.toString() ? `${getGetLeaderboardUrl()}?${qs}` : getGetLeaderboardUrl();
+  return customFetch<LeaderboardResponse>(url, {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetLeaderboardQueryKey = () => {
-  return [`/api/leaderboard`] as const;
+export const getGetLeaderboardQueryKey = (params?: { quizLevel?: string; quizSubject?: string }) => {
+  return [`/api/leaderboard`, params] as const;
 };
 
 export const getGetLeaderboardQueryOptions = <
   TData = Awaited<ReturnType<typeof getLeaderboard>>,
   TError = ErrorType<unknown>,
->(options?: {
+>(params?: { quizLevel?: string; quizSubject?: string }, options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof getLeaderboard>>,
     TError,
@@ -583,11 +588,11 @@ export const getGetLeaderboardQueryOptions = <
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetLeaderboardQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getGetLeaderboardQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeaderboard>>> = ({
     signal,
-  }) => getLeaderboard({ signal, ...requestOptions });
+  }) => getLeaderboard(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof getLeaderboard>>,
@@ -608,7 +613,7 @@ export type GetLeaderboardQueryError = ErrorType<unknown>;
 export function useGetLeaderboard<
   TData = Awaited<ReturnType<typeof getLeaderboard>>,
   TError = ErrorType<unknown>,
->(options?: {
+>(params?: { quizLevel?: string; quizSubject?: string }, options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof getLeaderboard>>,
     TError,
@@ -616,7 +621,7 @@ export function useGetLeaderboard<
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetLeaderboardQueryOptions(options);
+  const queryOptions = getGetLeaderboardQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

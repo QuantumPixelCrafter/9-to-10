@@ -18,6 +18,7 @@ interface AuthState {
   logout: () => void;
   register: (data: RegisterData) => Promise<void>;
   loginWithCredentials: (email: string, password: string) => Promise<void>;
+  updateLevel: (level: string | null) => Promise<void>;
   authError: string | null;
   clearAuthError: () => void;
 }
@@ -83,6 +84,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   }, []);
 
+  const updateLevel = useCallback(async (level: string | null) => {
+    const res = await fetch("/api/auth/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ level }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "Failed to update level.");
+    setUser(prev => prev ? { ...prev, level: data.user.level } : prev);
+  }, []);
+
   const logout = useCallback(async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     setUser(null);
@@ -100,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       register,
       loginWithCredentials,
+      updateLevel,
       authError,
       clearAuthError,
     }}>

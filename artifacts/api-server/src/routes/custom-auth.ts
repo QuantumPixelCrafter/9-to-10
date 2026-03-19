@@ -4,6 +4,7 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
   createSession,
+  updateSession,
   clearSession,
   getSessionId,
   deleteSession,
@@ -70,6 +71,7 @@ router.post("/auth/register", async (req: Request, res: Response) => {
       firstName: user.firstName,
       lastName: user.lastName,
       profileImageUrl: user.profileImageUrl,
+      level: user.level,
     },
     access_token: "",
   };
@@ -111,6 +113,7 @@ router.post("/auth/login", async (req: Request, res: Response) => {
       firstName: user.firstName,
       lastName: user.lastName,
       profileImageUrl: user.profileImageUrl,
+      level: user.level,
     },
     access_token: "",
   };
@@ -125,6 +128,45 @@ router.post("/auth/logout", async (req: Request, res: Response) => {
   if (sid) await deleteSession(sid);
   res.clearCookie(SESSION_COOKIE, { path: "/" });
   res.json({ success: true });
+});
+
+router.put("/auth/profile", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const { level } = req.body;
+  const validLevels = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
+
+  if (level !== undefined && !validLevels.includes(level)) {
+    res.status(400).json({ error: "Invalid level." });
+    return;
+  }
+
+  const [updated] = await db
+    .update(usersTable)
+    .set({ level: level ?? null, updatedAt: new Date() })
+    .where(eq(usersTable.id, req.user.id))
+    .returning();
+
+  const sid = getSessionId(req);
+  if (sid) {
+    const sessionData: SessionData = {
+      user: {
+        id: updated.id,
+        email: updated.email,
+        firstName: updated.firstName,
+        lastName: updated.lastName,
+        profileImageUrl: updated.profileImageUrl,
+        level: updated.level,
+      },
+      access_token: "",
+    };
+    await updateSession(sid, sessionData);
+  }
+
+  res.json({ user: { id: updated.id, email: updated.email, firstName: updated.firstName, lastName: updated.lastName, profileImageUrl: updated.profileImageUrl, level: updated.level } });
 });
 
 export default router;

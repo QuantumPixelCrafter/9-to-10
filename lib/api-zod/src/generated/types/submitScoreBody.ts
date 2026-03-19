@@ -10,4 +10,6 @@ import type { SubmitScoreBodyGameType } from "./submitScoreBodyGameType";
 export interface SubmitScoreBody {
   gameType: SubmitScoreBodyGameType;
   score: number;
+  subject?: string;
+  userLevel?: string;
 }

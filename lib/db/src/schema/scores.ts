@@ -8,6 +8,8 @@ export const scoresTable = pgTable("scores", {
   userId: varchar("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   gameType: gameTypeEnum("game_type").notNull(),
   score: integer("score").notNull(),
+  subject: varchar("subject"),
+  userLevel: varchar("user_level"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
