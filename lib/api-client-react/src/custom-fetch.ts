@@ -275,6 +275,15 @@ async function parseSuccessBody(
   }
 }
 
+function getSessionHeader(): { Authorization: string } | Record<string, never> {
+  try {
+    const sid = localStorage.getItem("study_smart_sid");
+    return sid ? { Authorization: `Bearer ${sid}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 export async function customFetch<T = unknown>(
   input: RequestInfo | URL,
   options: CustomFetchOptions = {},
@@ -287,7 +296,11 @@ export async function customFetch<T = unknown>(
     throw new TypeError(`customFetch: ${method} requests cannot have a body.`);
   }
 
-  const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, headersInit);
+  const headers = mergeHeaders(
+    isRequest(input) ? input.headers : undefined,
+    getSessionHeader(),
+    headersInit,
+  );
 
   if (
     typeof init.body === "string" &&

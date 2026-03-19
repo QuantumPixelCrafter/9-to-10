@@ -83,11 +83,13 @@ async function upsertUser(claims: Record<string, unknown>) {
 }
 
 router.get("/auth/user", (req: Request, res: Response) => {
-  res.json(
-    GetCurrentAuthUserResponse.parse({
+  const sid = getSessionId(req);
+  res.json({
+    ...GetCurrentAuthUserResponse.parse({
       user: req.isAuthenticated() ? req.user : null,
     }),
-  );
+    ...(req.isAuthenticated() && sid ? { sid } : {}),
+  });
 });
 
 router.get("/login", async (req: Request, res: Response) => {

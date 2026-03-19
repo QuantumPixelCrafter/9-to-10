@@ -69,9 +69,13 @@ export default function QuizPage() {
 
   const generateMut = useMutation({
     mutationFn: async (params: { level: string; subject: string; topic: string; difficulty: string; questionCount: number }) => {
+      const sid = localStorage.getItem("study_smart_sid");
       const res = await fetch("/api/curriculum-quiz/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(sid ? { Authorization: `Bearer ${sid}` } : {}),
+        },
         credentials: "include",
         body: JSON.stringify(params),
       });

@@ -86,7 +86,7 @@ router.post("/auth/register", async (req: Request, res: Response) => {
   const sessionData: SessionData = { user: buildSessionUser(user), access_token: "" };
   const sid = await createSession(sessionData);
   setSessionCookie(res, sid);
-  res.status(201).json({ user: sessionData.user });
+  res.status(201).json({ user: sessionData.user, sid });
 });
 
 router.post("/auth/login", async (req: Request, res: Response) => {
@@ -117,7 +117,7 @@ router.post("/auth/login", async (req: Request, res: Response) => {
   const sessionData: SessionData = { user: buildSessionUser(user), access_token: "" };
   const sid = await createSession(sessionData);
   setSessionCookie(res, sid);
-  res.json({ user: sessionData.user });
+  res.json({ user: sessionData.user, sid });
 });
 
 router.post("/auth/logout", async (req: Request, res: Response) => {
