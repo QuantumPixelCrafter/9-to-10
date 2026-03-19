@@ -323,12 +323,15 @@ function BubblePop() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [finalBubbleScore, setFinalBubbleScore] = useState(0);
   const [shakeHeart, setShakeHeart] = useState(false);
+  const [hellMode, setHellMode] = useState(false);
+  const [showHellBanner, setShowHellBanner] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
   const lastSpawnRef = useRef(0);
   const bubblesRef = useRef<Bubble[]>([]);
   const scoreRef = useRef(0);
   const livesRef = useRef(MAX_LIVES);
+  const hellModeRef = useRef(false);
   const gameStateRef = useRef<"idle" | "playing" | "dead" | "stopped">("idle");
 
   const { isAuthenticated } = useAuth();
@@ -364,7 +367,7 @@ function BubblePop() {
 
     const speedBoost = Math.floor(scoreRef.current / 10) * 0.2;
     const base = 1.2 + Math.random() * 0.5 + speedBoost;
-    const speed = Math.min(base, 5.0);
+    const speed = Math.min(base, 5.0) * (hellModeRef.current ? 2 : 1);
 
     const b: Bubble = {
       id: ++bubbleIdCounter,
@@ -376,11 +379,23 @@ function BubblePop() {
     return b;
   }, []);
 
+  const activateHellMode = useCallback(() => {
+    hellModeRef.current = true;
+    setHellMode(true);
+    setShowHellBanner(true);
+    bubblesRef.current = bubblesRef.current.map(b => ({ ...b, speed: b.speed * 2 }));
+    setTimeout(() => setShowHellBanner(false), 2500);
+  }, []);
+
   const tick = useCallback((ts: number) => {
     if (gameStateRef.current !== "playing") return;
     const w = containerRef.current?.clientWidth ?? 400;
     const h = containerRef.current?.clientHeight ?? 600;
     const spawnInterval = Math.max(750, 1800 - Math.floor(scoreRef.current / 5) * 40);
+
+    if (!hellModeRef.current && scoreRef.current >= 150) {
+      activateHellMode();
+    }
 
     if (ts - lastSpawnRef.current > spawnInterval) {
       lastSpawnRef.current = ts;
@@ -417,14 +432,17 @@ function BubblePop() {
     }
 
     animRef.current = requestAnimationFrame(tick);
-  }, [spawnBubble, loseLife]);
+  }, [spawnBubble, loseLife, activateHellMode]);
 
   const startGame = () => {
     scoreRef.current = 0;
     livesRef.current = MAX_LIVES;
+    hellModeRef.current = false;
     gameStateRef.current = "playing";
     setScore(0);
     setLives(MAX_LIVES);
+    setHellMode(false);
+    setShowHellBanner(false);
     setScoreSubmitted(false);
     setSubmitError(null);
     setFinalBubbleScore(0);
