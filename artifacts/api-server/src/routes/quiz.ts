@@ -65,7 +65,7 @@ router.post("/notes/:id/quiz", async (req, res) => {
     ? `\nStudent Education Level: ${levelLabel}\nLevel-appropriate instruction: ${levelInstruction}`
     : "";
 
-  const prompt = `You are a study assistant. Generate a ${difficulty} difficulty quiz with exactly ${questionCount} multiple-choice questions based on the following study notes.
+  const prompt = `Generate a ${difficulty} difficulty quiz with exactly ${questionCount} multiple-choice questions based on the following study notes.
 ${levelSection}
 
 ${difficultyInstructions}
@@ -82,15 +82,17 @@ Return ONLY valid JSON in this exact format (no markdown, no explanation):
       "question": "Question text here?",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswer": 0,
-      "explanation": "Brief explanation of why the answer is correct"
+      "explanation": "The correct answer is '[paste the exact text of the correct option here]' because ..."
     }
   ]
 }
 
-Rules:
-- correctAnswer is the 0-based index of the correct option
+CRITICAL RULES — you MUST follow these exactly:
+- correctAnswer is the 0-based index (0=first option, 1=second, 2=third, 3=fourth)
+- Before finalising each question, verify: options[correctAnswer] is factually correct, and ALL other options are factually wrong
+- The explanation MUST begin with "The correct answer is '[exact text of the correct option]' because" — this forces you to confirm the index is right
+- Never mark a wrong answer as correct. If unsure, choose a different question
 - Always provide exactly 4 options
-- Make distractors plausible but clearly wrong
 - Base questions ONLY on the provided notes
 - Do not ask about images or visual content
 - Tailor vocabulary and complexity to the specified student level`;
@@ -98,7 +100,13 @@ Rules:
   const completion = await openai.chat.completions.create({
     model: "gpt-5.2",
     max_completion_tokens: 8192,
-    messages: [{ role: "user", content: prompt }],
+    messages: [
+      {
+        role: "system",
+        content: "You are a precise, accurate quiz generator. Your top priority is factual correctness — every correctAnswer index must point to the genuinely correct option. You must verify each answer before outputting. Never guess.",
+      },
+      { role: "user", content: prompt },
+    ],
   });
 
   const content = completion.choices[0]?.message?.content ?? "{}";

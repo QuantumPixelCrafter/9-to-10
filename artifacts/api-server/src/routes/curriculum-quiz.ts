@@ -52,7 +52,7 @@ router.post("/curriculum-quiz/generate", async (req, res) => {
   const diffInstruction = DIFFICULTY_INSTRUCTIONS[difficulty] ?? DIFFICULTY_INSTRUCTIONS.normal;
   const count = Math.min(Math.max(Number(questionCount) || 10, 3), 20);
 
-  const prompt = `You are an expert educational content creator and examiner. Generate a ${difficulty} difficulty quiz with exactly ${count} multiple-choice questions on the topic "${topic}" within the subject "${subject}" for ${levelLabel} students.
+  const prompt = `Generate a ${difficulty} difficulty quiz with exactly ${count} multiple-choice questions on the topic "${topic}" within the subject "${subject}" for ${levelLabel} students.
 
 Level-appropriate instruction: ${levelInstruction}
 
@@ -63,8 +63,7 @@ Important guidelines:
 - Tailor vocabulary, complexity and depth to ${levelLabel} level
 - Make each question unique — no repetition
 - Provide exactly 4 answer options (A, B, C, D) per question
-- Make distractors plausible but clearly wrong on reflection
-- The explanation should teach why the correct answer is right
+- Make distractors plausible but clearly wrong on careful reflection
 
 Return ONLY valid JSON in this exact format (no markdown, no extra text):
 {
@@ -74,13 +73,16 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
       "question": "Question text here?",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswer": 0,
-      "explanation": "Clear explanation of why this answer is correct and why the others are wrong."
+      "explanation": "The correct answer is '[exact text of the correct option]' because ..."
     }
   ]
 }
 
-Rules:
-- correctAnswer is the 0-based index (0=A, 1=B, 2=C, 3=D)
+CRITICAL RULES — you MUST follow these exactly:
+- correctAnswer is the 0-based index (0=first option, 1=second, 2=third, 3=fourth)
+- Before finalising each question, verify: options[correctAnswer] is factually correct, and ALL other options are factually wrong
+- The explanation MUST begin with "The correct answer is '[exact text of the correct option]' because" — this forces you to confirm the index is right
+- Never mark a wrong answer as correct. If unsure about a fact, choose a different question
 - Always provide exactly 4 options
 - Generate exactly ${count} questions`;
 
@@ -88,7 +90,13 @@ Rules:
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",
       max_completion_tokens: 8192,
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        {
+          role: "system",
+          content: "You are a precise, accurate quiz generator. Your top priority is factual correctness — every correctAnswer index must point to the genuinely correct option. You must verify each answer before outputting. Never guess.",
+        },
+        { role: "user", content: prompt },
+      ],
     });
 
     const content = completion.choices[0]?.message?.content ?? "{}";
