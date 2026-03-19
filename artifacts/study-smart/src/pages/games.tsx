@@ -369,7 +369,7 @@ function BubblePop() {
     const b: Bubble = {
       id: ++bubbleIdCounter,
       x, y, r, speed, direction: dir, isBomb,
-      color: isBomb ? "from-red-700 to-gray-900" : BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)],
+      color: BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)],
       wobble: Math.random() * 2 - 1,
       wobbleOffset: Math.random() * Math.PI * 2,
     };
@@ -573,16 +573,13 @@ function BubblePop() {
                 <motion.button
                   key={b.id}
                   initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: b.isBomb ? 0.95 : 0.85 }}
-                  exit={b.isBomb ? { scale: 2.2, opacity: 0 } : { scale: 1.6, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 0.85 }}
+                  exit={{ scale: 1.6, opacity: 0 }}
                   transition={{ duration: 0.15 }}
                   onClick={() => popBubble(b)}
                   className={cn(
-                    "absolute rounded-full bg-gradient-to-br border shadow-lg cursor-pointer",
+                    "absolute rounded-full bg-gradient-to-br border border-white/30 shadow-lg cursor-pointer",
                     "hover:scale-110 active:scale-125 transition-transform select-none",
-                    b.isBomb
-                      ? "border-red-800/60 shadow-red-900/30"
-                      : "border-white/30 hover:border-white/50",
                     b.color
                   )}
                   style={{
@@ -592,13 +589,10 @@ function BubblePop() {
                     top: b.y - b.r,
                   }}
                 >
-                  {b.isBomb ? (
-                    <div className="absolute inset-0 flex items-center justify-center text-xl select-none">💣</div>
-                  ) : (
-                    <>
-                      <div className="absolute top-[20%] left-[22%] w-[30%] h-[22%] bg-white/50 rounded-full rotate-[-30deg]" />
-                      <div className="absolute top-[35%] left-[55%] w-[15%] h-[10%] bg-white/30 rounded-full rotate-[-30deg]" />
-                    </>
+                  <div className="absolute top-[20%] left-[22%] w-[30%] h-[22%] bg-white/50 rounded-full rotate-[-30deg]" />
+                  <div className="absolute top-[35%] left-[55%] w-[15%] h-[10%] bg-white/30 rounded-full rotate-[-30deg]" />
+                  {b.isBomb && (
+                    <div className="absolute bottom-[10%] right-[12%] text-[9px] opacity-40 select-none leading-none">💣</div>
                   )}
                 </motion.button>
               ))}
