@@ -63,6 +63,9 @@ export async function authMiddleware(
   } as Request["isAuthenticated"];
 
   const sid = getSessionId(req);
+  if (req.path.includes("leaderboard/scores") || req.path.includes("auth/user")) {
+    console.log(`[authMiddleware] ${req.method} ${req.path} - rawCookie: ${req.headers.cookie ?? "(none)"} - sid: ${sid ?? "(none)"}`);
+  }
   if (!sid) {
     next();
     return;
