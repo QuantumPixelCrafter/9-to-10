@@ -182,6 +182,7 @@ export interface Schedule {
   endTime: string;
   color: string;
   notificationEnabled: boolean;
+  eventType?: string | null;
   createdAt: string;
 }
 
@@ -196,6 +197,7 @@ export interface CreateScheduleBody {
   endTime: string;
   color: string;
   notificationEnabled: boolean;
+  eventType?: string | null;
 }
 
 export interface Goal {

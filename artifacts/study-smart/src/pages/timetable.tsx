@@ -10,9 +10,22 @@ import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { format, addDays, subDays, isToday, parseISO } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const COLORS = ["#F97316", "#3B82F6", "#10B981", "#8B5CF6", "#F43F5E", "#06B6D4", "#F59E0B"];
+
+const EVENT_TYPES = [
+  { value: "class",  label: "Class",  style: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800" },
+  { value: "test",   label: "Test",   style: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800" },
+  { value: "exam",   label: "Exam",   style: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800" },
+  { value: "eca",    label: "ECA",    style: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800" },
+  { value: "others", label: "Others", style: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800" },
+];
+
+function getEventType(value?: string | null) {
+  return EVENT_TYPES.find(t => t.value === (value ?? "class")) ?? EVENT_TYPES[0];
+}
 
 function parseDateParam(search: string): Date {
   const params = new URLSearchParams(search);
@@ -46,6 +59,7 @@ export default function TimetablePage() {
   const [end, setEnd] = useState("10:00");
   const [color, setColor] = useState(COLORS[0]);
   const [notify, setNotify] = useState(true);
+  const [eventType, setEventType] = useState("class");
 
   const dayOfWeek = selectedDate.getDay();
   const daySchedules = schedules
@@ -63,6 +77,7 @@ export default function TimetablePage() {
     setEnd("10:00");
     setColor(COLORS[0]);
     setNotify(true);
+    setEventType("class");
     setOpen(true);
   };
 
@@ -83,10 +98,10 @@ export default function TimetablePage() {
     if (!subject) return;
     try {
       await createMut.mutateAsync({
-        data: { subject, dayOfWeek: day, startTime: start, endTime: end, color, notificationEnabled: notify },
+        data: { subject, dayOfWeek: day, startTime: start, endTime: end, color, notificationEnabled: notify, eventType },
       });
       setOpen(false);
-      toast({ title: "Class scheduled!" });
+      toast({ title: "Event scheduled!" });
     } catch {
       toast({ title: "Error saving schedule", variant: "destructive" });
     }
@@ -100,7 +115,7 @@ export default function TimetablePage() {
       const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
       schedules.forEach((s) => {
         if (s.notificationEnabled && s.dayOfWeek === currentDay && s.startTime === currentTime && now.getSeconds() === 0) {
-          new Notification("Class Starting Now!", { body: `Time for ${s.subject}` });
+          new Notification("Reminder!", { body: `${getEventType(s.eventType).label}: ${s.subject}` });
         }
       });
     }, 1000);
@@ -118,7 +133,7 @@ export default function TimetablePage() {
             <CalendarDays className="w-4 h-4" /> Calendar
           </Button>
           <Button onClick={openAddDialog} className="rounded-xl shadow-lg shadow-primary/20">
-            <Plus className="w-4 h-4 mr-2" /> Add Class
+            <Plus className="w-4 h-4 mr-2" /> Add Event
           </Button>
         </div>
       }
@@ -188,45 +203,53 @@ export default function TimetablePage() {
                 <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
                   <CalendarDays className="w-8 h-8 text-muted-foreground/50" />
                 </div>
-                <p className="text-lg font-semibold text-muted-foreground mb-1">No classes on {DAYS[dayOfWeek]}</p>
-                <p className="text-sm text-muted-foreground/60 mb-6">Free day — add a class or pick another date.</p>
+                <p className="text-lg font-semibold text-muted-foreground mb-1">Nothing on {DAYS[dayOfWeek]}</p>
+                <p className="text-sm text-muted-foreground/60 mb-6">Free day — add an event or pick another date.</p>
                 <Button onClick={openAddDialog} variant="outline" className="rounded-xl gap-2">
-                  <Plus className="w-4 h-4" /> Add class for {DAYS[dayOfWeek]}
+                  <Plus className="w-4 h-4" /> Add event for {DAYS[dayOfWeek]}
                 </Button>
               </div>
             ) : (
               <div className="space-y-3">
-                {daySchedules.map((item, i) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="group relative p-5 rounded-2xl shadow-sm border transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 overflow-hidden flex items-center gap-4"
-                    style={{ backgroundColor: `${item.color}10`, borderColor: `${item.color}30` }}
-                  >
-                    <div className="absolute left-0 inset-y-0 w-1.5 rounded-l-2xl" style={{ backgroundColor: item.color }} />
-
-                    <div className="flex-1 pl-2">
-                      <h4 className="font-bold text-base leading-tight" style={{ color: item.color }}>{item.subject}</h4>
-                      <div className="flex items-center gap-1.5 text-sm font-medium mt-1" style={{ color: `${item.color}99` }}>
-                        <Clock className="w-4 h-4" />
-                        {item.startTime} – {item.endTime}
-                      </div>
-                    </div>
-
-                    {item.notificationEnabled && (
-                      <BellRing className="w-4 h-4 opacity-40 shrink-0" style={{ color: item.color }} />
-                    )}
-
-                    <button
-                      onClick={() => deleteMut.mutate({ id: item.id })}
-                      className="opacity-0 group-hover:opacity-100 text-destructive/70 hover:text-destructive transition-opacity bg-background/60 rounded-lg p-1.5 backdrop-blur-sm shrink-0"
+                {daySchedules.map((item, i) => {
+                  const evType = getEventType(item.eventType);
+                  return (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="group relative p-5 rounded-2xl shadow-sm border transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 overflow-hidden flex items-center gap-4"
+                      style={{ backgroundColor: `${item.color}10`, borderColor: `${item.color}30` }}
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </motion.div>
-                ))}
+                      <div className="absolute left-0 inset-y-0 w-1.5 rounded-l-2xl" style={{ backgroundColor: item.color }} />
+
+                      <div className="flex-1 pl-2">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-bold text-base leading-tight" style={{ color: item.color }}>{item.subject}</h4>
+                          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-md border uppercase tracking-wide", evType.style)}>
+                            {evType.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-sm font-medium" style={{ color: `${item.color}99` }}>
+                          <Clock className="w-4 h-4" />
+                          {item.startTime} – {item.endTime}
+                        </div>
+                      </div>
+
+                      {item.notificationEnabled && (
+                        <BellRing className="w-4 h-4 opacity-40 shrink-0" style={{ color: item.color }} />
+                      )}
+
+                      <button
+                        onClick={() => deleteMut.mutate({ id: item.id })}
+                        className="opacity-0 group-hover:opacity-100 text-destructive/70 hover:text-destructive transition-opacity bg-background/60 rounded-lg p-1.5 backdrop-blur-sm shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </motion.div>
@@ -236,17 +259,39 @@ export default function TimetablePage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl border-0 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="font-display text-xl">Schedule Class</DialogTitle>
+            <DialogTitle className="font-display text-xl">Schedule Event</DialogTitle>
           </DialogHeader>
           <div className="space-y-5 py-4">
             <div>
-              <label className="text-sm font-semibold mb-1 block">Subject Name</label>
+              <label className="text-sm font-semibold mb-1 block">Subject / Title</label>
               <Input
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="e.g. Physics 101"
                 className="rounded-xl bg-muted/50 border-transparent focus-visible:bg-background"
               />
+            </div>
+
+            {/* Event Type Picker */}
+            <div>
+              <label className="text-sm font-semibold mb-2 block">Event Type</label>
+              <div className="flex flex-wrap gap-2">
+                {EVENT_TYPES.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setEventType(t.value)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
+                      eventType === t.value
+                        ? t.style + " ring-2 ring-offset-1 ring-current shadow-sm"
+                        : "bg-muted/40 text-muted-foreground border-transparent hover:border-border"
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -301,7 +346,7 @@ export default function TimetablePage() {
             <div className="flex items-center justify-between bg-muted/30 p-3 rounded-xl border border-border/50">
               <div className="space-y-0.5">
                 <label className="text-sm font-semibold block">Push Notification</label>
-                <p className="text-xs text-muted-foreground">Alert me when class starts</p>
+                <p className="text-xs text-muted-foreground">Alert me when event starts</p>
               </div>
               <Switch checked={notify} onCheckedChange={setNotify} />
             </div>

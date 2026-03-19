@@ -320,6 +320,7 @@ export const ListSchedulesResponseItem = zod.object({
   endTime: zod.string(),
   color: zod.string(),
   notificationEnabled: zod.boolean(),
+  eventType: zod.string().nullable().optional(),
   createdAt: zod.date(),
 });
 export const ListSchedulesResponse = zod.array(ListSchedulesResponseItem);
@@ -340,6 +341,7 @@ export const CreateScheduleBody = zod.object({
   endTime: zod.string(),
   color: zod.string(),
   notificationEnabled: zod.boolean(),
+  eventType: zod.string().nullable().optional(),
 });
 
 /**
@@ -362,6 +364,7 @@ export const UpdateScheduleBody = zod.object({
   endTime: zod.string(),
   color: zod.string(),
   notificationEnabled: zod.boolean(),
+  eventType: zod.string().nullable().optional(),
 });
 
 export const updateScheduleResponseDayOfWeekMin = 0;
@@ -378,6 +381,7 @@ export const UpdateScheduleResponse = zod.object({
   endTime: zod.string(),
   color: zod.string(),
   notificationEnabled: zod.boolean(),
+  eventType: zod.string().nullable().optional(),
   createdAt: zod.date(),
 });
 
