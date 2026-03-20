@@ -39,16 +39,19 @@ router.get("/shop/items", async (req, res) => {
   ]);
 
   const ownedKeys = new Set(inventory.map(i => i.itemKey));
+  const isDeveloper = req.user.email?.toLowerCase() === (process.env.DEVELOPER_EMAIL ?? "").toLowerCase();
 
-  const items = SHOP_ITEMS.map(item => ({
-    ...item,
-    owned: ownedKeys.has(item.key),
-    equipped:
-      (item.type === "background" && userRow?.equippedBackground === item.key) ||
-      (item.type === "frame"      && userRow?.equippedFrame === item.key)      ||
-      (item.type === "nametag"    && userRow?.equippedNametag === item.key)    ||
-      (item.type === "title"      && userRow?.equippedTitle === item.key),
-  }));
+  const items = SHOP_ITEMS
+    .filter(item => !item.developerOnly || isDeveloper)
+    .map(item => ({
+      ...item,
+      owned: ownedKeys.has(item.key),
+      equipped:
+        (item.type === "background" && userRow?.equippedBackground === item.key) ||
+        (item.type === "frame"      && userRow?.equippedFrame === item.key)      ||
+        (item.type === "nametag"    && userRow?.equippedNametag === item.key)    ||
+        (item.type === "title"      && userRow?.equippedTitle === item.key),
+    }));
 
   res.json({
     items,
@@ -73,6 +76,14 @@ router.post("/shop/purchase", async (req, res) => {
   if (!item) {
     res.status(404).json({ error: "Item not found" });
     return;
+  }
+
+  if (item.developerOnly) {
+    const isDeveloper = req.user.email?.toLowerCase() === (process.env.DEVELOPER_EMAIL ?? "").toLowerCase();
+    if (!isDeveloper) {
+      res.status(403).json({ error: "This item is exclusive and cannot be obtained." });
+      return;
+    }
   }
 
   const existing = await db.select({ id: userInventoryTable.id })

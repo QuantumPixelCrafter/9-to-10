@@ -10,6 +10,7 @@ export interface ShopItem {
   colors?: string[];
   titleText?: string;
   titleStyle?: string;
+  developerOnly?: boolean;
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -70,7 +71,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   { key: "tag_quizking",   name: "Quiz King",    type: "nametag", price: 1200, description: "Dominator of every quiz",       emoji: "👑" },
   { key: "tag_legend",     name: "Legend",       type: "nametag", price: 2000, description: "Reserved for the very best",    emoji: "⚡" },
   { key: "tag_celestial",  name: "Celestial",    type: "nametag", price: 10000, description: "Ultimate — only the truly chosen bear this mark", emoji: "✨" },
-  { key: "tag_developer",  name: "Developer",    type: "nametag", price: 0,     description: "Reserved for the one who built this. That's you.", emoji: "🛠️" },
+  { key: "tag_developer",  name: "Developer",    type: "nametag", price: 0,     description: "Reserved for the one who built this. That's you.", emoji: "🛠️", developerOnly: true },
 
   // ── Titles ────────────────────────────────────────────────────────────────
   { key: "title_student",     name: "The Student",     type: "title", price: 200,   description: "A humble beginning",           titleText: "The Student",     titleStyle: "default" },
@@ -84,7 +85,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   { key: "title_valedictorian", name: "Valedictorian", type: "title", price: 3200,  description: "Top of the entire class",       titleText: "Valedictorian",   titleStyle: "gold" },
   { key: "title_legend",      name: "Legend",          type: "title", price: 4000, description: "The highest honour of all",     titleText: "Legend",          titleStyle: "rainbow" },
   { key: "title_chosen",      name: "The Chosen One",  type: "title", price: 10000, description: "Ultimate — a title beyond legend itself", titleText: "The Chosen One",  titleStyle: "divine" },
-  { key: "title_developer",   name: "Developer",       type: "title", price: 0,     description: "The one who built it all. Respect.",       titleText: "Developer",       titleStyle: "developer" },
+  { key: "title_developer",   name: "Developer",       type: "title", price: 0,     description: "The one who built it all. Respect.",       titleText: "Developer",       titleStyle: "developer", developerOnly: true },
 ];
 
 export function getItem(key: string): ShopItem | undefined {
