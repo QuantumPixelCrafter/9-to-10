@@ -50,11 +50,11 @@ function NametagPreview({ item }: { item: ShopItem }) {
 function TitlePreview({ item }: { item: ShopItem }) {
   const def = getItemDef(item.key);
   const style = getTitleStyle(def?.titleStyle);
-  const isRainbow = def?.titleStyle === "rainbow";
+  const isGradientText = def?.titleStyle === "rainbow" || def?.titleStyle === "divine";
   return (
-    <div className={cn("inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold", style.bg, !isRainbow && style.text)}>
-      {isRainbow ? (
-        <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-yellow-500 to-cyan-500 font-black">
+    <div className={cn("inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold", style.bg, !isGradientText && style.text)}>
+      {isGradientText ? (
+        <span className={cn("font-black", style.text)}>
           {item.name}
         </span>
       ) : item.name}

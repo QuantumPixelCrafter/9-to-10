@@ -27,6 +27,7 @@ export const SHOP_ITEM_DEFS: ShopItemDef[] = [
   { key: "bg_lava",       name: "Lava",           type: "background", colors: ["#1C0505", "#DC2626", "#F97316"] },
   { key: "bg_midnight",   name: "Midnight",       type: "background", colors: ["#1E1B4B", "#0F172A"] },
   { key: "bg_rainbow",    name: "Rainbow Wave",   type: "background", colors: ["#F97316", "#EAB308", "#22C55E", "#3B82F6", "#8B5CF6"] },
+  { key: "bg_celestial",  name: "✦ Celestial Void", type: "background", colors: ["#020617", "#1e1b4b", "#c084fc", "#facc15"] },
   { key: "frame_bronze",   name: "Bronze",        type: "frame", colors: ["#92400E", "#D97706"] },
   { key: "frame_gold",     name: "Golden",        type: "frame", colors: ["#F59E0B", "#D97706"] },
   { key: "frame_rose",     name: "Rose",          type: "frame", colors: ["#FB7185", "#F43F5E"] },
@@ -41,6 +42,7 @@ export const SHOP_ITEM_DEFS: ShopItemDef[] = [
   { key: "frame_diamond",  name: "Diamond",       type: "frame", colors: ["#E0F2FE", "#BAE6FD", "#FFFFFF"] },
   { key: "frame_rainbow",  name: "Rainbow",       type: "frame", colors: ["#F97316", "#EAB308", "#22C55E", "#3B82F6", "#8B5CF6"] },
   { key: "frame_holo",     name: "Holographic",   type: "frame", colors: ["#EC4899", "#22D3EE", "#FDE047"] },
+  { key: "frame_divine",   name: "✦ Divine Aura", type: "frame", colors: ["#fef08a", "#fbbf24", "#ffffff", "#fef08a"] },
   { key: "tag_rookie",     name: "Rookie",        type: "nametag", emoji: "🌱" },
   { key: "tag_bookworm",   name: "Bookworm",      type: "nametag", emoji: "📖" },
   { key: "tag_scholar",    name: "Scholar",       type: "nametag", emoji: "📚" },
@@ -58,6 +60,7 @@ export const SHOP_ITEM_DEFS: ShopItemDef[] = [
   { key: "tag_champion",   name: "Champion",      type: "nametag", emoji: "🏆" },
   { key: "tag_quizking",   name: "Quiz King",     type: "nametag", emoji: "👑" },
   { key: "tag_legend",     name: "Legend",        type: "nametag", emoji: "⚡" },
+  { key: "tag_celestial",  name: "Celestial",     type: "nametag", emoji: "✨" },
   { key: "title_student",      name: "The Student",    type: "title", titleText: "The Student",    titleStyle: "default" },
   { key: "title_scholar",      name: "The Scholar",    type: "title", titleText: "The Scholar",    titleStyle: "blue" },
   { key: "title_nightowl",     name: "Night Owl",      type: "title", titleText: "Night Owl",      titleStyle: "purple" },
@@ -68,6 +71,7 @@ export const SHOP_ITEM_DEFS: ShopItemDef[] = [
   { key: "title_prodigy",      name: "Prodigy",        type: "title", titleText: "Prodigy",        titleStyle: "pink" },
   { key: "title_valedictorian", name: "Valedictorian", type: "title", titleText: "Valedictorian",  titleStyle: "gold" },
   { key: "title_legend",       name: "Legend",         type: "title", titleText: "Legend",         titleStyle: "rainbow" },
+  { key: "title_chosen",       name: "The Chosen One", type: "title", titleText: "The Chosen One", titleStyle: "divine" },
 ];
 
 const TITLE_STYLE_MAP: Record<string, { text: string; bg: string }> = {
@@ -81,6 +85,7 @@ const TITLE_STYLE_MAP: Record<string, { text: string; bg: string }> = {
   pink:    { text: "text-pink-600 dark:text-pink-400",    bg: "bg-pink-500/15" },
   gold:    { text: "text-yellow-600 dark:text-yellow-400",bg: "bg-yellow-500/15" },
   rainbow: { text: "text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-yellow-500 to-cyan-500", bg: "bg-gradient-to-r from-pink-500/10 via-yellow-500/10 to-cyan-500/10" },
+  divine:  { text: "text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-white to-yellow-300", bg: "bg-gradient-to-r from-yellow-400/20 via-white/10 to-yellow-400/20" },
 };
 
 export function getTitleStyle(styleKey: string | undefined): { text: string; bg: string } {

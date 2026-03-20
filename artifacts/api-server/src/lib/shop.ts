@@ -32,6 +32,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   { key: "bg_lava",       name: "Lava",           type: "background", price: 1400,  description: "Molten lava flows",              colors: ["#1C0505", "#DC2626", "#F97316"] },
   { key: "bg_midnight",   name: "Midnight",       type: "background", price: 1600,  description: "Deep midnight blue luxury",      colors: ["#1E1B4B", "#0F172A"] },
   { key: "bg_rainbow",    name: "Rainbow Wave",   type: "background", price: 2000,  description: "Full vibrant spectrum",          colors: ["#F97316", "#EAB308", "#22C55E", "#3B82F6", "#8B5CF6"] },
+  { key: "bg_celestial",  name: "✦ Celestial Void", type: "background", price: 10000, description: "Ultimate — the cosmos beyond all stars", colors: ["#020617", "#1e1b4b", "#c084fc", "#facc15"] },
 
   // ── Frames ────────────────────────────────────────────────────────────────
   { key: "frame_bronze",   name: "Bronze",       type: "frame", price: 400,  description: "Classic bronze ring",           colors: ["#92400E", "#D97706"] },
@@ -48,6 +49,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   { key: "frame_diamond",  name: "Diamond",      type: "frame", price: 1600,  description: "Brilliant diamond shimmer",     colors: ["#E0F2FE", "#BAE6FD", "#FFFFFF"] },
   { key: "frame_rainbow",  name: "Rainbow",      type: "frame", price: 1800,  description: "Full spectrum rainbow ring",    colors: ["#F97316", "#EAB308", "#22C55E", "#3B82F6", "#8B5CF6"] },
   { key: "frame_holo",     name: "Holographic",  type: "frame", price: 2200,  description: "Dazzling holographic shimmer",  colors: ["#EC4899", "#22D3EE", "#FDE047"] },
+  { key: "frame_divine",   name: "✦ Divine Aura", type: "frame", price: 10000, description: "Ultimate — radiant golden divine light", colors: ["#fef08a", "#fbbf24", "#ffffff", "#fef08a"] },
 
   // ── Nametags ──────────────────────────────────────────────────────────────
   { key: "tag_rookie",     name: "Rookie",       type: "nametag", price: 200,  description: "New to the grind",              emoji: "🌱" },
@@ -67,6 +69,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   { key: "tag_champion",   name: "Champion",     type: "nametag", price: 1000, description: "For the competitive spirit",    emoji: "🏆" },
   { key: "tag_quizking",   name: "Quiz King",    type: "nametag", price: 1200, description: "Dominator of every quiz",       emoji: "👑" },
   { key: "tag_legend",     name: "Legend",       type: "nametag", price: 2000, description: "Reserved for the very best",    emoji: "⚡" },
+  { key: "tag_celestial",  name: "Celestial",    type: "nametag", price: 10000, description: "Ultimate — only the truly chosen bear this mark", emoji: "✨" },
 
   // ── Titles ────────────────────────────────────────────────────────────────
   { key: "title_student",     name: "The Student",     type: "title", price: 200,   description: "A humble beginning",           titleText: "The Student",     titleStyle: "default" },
@@ -79,6 +82,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   { key: "title_prodigy",     name: "Prodigy",         type: "title", price: 2000,  description: "Born with exceptional talent",  titleText: "Prodigy",         titleStyle: "pink" },
   { key: "title_valedictorian", name: "Valedictorian", type: "title", price: 3200,  description: "Top of the entire class",       titleText: "Valedictorian",   titleStyle: "gold" },
   { key: "title_legend",      name: "Legend",          type: "title", price: 4000, description: "The highest honour of all",     titleText: "Legend",          titleStyle: "rainbow" },
+  { key: "title_chosen",      name: "The Chosen One",  type: "title", price: 10000, description: "Ultimate — a title beyond legend itself", titleText: "The Chosen One",  titleStyle: "divine" },
 ];
 
 export function getItem(key: string): ShopItem | undefined {
