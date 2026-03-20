@@ -1,10 +1,10 @@
 import { useState, useRef } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useGetLeaderboard, useGetAchievements, useUploadProfilePicture, useUpdateName } from "@workspace/api-client-react";
+import { useGetLeaderboard, useGetAchievements, useUploadProfilePicture, useUpdateName, useChangePassword } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap } from "lucide-react";
+import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -66,11 +66,18 @@ export default function ProfilePage() {
   const { data: achData } = useGetAchievements();
   const uploadPicMut = useUploadProfilePicture();
   const updateNameMut = useUpdateName();
+  const changePasswordMut = useChangePassword();
   const [savingLevel, setSavingLevel] = useState(false);
   const [uploadingPic, setUploadingPic] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameFirst, setNameFirst] = useState("");
   const [nameLast, setNameLast] = useState("");
+  const [showChangePw, setShowChangePw] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -133,6 +140,27 @@ export default function ProfilePage() {
       window.location.reload();
     } catch {
       toast({ title: "Failed to update name", variant: "destructive" });
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPw !== confirmPw) {
+      toast({ title: "Passwords do not match", variant: "destructive" });
+      return;
+    }
+    if (newPw.length < 6) {
+      toast({ title: "New password must be at least 6 characters", variant: "destructive" });
+      return;
+    }
+    try {
+      await changePasswordMut.mutateAsync({ currentPassword: currentPw, newPassword: newPw });
+      toast({ title: "Password changed successfully!" });
+      setShowChangePw(false);
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
+    } catch (err: any) {
+      toast({ title: err?.message ?? "Failed to change password", variant: "destructive" });
     }
   };
 
@@ -478,6 +506,118 @@ export default function ProfilePage() {
               <span className="font-medium">{user?.level ? `${user.level} (${LEVELS.find(l => l.code === user.level)?.group})` : "Not set"}</span>
             </div>
           </div>
+        </motion.div>
+
+        {/* Change Password */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}
+          className="bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden">
+          <button
+            onClick={() => {
+              setShowChangePw(v => !v);
+              setCurrentPw(""); setNewPw(""); setConfirmPw("");
+            }}
+            className="w-full flex items-center justify-between p-6 text-left hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                <Lock className="w-5 h-5 text-orange-500" />
+              </div>
+              <div>
+                <p className="font-bold text-base">Change Password</p>
+                <p className="text-xs text-muted-foreground">Update your account password</p>
+              </div>
+            </div>
+            <div className={cn("transition-transform duration-200", showChangePw && "rotate-180")}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-muted-foreground"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+          </button>
+
+          {showChangePw && (
+            <div className="px-6 pb-6 space-y-3 border-t border-border/40 pt-4">
+              <div className="relative">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Current Password</label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPw ? "text" : "password"}
+                    value={currentPw}
+                    onChange={e => setCurrentPw(e.target.value)}
+                    placeholder="Enter current password"
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm pr-10 focus:outline-none focus:ring-2 focus:ring-primary"
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPw(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showNewPw ? "text" : "password"}
+                    value={newPw}
+                    onChange={e => setNewPw(e.target.value)}
+                    placeholder="At least 6 characters"
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm pr-10 focus:outline-none focus:ring-2 focus:ring-primary"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPw(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={confirmPw}
+                  onChange={e => setConfirmPw(e.target.value)}
+                  placeholder="Re-enter new password"
+                  className={cn(
+                    "w-full rounded-xl border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary",
+                    confirmPw && newPw !== confirmPw ? "border-destructive" : "border-border"
+                  )}
+                  autoComplete="new-password"
+                  onKeyDown={e => { if (e.key === "Enter") handleChangePassword(); }}
+                />
+                {confirmPw && newPw !== confirmPw && (
+                  <p className="text-xs text-destructive mt-1">Passwords do not match</p>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={changePasswordMut.isPending || !currentPw || !newPw || !confirmPw}
+                  className="rounded-xl gap-1.5 flex-1"
+                >
+                  {changePasswordMut.isPending ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  Update Password
+                </Button>
+                <Button
+                  variant="outline"
+                  className="rounded-xl gap-1.5"
+                  onClick={() => { setShowChangePw(false); setCurrentPw(""); setNewPw(""); setConfirmPw(""); }}
+                >
+                  <X className="w-4 h-4" /> Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         <div className="bg-primary/5 rounded-2xl p-5 border border-primary/10 flex gap-3">
