@@ -1,9 +1,10 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth, AuthProvider } from "@workspace/replit-auth-web";
 import { Sparkles } from "lucide-react";
+import { useEffect } from "react";
 
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -32,6 +33,12 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function RedirectToHome() {
+  const [, setLocation] = useLocation();
+  useEffect(() => { setLocation("/"); }, [setLocation]);
+  return null;
+}
 
 function AppRoutes() {
   const { isLoading, isAuthenticated } = useAuth();
@@ -75,6 +82,8 @@ function AppRoutes() {
       <Route path="/quiz" component={Quiz} />
       <Route path="/friends" component={Friends} />
       <Route path="/users/:userId" component={UserProfile} />
+      <Route path="/login" component={RedirectToHome} />
+      <Route path="/signup" component={RedirectToHome} />
       <Route component={NotFound} />
     </Switch>
   );
