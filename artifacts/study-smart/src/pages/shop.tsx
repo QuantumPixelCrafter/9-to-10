@@ -252,9 +252,8 @@ export default function ShopPage() {
                   <div>
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-bold text-sm truncate">{item.name}</p>
-                      <div className="shrink-0 flex items-center gap-1 text-amber-500 font-black text-sm">
-                        <Star className="w-3.5 h-3.5 fill-amber-500" />
-                        {item.price.toLocaleString()}
+                      <div className={cn("shrink-0 flex items-center gap-1 font-black text-sm", item.price === 0 ? "text-emerald-500" : "text-amber-500")}>
+                        {item.price === 0 ? "FREE" : (<><Star className="w-3.5 h-3.5 fill-amber-500" />{item.price.toLocaleString()}</>)}
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{item.description}</p>
@@ -285,6 +284,11 @@ export default function ShopPage() {
                         <span className="text-muted-foreground text-xs">
                           Need {(item.price - balance).toLocaleString()} more pts
                         </span>
+                      ) : item.price === 0 ? (
+                        <>
+                          <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />
+                          Claim Free
+                        </>
                       ) : (
                         <>
                           <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />

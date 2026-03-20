@@ -61,6 +61,7 @@ export const SHOP_ITEM_DEFS: ShopItemDef[] = [
   { key: "tag_quizking",   name: "Quiz King",     type: "nametag", emoji: "👑" },
   { key: "tag_legend",     name: "Legend",        type: "nametag", emoji: "⚡" },
   { key: "tag_celestial",  name: "Celestial",     type: "nametag", emoji: "✨" },
+  { key: "tag_developer",  name: "Developer",     type: "nametag", emoji: "🛠️" },
   { key: "title_student",      name: "The Student",    type: "title", titleText: "The Student",    titleStyle: "default" },
   { key: "title_scholar",      name: "The Scholar",    type: "title", titleText: "The Scholar",    titleStyle: "blue" },
   { key: "title_nightowl",     name: "Night Owl",      type: "title", titleText: "Night Owl",      titleStyle: "purple" },
@@ -72,6 +73,7 @@ export const SHOP_ITEM_DEFS: ShopItemDef[] = [
   { key: "title_valedictorian", name: "Valedictorian", type: "title", titleText: "Valedictorian",  titleStyle: "gold" },
   { key: "title_legend",       name: "Legend",         type: "title", titleText: "Legend",         titleStyle: "rainbow" },
   { key: "title_chosen",       name: "The Chosen One", type: "title", titleText: "The Chosen One", titleStyle: "divine" },
+  { key: "title_developer",    name: "Developer",      type: "title", titleText: "Developer",      titleStyle: "developer" },
 ];
 
 const TITLE_STYLE_MAP: Record<string, { text: string; bg: string }> = {
@@ -85,7 +87,8 @@ const TITLE_STYLE_MAP: Record<string, { text: string; bg: string }> = {
   pink:    { text: "text-pink-600 dark:text-pink-400",    bg: "bg-pink-500/15" },
   gold:    { text: "text-yellow-600 dark:text-yellow-400",bg: "bg-yellow-500/15" },
   rainbow: { text: "text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-yellow-500 to-cyan-500", bg: "bg-gradient-to-r from-pink-500/10 via-yellow-500/10 to-cyan-500/10" },
-  divine:  { text: "text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-white to-yellow-300", bg: "bg-gradient-to-r from-yellow-400/20 via-white/10 to-yellow-400/20" },
+  divine:    { text: "text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-white to-yellow-300", bg: "bg-gradient-to-r from-yellow-400/20 via-white/10 to-yellow-400/20" },
+  developer: { text: "text-green-400 dark:text-green-400", bg: "bg-black/80 dark:bg-black/60 border border-green-500/40" },
 };
 
 export function getTitleStyle(styleKey: string | undefined): { text: string; bg: string } {
