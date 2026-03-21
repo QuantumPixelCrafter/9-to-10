@@ -1,5 +1,5 @@
 import { db, notesTable, subjectsTable, goalsTable, schedulesTable, moodsTable, scoresTable, userAchievementsTable, usersTable } from "@workspace/db";
-import { eq, count, and, sum, isNotNull, asc } from "drizzle-orm";
+import { eq, count, and, sum, isNotNull, asc, gte } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 
 export interface AchievementDef {
@@ -9,7 +9,8 @@ export interface AchievementDef {
   requirement: string;
   icon: string;
   points: number;
-  category: "general" | "notes" | "quiz" | "goals" | "timetable" | "mood" | "games";
+  category: "general" | "notes" | "quiz" | "goals" | "timetable" | "mood" | "games" | "challenges";
+  periodic?: "weekly" | "monthly" | "seasonal";
 }
 
 export const ACHIEVEMENTS: AchievementDef[] = [
@@ -82,12 +83,71 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { key: "memory_under_20",  title: "Lightning Striker",    description: "You blaze through challenges with electrifying speed.",             requirement: "Complete Memory Match in under 20 seconds",                    icon: "⚡", points: 400, category: "games" },
   { key: "memory_under_15",  title: "Blazing Phantom",      description: "Almost untouchable—your moves are a blur.",                        requirement: "Complete Memory Match in under 15 seconds",                    icon: "👻", points: 800, category: "games" },
   { key: "memory_under_10",  title: "Time-Breaker",         description: "So hard, yet you did it. You've shattered the limits of possibility.", requirement: "Complete Memory Match in under 10 seconds",                icon: "💥", points: 2000, category: "games" },
+
+  // ─── Challenges (periodic) ───────────────────────────────────────────────
+
+  // Weekly
+  { key: "weekly_quiz_5",    title: "Weekly Grinder",       description: "Stay sharp—quiz yourself every week to keep the momentum going.",   requirement: "Complete 5 quizzes this week",                                 icon: "⚡", points: 200, category: "challenges", periodic: "weekly" },
+  { key: "weekly_notes_3",   title: "Weekly Scribe",        description: "Capture ideas while they're fresh—3 new notes every week.",         requirement: "Write 3 notes this week",                                      icon: "✍️", points: 150, category: "challenges", periodic: "weekly" },
+  { key: "weekly_mood_5",    title: "Weekly Check-In",      description: "A small habit, a big impact—log your mood 5 days this week.",       requirement: "Log your mood 5 times this week",                              icon: "😌", points: 100, category: "challenges", periodic: "weekly" },
+
+  // Monthly
+  { key: "monthly_quiz_20",  title: "Monthly Marathon",     description: "Twenty quizzes in a month—your dedication is something else.",      requirement: "Complete 20 quizzes this month",                               icon: "🏃", points: 500, category: "challenges", periodic: "monthly" },
+  { key: "monthly_notes_10", title: "Monthly Writer",       description: "Ten notes in a month shows you're actively building your knowledge.", requirement: "Write 10 notes this month",                                  icon: "📒", points: 400, category: "challenges", periodic: "monthly" },
+  { key: "monthly_mood_20",  title: "Month of Mindfulness", description: "Twenty mood logs in a month—consistency is your superpower.",       requirement: "Log your mood 20 times this month",                            icon: "🧘", points: 300, category: "challenges", periodic: "monthly" },
+  { key: "monthly_goals_2",  title: "Monthly Achiever",     description: "Set the pace—crush at least 2 goals every month.",                  requirement: "Complete 2 goals this month",                                  icon: "🎯", points: 350, category: "challenges", periodic: "monthly" },
+
+  // Seasonal
+  { key: "seasonal_quiz_50", title: "Seasonal Scholar",     description: "Fifty quizzes a season proves you're always in study mode.",        requirement: "Complete 50 quizzes this season",                              icon: "📚", points: 1000, category: "challenges", periodic: "seasonal" },
+  { key: "seasonal_notes_20",title: "Seasonal Author",      description: "Twenty notes across a season—your knowledge library is growing.",   requirement: "Write 20 notes this season",                                   icon: "🗒️", points: 800, category: "challenges", periodic: "seasonal" },
+  { key: "seasonal_mood_50", title: "Seasonal Wellness",    description: "Fifty mood logs in one season—you're truly in tune with yourself.", requirement: "Log your mood 50 times this season",                           icon: "🌸", points: 600, category: "challenges", periodic: "seasonal" },
 ];
+
+// ─── Period helpers ───────────────────────────────────────────────────────────
+
+function getWeekStart(date: Date): Date {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() - day + 1);
+  return d;
+}
+
+function getWeekKey(date: Date): string {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+function getMonthStart(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+function getMonthKey(date: Date): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function getSeasonStart(date: Date): Date {
+  const q = Math.floor(date.getUTCMonth() / 3);
+  return new Date(Date.UTC(date.getUTCFullYear(), q * 3, 1));
+}
+
+function getSeasonKey(date: Date): string {
+  const q = Math.floor(date.getUTCMonth() / 3) + 1;
+  return `${date.getUTCFullYear()}-Q${q}`;
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface AchievementWithStatus extends AchievementDef {
   earned: boolean;
   earnedAt?: string;
+  timesEarned?: number;
 }
+
+// ─── Queries ──────────────────────────────────────────────────────────────────
 
 export async function getUserAchievements(userId: string): Promise<AchievementWithStatus[]> {
   const earned = await db
@@ -97,14 +157,37 @@ export async function getUserAchievements(userId: string): Promise<AchievementWi
 
   const earnedMap = new Map(earned.map(e => [e.achievementKey, e.earnedAt]));
 
-  return ACHIEVEMENTS.map(a => ({
-    ...a,
-    earned: earnedMap.has(a.key),
-    earnedAt: earnedMap.get(a.key)?.toISOString(),
-  }));
+  return ACHIEVEMENTS.map(a => {
+    if (a.periodic) {
+      const prefix = `${a.key}__`;
+      const matches = earned.filter(e => e.achievementKey.startsWith(prefix));
+      const timesEarned = matches.length;
+      const latest = matches.sort((x, y) => y.earnedAt.getTime() - x.earnedAt.getTime())[0];
+      return {
+        ...a,
+        earned: timesEarned > 0,
+        earnedAt: latest?.earnedAt.toISOString(),
+        timesEarned,
+      };
+    }
+    return {
+      ...a,
+      earned: earnedMap.has(a.key),
+      earnedAt: earnedMap.get(a.key)?.toISOString(),
+      timesEarned: earnedMap.has(a.key) ? 1 : 0,
+    };
+  });
 }
 
 export async function checkAndAwardAchievements(userId: string): Promise<AchievementDef[]> {
+  const now = new Date();
+  const weekStart  = getWeekStart(now);
+  const monthStart = getMonthStart(now);
+  const seasonStart = getSeasonStart(now);
+  const weekKey   = getWeekKey(now);
+  const monthKey  = getMonthKey(now);
+  const seasonKey = getSeasonKey(now);
+
   const [
     alreadyEarned,
     [userRow],
@@ -119,6 +202,18 @@ export async function checkAndAwardAchievements(userId: string): Promise<Achieve
     ecaSchedule,
     [{ totalBubbles }],
     bestMemoryTime,
+    // Periodic counts
+    [{ weeklyQuizCount }],
+    [{ monthlyQuizCount }],
+    [{ seasonalQuizCount }],
+    [{ weeklyNotesCount }],
+    [{ monthlyNotesCount }],
+    [{ seasonalNotesCount }],
+    [{ weeklyMoodCount }],
+    [{ monthlyMoodCount }],
+    [{ seasonalMoodCount }],
+    [{ weeklyGoalsCompleted }],
+    [{ monthlyGoalsCompleted }],
   ] = await Promise.all([
     db.select({ key: userAchievementsTable.achievementKey }).from(userAchievementsTable).where(eq(userAchievementsTable.userId, userId)),
     db.select({ level: usersTable.level, gameLevel: usersTable.gameLevel }).from(usersTable).where(eq(usersTable.id, userId)),
@@ -139,13 +234,29 @@ export async function checkAndAwardAchievements(userId: string): Promise<Achieve
       .where(and(eq(scoresTable.userId, userId), eq(scoresTable.gameType, "memory-match"), isNotNull(scoresTable.secondsTaken)))
       .orderBy(asc(scoresTable.secondsTaken))
       .limit(1),
+    // Periodic quiz counts (scoresTable has userId — accurate per-user)
+    db.select({ weeklyQuizCount: count() }).from(scoresTable).where(and(eq(scoresTable.userId, userId), eq(scoresTable.gameType, "quiz"), gte(scoresTable.createdAt, weekStart))),
+    db.select({ monthlyQuizCount: count() }).from(scoresTable).where(and(eq(scoresTable.userId, userId), eq(scoresTable.gameType, "quiz"), gte(scoresTable.createdAt, monthStart))),
+    db.select({ seasonalQuizCount: count() }).from(scoresTable).where(and(eq(scoresTable.userId, userId), eq(scoresTable.gameType, "quiz"), gte(scoresTable.createdAt, seasonStart))),
+    // Periodic notes counts (no userId on notes table — global, same as existing behavior)
+    db.select({ weeklyNotesCount: count() }).from(notesTable).where(gte(notesTable.createdAt, weekStart)),
+    db.select({ monthlyNotesCount: count() }).from(notesTable).where(gte(notesTable.createdAt, monthStart)),
+    db.select({ seasonalNotesCount: count() }).from(notesTable).where(gte(notesTable.createdAt, seasonStart)),
+    // Periodic mood counts
+    db.select({ weeklyMoodCount: count() }).from(moodsTable).where(gte(moodsTable.createdAt, weekStart)),
+    db.select({ monthlyMoodCount: count() }).from(moodsTable).where(gte(moodsTable.createdAt, monthStart)),
+    db.select({ seasonalMoodCount: count() }).from(moodsTable).where(gte(moodsTable.createdAt, seasonStart)),
+    // Periodic goals completed
+    db.select({ weeklyGoalsCompleted: count() }).from(goalsTable).where(and(eq(goalsTable.completed, true), gte(goalsTable.createdAt, weekStart))),
+    db.select({ monthlyGoalsCompleted: count() }).from(goalsTable).where(and(eq(goalsTable.completed, true), gte(goalsTable.createdAt, monthStart))),
   ]);
 
   const alreadyEarnedSet = new Set(alreadyEarned.map(e => e.key));
 
-  // Compute total achievement points already earned
+  // Total points earned (handles both permanent and periodic keys)
   const earnedPointsTotal = alreadyEarned.reduce((sum, e) => {
-    const def = ACHIEVEMENTS.find(a => a.key === e.key);
+    const baseKey = e.key.includes("__") ? e.key.split("__")[0] : e.key;
+    const def = ACHIEVEMENTS.find(a => a.key === baseKey);
     return sum + (def?.points ?? 0);
   }, 0);
 
@@ -156,7 +267,7 @@ export async function checkAndAwardAchievements(userId: string): Promise<Achieve
   const gameLevel = userRow?.gameLevel ?? 1;
 
   const conditions: Record<string, boolean> = {
-    // Existing
+    // ── Permanent ──────────────────────────────────────────────────────────
     welcome:        true,
     level_set:      !!userRow?.level,
     first_note:     notesCount >= 1,
@@ -180,47 +291,52 @@ export async function checkAndAwardAchievements(userId: string): Promise<Achieve
     quiz_5:         quizScoreCount >= 5,
     quiz_10:        quizScoreCount >= 10,
     all_games:      gameTypes.has("memory-match") && gameTypes.has("bubble-pop") && gameTypes.has("quiz"),
-
-    // Game Level milestones
     game_level_1:   gameLevel >= 1,
     game_level_25:  gameLevel >= 25,
     game_level_50:  gameLevel >= 50,
     game_level_75:  gameLevel >= 75,
     game_level_100: gameLevel >= 100,
-
-    // Achievement Points milestones
     points_50:      earnedPointsTotal >= 50,
     points_500:     earnedPointsTotal >= 500,
     points_2000:    earnedPointsTotal >= 2000,
     points_5000:    earnedPointsTotal >= 5000,
     points_10000:   earnedPointsTotal >= 10000,
-
-    // Quiz milestones
     quiz_first_attempt:     quizScoreCount >= 1,
     quiz_curious_learner:   quizScoreCount >= 10,
     quiz_dedicated_scholar: quizScoreCount >= 50,
     quiz_knowledge_seeker:  quizScoreCount >= 100,
     quiz_master_200:        quizScoreCount >= 200,
-
-    // Bubble Pop milestones (cumulative bubbles)
     bubbles_10:  bubbleTotal >= 10,
     bubbles_25:  bubbleTotal >= 25,
     bubbles_50:  bubbleTotal >= 50,
     bubbles_100: bubbleTotal >= 100,
     bubbles_200: bubbleTotal >= 200,
-
-    // Memory Match time achievements
     memory_under_50: bestMemorySecs !== null && bestMemorySecs <= 50,
     memory_under_30: bestMemorySecs !== null && bestMemorySecs <= 30,
     memory_under_20: bestMemorySecs !== null && bestMemorySecs <= 20,
     memory_under_15: bestMemorySecs !== null && bestMemorySecs <= 15,
     memory_under_10: bestMemorySecs !== null && bestMemorySecs <= 10,
+
+    // ── Periodic (keys include period suffix so they can be re-earned) ──────
+    [`weekly_quiz_5__${weekKey}`]:    weeklyQuizCount >= 5,
+    [`weekly_notes_3__${weekKey}`]:   weeklyNotesCount >= 3,
+    [`weekly_mood_5__${weekKey}`]:    weeklyMoodCount >= 5,
+
+    [`monthly_quiz_20__${monthKey}`]:  monthlyQuizCount >= 20,
+    [`monthly_notes_10__${monthKey}`]: monthlyNotesCount >= 10,
+    [`monthly_mood_20__${monthKey}`]:  monthlyMoodCount >= 20,
+    [`monthly_goals_2__${monthKey}`]:  monthlyGoalsCompleted >= 2,
+
+    [`seasonal_quiz_50__${seasonKey}`]:  seasonalQuizCount >= 50,
+    [`seasonal_notes_20__${seasonKey}`]: seasonalNotesCount >= 20,
+    [`seasonal_mood_50__${seasonKey}`]:  seasonalMoodCount >= 50,
   };
 
   const newlyEarned: AchievementDef[] = [];
   for (const [key, earned] of Object.entries(conditions)) {
     if (earned && !alreadyEarnedSet.has(key)) {
-      const def = ACHIEVEMENTS.find(a => a.key === key);
+      const baseKey = key.includes("__") ? key.split("__")[0] : key;
+      const def = ACHIEVEMENTS.find(a => a.key === baseKey);
       if (def) {
         await db.insert(userAchievementsTable).values({ userId, achievementKey: key }).onConflictDoNothing();
         newlyEarned.push(def);
@@ -232,5 +348,8 @@ export async function checkAndAwardAchievements(userId: string): Promise<Achieve
 }
 
 export function getTotalPoints(achievements: AchievementWithStatus[]): number {
-  return achievements.filter(a => a.earned).reduce((sum, a) => sum + a.points, 0);
+  return achievements.reduce((sum, a) => {
+    if (!a.earned) return sum;
+    return sum + a.points * (a.timesEarned ?? 1);
+  }, 0);
 }

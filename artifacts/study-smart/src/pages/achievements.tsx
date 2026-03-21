@@ -7,17 +7,24 @@ import { cn } from "@/lib/utils";
 import { Star, Lock, CheckCircle2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const CATEGORY_META: Record<string, { label: string; color: string; bg: string; gradient: string; border: string }> = {
-  general:   { label: "General",   color: "text-slate-600 dark:text-slate-300",     bg: "bg-slate-500/10",  gradient: "from-slate-400 to-slate-600",   border: "border-slate-200 dark:border-slate-700" },
-  notes:     { label: "Notes",     color: "text-blue-600 dark:text-blue-400",       bg: "bg-blue-500/10",   gradient: "from-blue-400 to-indigo-500",   border: "border-blue-200 dark:border-blue-900" },
-  goals:     { label: "Goals",     color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10",gradient: "from-emerald-400 to-teal-500",  border: "border-emerald-200 dark:border-emerald-900" },
-  timetable: { label: "Timetable", color: "text-orange-600 dark:text-orange-400",   bg: "bg-orange-500/10", gradient: "from-orange-400 to-amber-500",  border: "border-orange-200 dark:border-orange-900" },
-  mood:      { label: "Mood",      color: "text-pink-600 dark:text-pink-400",       bg: "bg-pink-500/10",   gradient: "from-pink-400 to-rose-500",     border: "border-pink-200 dark:border-pink-900" },
-  games:     { label: "Games",     color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10",gradient: "from-green-400 to-emerald-500",  border: "border-emerald-200 dark:border-emerald-900" },
-  quiz:      { label: "Quiz",      color: "text-amber-600 dark:text-amber-400",     bg: "bg-amber-500/10",  gradient: "from-amber-400 to-orange-500",  border: "border-amber-200 dark:border-amber-900" },
+const PERIODIC_META = {
+  weekly:   { label: "Weekly",   color: "bg-sky-500/15 text-sky-600 dark:text-sky-400",      dot: "bg-sky-500" },
+  monthly:  { label: "Monthly",  color: "bg-violet-500/15 text-violet-600 dark:text-violet-400", dot: "bg-violet-500" },
+  seasonal: { label: "Seasonal", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
 };
 
-const CATEGORIES = ["general", "notes", "goals", "timetable", "mood", "games", "quiz"];
+const CATEGORY_META: Record<string, { label: string; color: string; bg: string; gradient: string; border: string }> = {
+  general:    { label: "General",    color: "text-slate-600 dark:text-slate-300",      bg: "bg-slate-500/10",   gradient: "from-slate-400 to-slate-600",    border: "border-slate-200 dark:border-slate-700" },
+  notes:      { label: "Notes",      color: "text-blue-600 dark:text-blue-400",        bg: "bg-blue-500/10",    gradient: "from-blue-400 to-indigo-500",    border: "border-blue-200 dark:border-blue-900" },
+  goals:      { label: "Goals",      color: "text-emerald-600 dark:text-emerald-400",  bg: "bg-emerald-500/10", gradient: "from-emerald-400 to-teal-500",   border: "border-emerald-200 dark:border-emerald-900" },
+  timetable:  { label: "Timetable",  color: "text-orange-600 dark:text-orange-400",    bg: "bg-orange-500/10",  gradient: "from-orange-400 to-amber-500",   border: "border-orange-200 dark:border-orange-900" },
+  mood:       { label: "Mood",       color: "text-pink-600 dark:text-pink-400",        bg: "bg-pink-500/10",    gradient: "from-pink-400 to-rose-500",      border: "border-pink-200 dark:border-pink-900" },
+  games:      { label: "Games",      color: "text-emerald-600 dark:text-emerald-400",  bg: "bg-emerald-500/10", gradient: "from-green-400 to-emerald-500",  border: "border-emerald-200 dark:border-emerald-900" },
+  quiz:       { label: "Quiz",       color: "text-amber-600 dark:text-amber-400",      bg: "bg-amber-500/10",   gradient: "from-amber-400 to-orange-500",   border: "border-amber-200 dark:border-amber-900" },
+  challenges: { label: "Challenges", color: "text-violet-600 dark:text-violet-400",    bg: "bg-violet-500/10",  gradient: "from-violet-400 to-purple-500",  border: "border-violet-200 dark:border-violet-900" },
+};
+
+const CATEGORIES = ["challenges", "general", "notes", "goals", "timetable", "mood", "games", "quiz"];
 
 export default function AchievementsPage() {
   const { toast } = useToast();
@@ -29,8 +36,8 @@ export default function AchievementsPage() {
     checkMut.mutate(undefined, {
       onSuccess: (res) => {
         if (res.newlyEarned.length > 0) {
-          setNewlyEarnedKeys(new Set(res.newlyEarned.map(a => a.key)));
-          res.newlyEarned.forEach(a => {
+          setNewlyEarnedKeys(new Set(res.newlyEarned.map((a: any) => a.key)));
+          res.newlyEarned.forEach((a: any) => {
             toast({ title: `Achievement Unlocked! ${a.icon} ${a.title}`, description: `+${a.points} pts — ${a.description}` });
           });
           setTimeout(() => setNewlyEarnedKeys(new Set()), 3000);
@@ -41,7 +48,7 @@ export default function AchievementsPage() {
 
   const achievements = data?.achievements ?? [];
   const totalPoints = data?.totalPoints ?? 0;
-  const earned = achievements.filter(a => a.earned).length;
+  const earned = achievements.filter((a: any) => a.earned).length;
   const total = achievements.length;
   const pct = total > 0 ? Math.round((earned / total) * 100) : 0;
 
@@ -91,8 +98,8 @@ export default function AchievementsPage() {
               onClick={() => checkMut.mutate(undefined, {
                 onSuccess: (res) => {
                   if (res.newlyEarned.length > 0) {
-                    setNewlyEarnedKeys(new Set(res.newlyEarned.map(a => a.key)));
-                    res.newlyEarned.forEach(a => toast({ title: `Achievement Unlocked! ${a.icon} ${a.title}`, description: `+${a.points} pts` }));
+                    setNewlyEarnedKeys(new Set(res.newlyEarned.map((a: any) => a.key)));
+                    res.newlyEarned.forEach((a: any) => toast({ title: `Achievement Unlocked! ${a.icon} ${a.title}`, description: `+${a.points} pts` }));
                     setTimeout(() => setNewlyEarnedKeys(new Set()), 3000);
                   } else {
                     toast({ title: "All caught up!", description: "No new achievements this time." });
@@ -107,6 +114,17 @@ export default function AchievementsPage() {
             </Button>
           </div>
         </motion.div>
+
+        {/* Legend for Challenges */}
+        <div className="flex items-center gap-3 px-1 flex-wrap">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Refreshes:</span>
+          {(Object.entries(PERIODIC_META) as [keyof typeof PERIODIC_META, typeof PERIODIC_META[keyof typeof PERIODIC_META]][]).map(([key, m]) => (
+            <span key={key} className={cn("flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full", m.color)}>
+              <span className={cn("w-1.5 h-1.5 rounded-full", m.dot)} />
+              {m.label}
+            </span>
+          ))}
+        </div>
 
         {/* Achievement Index */}
         {isLoading ? (
@@ -130,10 +148,10 @@ export default function AchievementsPage() {
         ) : (
           <div className="space-y-5">
             {CATEGORIES.map((cat, catIdx) => {
-              const catAchievements = achievements.filter(a => a.category === cat);
+              const catAchievements = (achievements as any[]).filter(a => a.category === cat);
               if (catAchievements.length === 0) return null;
               const meta = CATEGORY_META[cat];
-              const catEarned = catAchievements.filter(a => a.earned).length;
+              const catEarned = catAchievements.filter((a: any) => a.earned).length;
 
               return (
                 <motion.div
@@ -147,6 +165,9 @@ export default function AchievementsPage() {
                     <span className={cn("text-xs font-bold px-2.5 py-1 rounded-full shrink-0", meta.bg, meta.color)}>
                       {meta.label}
                     </span>
+                    {cat === "challenges" && (
+                      <span className="text-[10px] text-muted-foreground font-medium shrink-0">resets weekly · monthly · seasonally</span>
+                    )}
                     <div className="flex-1 h-px bg-border" />
                     <span className="text-xs text-muted-foreground font-semibold shrink-0">
                       {catEarned} / {catAchievements.length}
@@ -155,16 +176,17 @@ export default function AchievementsPage() {
 
                   {/* Achievement rows */}
                   <div className={cn("rounded-2xl border overflow-hidden divide-y", meta.border)}>
-                    {catAchievements.map((a) => {
+                    {catAchievements.map((a: any) => {
                       const isNew = newlyEarnedKeys.has(a.key);
+                      const periodicMeta = a.periodic ? PERIODIC_META[a.periodic as keyof typeof PERIODIC_META] : null;
+                      const timesEarned = a.timesEarned ?? 0;
+
                       return (
                         <div
                           key={a.key}
                           className={cn(
                             "flex items-center gap-3 px-4 py-3",
-                            a.earned
-                              ? "bg-card"
-                              : "bg-muted/10"
+                            a.earned ? "bg-card" : "bg-muted/10"
                           )}
                         >
                           {/* Icon */}
@@ -181,24 +203,44 @@ export default function AchievementsPage() {
 
                           {/* Text */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <span className={cn(
                                 "text-sm font-semibold",
                                 a.earned ? "text-foreground" : "text-foreground/60"
                               )}>
                                 {a.title}
                               </span>
+
+                              {/* Periodic badge */}
+                              {periodicMeta && (
+                                <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5", periodicMeta.color)}>
+                                  <span className={cn("w-1 h-1 rounded-full", periodicMeta.dot)} />
+                                  {periodicMeta.label}
+                                </span>
+                              )}
+
+                              {/* NEW badge */}
                               {isNew && (
                                 <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-primary text-white animate-pulse">
                                   NEW
                                 </span>
                               )}
+
+                              {/* Earned N× badge for repeatable */}
+                              {a.periodic && timesEarned > 0 && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-600 dark:text-green-400">
+                                  {timesEarned}× earned
+                                </span>
+                              )}
+
+                              {/* Locked badge */}
                               {!a.earned && (
                                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
                                   LOCKED
                                 </span>
                               )}
                             </div>
+
                             {a.requirement && (
                               <p className={cn(
                                 "text-xs mt-0.5 font-medium",
