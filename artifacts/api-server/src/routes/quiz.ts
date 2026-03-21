@@ -51,8 +51,6 @@ router.post("/notes/:id/quiz", async (req, res) => {
   const questionCount = body.questionCount ?? 5;
   const difficulty = body.difficulty;
   const level = body.level;
-  const chinesePreference = (req.body as any).chinesePreference as string | undefined;
-
   const difficultyInstructions = {
     easy: "Create straightforward questions testing basic recall and simple understanding.",
     normal: "Create moderately challenging questions testing understanding and application.",
@@ -66,14 +64,8 @@ router.post("/notes/:id/quiz", async (req, res) => {
     ? `\nStudent Education Level: ${levelLabel}\nLevel-appropriate instruction: ${levelInstruction}`
     : "";
 
-  const chineseLangInstruction = chinesePreference === "traditional"
-    ? "\nLanguage: Write ALL questions, options, and explanations in Traditional Chinese (繁體中文). Use Traditional Chinese characters only."
-    : chinesePreference === "simplified"
-    ? "\nLanguage: Write ALL questions, options, and explanations in Simplified Chinese (简体中文). Use Simplified Chinese characters only."
-    : "";
-
   const prompt = `Generate a ${difficulty} difficulty quiz with exactly ${questionCount} multiple-choice questions based on the following study notes.
-${levelSection}${chineseLangInstruction}
+${levelSection}
 
 ${difficultyInstructions}
 

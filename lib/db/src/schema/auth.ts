@@ -29,7 +29,6 @@ export const usersTable = pgTable("users", {
   xp: integer("xp").notNull().default(0),
   gameLevel: integer("game_level").notNull().default(1),
   bonusPoints: integer("bonus_points").notNull().default(0),
-  chinesePreference: varchar("chinese_preference"),
   isPublic: boolean("is_public").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

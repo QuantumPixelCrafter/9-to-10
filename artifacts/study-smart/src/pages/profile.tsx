@@ -146,17 +146,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handleChinesePreference = async (value: string | null) => {
-    try {
-      await updatePrefsMut.mutateAsync({ chinesePreference: value });
-      const label = value === "traditional" ? "Traditional Characters (繁體)" : value === "simplified" ? "Simplified Characters (简体)" : "No preference";
-      toast({ title: `Chinese quiz character set: ${label}` });
-      window.location.reload();
-    } catch {
-      toast({ title: "Failed to update language preference", variant: "destructive" });
-    }
-  };
-
   const handleVisibility = async (value: boolean) => {
     try {
       await updatePrefsMut.mutateAsync({ isPublic: value });
@@ -568,42 +557,6 @@ export default function ProfilePage() {
                   {label}
                 </button>
               ))}
-            </div>
-          </div>
-
-          {/* Chinese Quiz Character Set */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Chinese Quiz Character Set</p>
-            </div>
-            <p className="text-[11px] text-muted-foreground mb-3">
-              Only applies when studying a <span className="font-semibold text-foreground">Chinese language</span> subject. Choose which character set the AI should use for questions and answers.
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                { value: null,          label: "Not Set", sub: "No preference" },
-                { value: "traditional", label: "繁體",     sub: "Traditional Characters" },
-                { value: "simplified",  label: "简体",     sub: "Simplified Characters" },
-              ] as const).map(({ value, label, sub }) => {
-                const current = (user as any)?.chinesePreference ?? null;
-                const isSelected = current === value;
-                return (
-                  <button
-                    key={String(value)}
-                    onClick={() => handleChinesePreference(value)}
-                    disabled={updatePrefsMut.isPending}
-                    className={cn(
-                      "flex flex-col items-center gap-0.5 py-3 px-2 rounded-xl border text-xs font-semibold transition-all duration-200",
-                      isSelected
-                        ? "bg-indigo-500 text-white border-indigo-500 shadow-lg shadow-indigo-500/20"
-                        : "border-border bg-background text-muted-foreground hover:border-indigo-400/40"
-                    )}
-                  >
-                    <span className="text-base">{label}</span>
-                    <span className={cn("text-[10px] text-center leading-tight", isSelected ? "text-white/70" : "text-muted-foreground/60")}>{sub}</span>
-                  </button>
-                );
-              })}
             </div>
           </div>
 

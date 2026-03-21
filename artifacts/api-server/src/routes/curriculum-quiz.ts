@@ -35,7 +35,7 @@ const DIFFICULTY_INSTRUCTIONS: Record<string, string> = {
 };
 
 router.post("/curriculum-quiz/generate", async (req, res) => {
-  const { level, subject, topic, difficulty = "normal", questionCount = 10, chinesePreference } = req.body;
+  const { level, subject, topic, difficulty = "normal", questionCount = 10 } = req.body;
 
   if (!level || !subject || !topic) {
     res.status(400).json({ error: "level, subject, and topic are required" });
@@ -63,18 +63,12 @@ MATHEMATICS-SPECIFIC RULES (this is a maths quiz — these override all other in
 - Re-verify: mentally substitute your answer back into the question to confirm it is correct
 - NEVER guess a numerical answer — always compute it` : "";
 
-  const chineseLangInstruction = chinesePreference === "traditional"
-    ? "\nLanguage: Write ALL questions, options, and explanations in Traditional Chinese (繁體中文). Use Traditional Chinese characters only."
-    : chinesePreference === "simplified"
-    ? "\nLanguage: Write ALL questions, options, and explanations in Simplified Chinese (简体中文). Use Simplified Chinese characters only."
-    : "";
-
   const prompt = `Generate a ${difficulty} difficulty quiz with exactly ${count} multiple-choice questions on the topic "${topic}" within the subject "${subject}" for ${levelLabel} students.
 
 Level-appropriate instruction: ${levelInstruction}
 
 Difficulty instruction: ${diffInstruction}
-${mathSection}${chineseLangInstruction}
+${mathSection}
 Important guidelines:
 - All questions must be specific to the topic "${topic}" in "${subject}"
 - Tailor vocabulary, complexity and depth to ${levelLabel} level

@@ -22,7 +22,6 @@ export interface AuthUser {
   equippedFrame?: string | null;
   equippedNametag?: string | null;
   equippedTitle?: string | null;
-  chinesePreference?: string | null;
   isPublic?: boolean;
 }
 

@@ -70,7 +70,6 @@ export default function QuizPage() {
   const generateMut = useMutation({
     mutationFn: async (params: { level: string; subject: string; topic: string; difficulty: string; questionCount: number }) => {
       const sid = localStorage.getItem("study_smart_sid");
-      const chinesePreference = (user as any)?.chinesePreference ?? null;
       const res = await fetch("/api/curriculum-quiz/generate", {
         method: "POST",
         headers: {
@@ -78,7 +77,7 @@ export default function QuizPage() {
           ...(sid ? { Authorization: `Bearer ${sid}` } : {}),
         },
         credentials: "include",
-        body: JSON.stringify({ ...params, chinesePreference }),
+        body: JSON.stringify(params),
       });
       if (!res.ok) throw new Error("Failed to generate quiz");
       return res.json() as Promise<QuizData>;
