@@ -149,8 +149,8 @@ export default function ProfilePage() {
   const handleChinesePreference = async (value: string | null) => {
     try {
       await updatePrefsMut.mutateAsync({ chinesePreference: value });
-      const label = value === "traditional" ? "Traditional Chinese" : value === "simplified" ? "Simplified Chinese" : "English";
-      toast({ title: `Quiz language set to ${label}` });
+      const label = value === "traditional" ? "Traditional Characters (繁體)" : value === "simplified" ? "Simplified Characters (简体)" : "No preference";
+      toast({ title: `Chinese quiz character set: ${label}` });
       window.location.reload();
     } catch {
       toast({ title: "Failed to update language preference", variant: "destructive" });
@@ -571,14 +571,19 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Quiz Language */}
+          {/* Chinese Quiz Character Set */}
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Quiz Language</p>
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Chinese Quiz Character Set</p>
+            </div>
+            <p className="text-[11px] text-muted-foreground mb-3">
+              Only applies when studying a <span className="font-semibold text-foreground">Chinese language</span> subject. Choose which character set the AI should use for questions and answers.
+            </p>
             <div className="grid grid-cols-3 gap-2">
               {([
-                { value: null,           label: "English",      sub: "Default" },
-                { value: "traditional",  label: "繁體中文",      sub: "Traditional" },
-                { value: "simplified",   label: "简体中文",      sub: "Simplified" },
+                { value: null,          label: "Not Set", sub: "No preference" },
+                { value: "traditional", label: "繁體",     sub: "Traditional Characters" },
+                { value: "simplified",  label: "简体",     sub: "Simplified Characters" },
               ] as const).map(({ value, label, sub }) => {
                 const current = (user as any)?.chinesePreference ?? null;
                 const isSelected = current === value;
@@ -594,13 +599,12 @@ export default function ProfilePage() {
                         : "border-border bg-background text-muted-foreground hover:border-indigo-400/40"
                     )}
                   >
-                    <span className="text-sm">{label}</span>
-                    <span className={cn("text-[10px]", isSelected ? "text-white/70" : "text-muted-foreground/60")}>{sub}</span>
+                    <span className="text-base">{label}</span>
+                    <span className={cn("text-[10px] text-center leading-tight", isSelected ? "text-white/70" : "text-muted-foreground/60")}>{sub}</span>
                   </button>
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">AI-generated quiz questions will use the selected language.</p>
           </div>
 
           {/* Account Visibility */}
