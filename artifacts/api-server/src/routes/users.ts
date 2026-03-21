@@ -26,6 +26,7 @@ router.get("/users/:userId", async (req, res) => {
       equippedBackground: usersTable.equippedBackground,
       equippedFrame: usersTable.equippedFrame,
       equippedNametag: usersTable.equippedNametag,
+      isPublic: usersTable.isPublic,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
@@ -34,6 +35,11 @@ router.get("/users/:userId", async (req, res) => {
 
   if (!user) {
     res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  if (user.isPublic === false && user.id !== req.user.id) {
+    res.status(403).json({ error: "This profile is private." });
     return;
   }
 
@@ -116,15 +122,18 @@ router.get("/users", async (req, res) => {
       gameLevel: usersTable.gameLevel,
       xp: usersTable.xp,
       equippedNametag: usersTable.equippedNametag,
+      isPublic: usersTable.isPublic,
     })
     .from(usersTable)
     .orderBy(usersTable.gameLevel);
 
   res.json(
-    users.map(u => ({
-      ...u,
-      displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || "Anonymous",
-    }))
+    users
+      .filter(u => u.isPublic !== false || u.id === req.user.id)
+      .map(u => ({
+        ...u,
+        displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || "Anonymous",
+      }))
   );
 });
 

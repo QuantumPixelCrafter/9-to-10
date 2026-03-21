@@ -41,6 +41,8 @@ function buildSessionUser(user: typeof usersTable.$inferSelect) {
     equippedTitle: user.equippedTitle,
     xp: user.xp ?? 0,
     gameLevel: user.gameLevel ?? 1,
+    chinesePreference: user.chinesePreference ?? null,
+    isPublic: user.isPublic ?? true,
   };
 }
 
@@ -133,8 +135,19 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
     return;
   }
 
-  const { level, firstName, lastName } = req.body;
+  const { level, firstName, lastName, chinesePreference, isPublic } = req.body;
   const validLevels = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
+  const validChinesePrefs = ["traditional", "simplified", null, undefined];
+
+  if (chinesePreference !== undefined && !validChinesePrefs.includes(chinesePreference)) {
+    res.status(400).json({ error: "Invalid chinesePreference value." });
+    return;
+  }
+
+  if (isPublic !== undefined && typeof isPublic !== "boolean") {
+    res.status(400).json({ error: "isPublic must be a boolean." });
+    return;
+  }
 
   if (level !== undefined && level !== null && !validLevels.includes(level)) {
     res.status(400).json({ error: "Invalid level." });
@@ -150,6 +163,8 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
   if (level !== undefined) updates.level = level ?? null;
   if (firstName !== undefined) updates.firstName = firstName.trim();
   if (lastName !== undefined) updates.lastName = lastName?.trim() || null;
+  if (chinesePreference !== undefined) updates.chinesePreference = chinesePreference ?? null;
+  if (isPublic !== undefined) updates.isPublic = isPublic;
 
   const [updated] = await db
     .update(usersTable)

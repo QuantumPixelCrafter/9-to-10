@@ -81,3 +81,13 @@ export function useChangePassword() {
       }),
   });
 }
+
+export function useUpdatePreferences() {
+  return useMutation({
+    mutationFn: (prefs: { chinesePreference?: string | null; isPublic?: boolean }) =>
+      customFetch<{ user: unknown }>("/api/auth/profile", {
+        method: "PUT",
+        body: JSON.stringify(prefs),
+      }),
+  });
+}
