@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, FolderPlus, Plus, Search, Trash2, Edit3, MoreVertical, Sparkles, Folder, AlertCircle } from "lucide-react";
+import { BookOpen, FolderPlus, Plus, Search, Trash2, Edit3, MoreVertical, Sparkles, Folder, AlertCircle, Maximize2, Minimize2, X, Save } from "lucide-react";
 import { QuizModal } from "@/components/quiz-modal";
 import { motion, AnimatePresence } from "framer-motion";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -40,6 +40,7 @@ export default function NotesPage() {
   const [quizNoteId, setQuizNoteId] = useState<number | null>(null);
   const [quizSubjectName, setQuizSubjectName] = useState<string>("");
   const [search, setSearch] = useState("");
+  const [fullscreen, setFullscreen] = useState(false);
 
   const handleCreateSubject = async () => {
     if (!newSubName.trim()) return;
@@ -58,6 +59,7 @@ export default function NotesPage() {
     setNoteTitle("");
     setNoteContent("");
     setNoteSubjectId(selectedSubjectId ? String(selectedSubjectId) : (subjects[0] ? String(subjects[0].id) : ""));
+    setFullscreen(false);
     setNoteOpen(true);
   };
 
@@ -66,6 +68,7 @@ export default function NotesPage() {
     setNoteTitle(note.title);
     setNoteContent(note.content);
     setNoteSubjectId(String(note.subjectId));
+    setFullscreen(false);
     setNoteOpen(true);
   };
 
@@ -87,6 +90,7 @@ export default function NotesPage() {
         toast({ title: "Note created!" });
       }
       setNoteOpen(false);
+      setFullscreen(false);
     } catch {
       toast({ title: "Failed to save note", variant: "destructive" });
     }
@@ -317,13 +321,125 @@ export default function NotesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Fullscreen Document Editor */}
+      <AnimatePresence>
+        {noteOpen && fullscreen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-50 bg-background flex flex-col"
+          >
+            {/* Toolbar */}
+            <div className="shrink-0 border-b border-border/60 bg-card/80 backdrop-blur-sm px-4 py-2.5 flex items-center gap-3">
+              <button
+                onClick={() => setFullscreen(false)}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors pr-3 border-r border-border"
+              >
+                <Minimize2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Exit fullscreen</span>
+              </button>
+
+              {/* Subject selector compact */}
+              {subjects.length > 0 && (
+                <Select value={noteSubjectId} onValueChange={setNoteSubjectId}>
+                  <SelectTrigger className="h-8 rounded-lg text-xs w-40 sm:w-48 border-border/60">
+                    <SelectValue placeholder="Subject…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subjects.map(s => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                          {s.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              <div className="flex-1" />
+
+              <span className="text-xs text-muted-foreground hidden sm:inline">
+                {noteContent.trim().split(/\s+/).filter(Boolean).length} words
+              </span>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setNoteOpen(false)}
+                className="rounded-lg text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+
+              <Button
+                size="sm"
+                onClick={handleSaveNote}
+                disabled={updateNoteMut.isPending || createNoteMut.isPending || subjects.length === 0}
+                className="rounded-lg shadow-md shadow-primary/20 gap-1.5"
+              >
+                <Save className="w-3.5 h-3.5" />
+                {updateNoteMut.isPending || createNoteMut.isPending ? "Saving…" : "Save"}
+              </Button>
+            </div>
+
+            {/* Document area */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="max-w-3xl mx-auto px-6 py-12 sm:px-12">
+                {/* Subject color accent */}
+                {noteSubjectId && (
+                  <div
+                    className="w-10 h-1 rounded-full mb-8"
+                    style={{ backgroundColor: subjects.find(s => String(s.id) === noteSubjectId)?.color ?? "transparent" }}
+                  />
+                )}
+
+                {/* Title */}
+                <input
+                  type="text"
+                  value={noteTitle}
+                  onChange={e => setNoteTitle(e.target.value)}
+                  placeholder="Untitled note"
+                  className="w-full text-3xl sm:text-4xl font-bold bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground/40 mb-6 leading-tight"
+                  autoFocus
+                />
+
+                {/* Divider */}
+                <div className="h-px bg-border/50 mb-8" />
+
+                {/* Content */}
+                <textarea
+                  value={noteContent}
+                  onChange={e => setNoteContent(e.target.value)}
+                  placeholder="Start writing your notes here…&#10;&#10;Include key concepts, definitions, examples and explanations for the best AI quiz results."
+                  className="w-full bg-transparent border-none outline-none resize-none text-base leading-8 text-foreground placeholder:text-muted-foreground/40 min-h-[60vh]"
+                  style={{ fontFamily: "inherit" }}
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Note Editor Dialog */}
-      <Dialog open={noteOpen} onOpenChange={setNoteOpen}>
+      <Dialog open={noteOpen && !fullscreen} onOpenChange={(open) => { setNoteOpen(open); if (!open) setFullscreen(false); }}>
         <DialogContent className="sm:max-w-2xl border-0 shadow-2xl rounded-3xl p-0 overflow-hidden">
           <div className="h-1.5 bg-gradient-to-r from-primary via-purple-500 to-accent w-full" />
           <div className="p-6 md:p-8 space-y-5">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold">{editingNoteId ? "Edit Note" : "New Note"}</DialogTitle>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-2xl font-bold">{editingNoteId ? "Edit Note" : "New Note"}</DialogTitle>
+                <button
+                  onClick={() => setFullscreen(true)}
+                  className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title="Full-screen document view"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              </div>
             </DialogHeader>
 
             {/* Subject selector — always shown */}
