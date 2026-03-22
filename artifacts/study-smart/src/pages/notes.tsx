@@ -14,15 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 
 const SUBJECT_COLORS = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#F43F5E', '#EAB308'];
 
-type FormatType = "bold" | "italic" | "underline" | "bullet";
-
-const FORMAT_MARKERS: Record<FormatType, [string, string] | null> = {
-  bold: ["**", "**"],
-  italic: ["*", "*"],
-  underline: ["<u>", "</u>"],
-  bullet: null,
-};
-
 const HIGHLIGHT_COLORS = [
   { hex: "#FEF08A", label: "Yellow" },
   { hex: "#BBF7D0", label: "Green" },
@@ -31,121 +22,36 @@ const HIGHLIGHT_COLORS = [
   { hex: "#FED7AA", label: "Orange" },
 ];
 
-function applyFormat(
-  format: FormatType,
-  value: string,
-  selStart: number,
-  selEnd: number,
-): { newValue: string; newSelStart: number; newSelEnd: number } {
-  const selected = value.substring(selStart, selEnd);
-  const before = value.substring(0, selStart);
-  const after = value.substring(selEnd);
-
-  const markers = FORMAT_MARKERS[format];
-
-  if (markers) {
-    const [open, close] = markers;
-    const isWrapped = before.endsWith(open) && after.startsWith(close);
-    if (isWrapped) {
-      const newValue = before.slice(0, -open.length) + selected + after.slice(close.length);
-      return { newValue, newSelStart: selStart - open.length, newSelEnd: selEnd - open.length };
-    }
-    const newValue = before + open + selected + close + after;
-    return { newValue, newSelStart: selStart + open.length, newSelEnd: selEnd + open.length };
-  }
-
-  if (format === "bullet") {
-    const prefix = "- ";
-    const lineStart = before.lastIndexOf("\n") + 1;
-    const linePrefix = value.substring(lineStart, selStart);
-    if (linePrefix.startsWith(prefix)) {
-      const newValue = value.substring(0, lineStart) + value.substring(lineStart + prefix.length);
-      const offset = -prefix.length;
-      return { newValue, newSelStart: selStart + offset, newSelEnd: selEnd + offset };
-    }
-    const newValue = value.substring(0, lineStart) + prefix + value.substring(lineStart);
-    return { newValue, newSelStart: selStart + prefix.length, newSelEnd: selEnd + prefix.length };
-  }
-
-  return { newValue: value, newSelStart: selStart, newSelEnd: selEnd };
-}
-
-function applyHighlight(
-  color: string,
-  value: string,
-  selStart: number,
-  selEnd: number,
-): { newValue: string; newSelStart: number; newSelEnd: number } {
-  const selected = value.substring(selStart, selEnd);
-  const before = value.substring(0, selStart);
-  const after = value.substring(selEnd);
-  const open = `<mark style="background:${color}">`;
-  const close = `</mark>`;
-
-  if (before.endsWith(open) && after.startsWith(close)) {
-    const newValue = before.slice(0, -open.length) + selected + after.slice(close.length);
-    return { newValue, newSelStart: selStart - open.length, newSelEnd: selEnd - open.length };
-  }
-
-  const existingMarkRe = /^<mark style="background:#[0-9A-Fa-f]{6}">([\s\S]*?)<\/mark>$/;
-  const match = selected.match(existingMarkRe);
-  if (match) {
-    const inner = match[1];
-    const newValue = before + open + inner + close + after;
-    return { newValue, newSelStart: selStart + open.length, newSelEnd: selStart + open.length + inner.length };
-  }
-
-  const newValue = before + open + selected + close + after;
-  return { newValue, newSelStart: selStart + open.length, newSelEnd: selEnd + open.length };
-}
-
-const FORMAT_BUTTONS: { format: FormatType; icon: React.ReactNode; title: string }[] = [
-  { format: "bold", icon: <Bold className="w-3.5 h-3.5" />, title: "Bold (**text**)" },
-  { format: "italic", icon: <Italic className="w-3.5 h-3.5" />, title: "Italic (*text*)" },
-  { format: "underline", icon: <Underline className="w-3.5 h-3.5" />, title: "Underline" },
-  { format: "bullet", icon: <List className="w-3.5 h-3.5" />, title: "Bullet list (- )" },
+const FORMAT_BUTTONS: { cmd: string; icon: React.ReactNode; title: string }[] = [
+  { cmd: "bold",      icon: <Bold className="w-3.5 h-3.5" />,      title: "Bold" },
+  { cmd: "italic",    icon: <Italic className="w-3.5 h-3.5" />,    title: "Italic" },
+  { cmd: "underline", icon: <Underline className="w-3.5 h-3.5" />, title: "Underline" },
+  { cmd: "insertUnorderedList", icon: <List className="w-3.5 h-3.5" />, title: "Bullet list" },
 ];
 
 interface FormatToolbarProps {
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
-  value: string;
-  onChange: (val: string) => void;
+  editorRef: React.RefObject<HTMLDivElement | null>;
+  onContentChange: (html: string) => void;
   compact?: boolean;
 }
 
-function FormatToolbar({ textareaRef, value, onChange, compact }: FormatToolbarProps) {
-  const handleFormat = (format: FormatType) => {
-    const el = textareaRef.current;
+function FormatToolbar({ editorRef, onContentChange, compact }: FormatToolbarProps) {
+  const exec = (cmd: string, value?: string) => {
+    const el = editorRef.current;
     if (!el) return;
-    const { selectionStart, selectionEnd } = el;
-    const { newValue, newSelStart, newSelEnd } = applyFormat(format, value, selectionStart, selectionEnd);
-    onChange(newValue);
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(newSelStart, newSelEnd);
-    });
-  };
-
-  const handleHighlight = (color: string) => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const { selectionStart, selectionEnd } = el;
-    const { newValue, newSelStart, newSelEnd } = applyHighlight(color, value, selectionStart, selectionEnd);
-    onChange(newValue);
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(newSelStart, newSelEnd);
-    });
+    el.focus();
+    document.execCommand(cmd, false, value);
+    onContentChange(el.innerHTML);
   };
 
   return (
     <div className={`flex items-center gap-0.5 flex-wrap ${compact ? "" : "bg-muted/40 border border-border/50 rounded-xl px-1.5 py-1"}`}>
-      {FORMAT_BUTTONS.map(({ format, icon, title }) => (
+      {FORMAT_BUTTONS.map(({ cmd, icon, title }) => (
         <button
-          key={format}
+          key={cmd}
           type="button"
           title={title}
-          onMouseDown={e => { e.preventDefault(); handleFormat(format); }}
+          onMouseDown={e => { e.preventDefault(); exec(cmd); }}
           className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
         >
           {icon}
@@ -159,7 +65,7 @@ function FormatToolbar({ textareaRef, value, onChange, compact }: FormatToolbarP
           key={hex}
           type="button"
           title={`Highlight: ${label}`}
-          onMouseDown={e => { e.preventDefault(); handleHighlight(hex); }}
+          onMouseDown={e => { e.preventDefault(); exec("hiliteColor", hex); }}
           className="w-5 h-5 rounded-full border-2 border-transparent hover:border-foreground/30 transition-all hover:scale-110"
           style={{ backgroundColor: hex }}
         />
@@ -196,8 +102,8 @@ export default function NotesPage() {
   const [search, setSearch] = useState("");
   const [fullscreen, setFullscreen] = useState(false);
 
-  const dialogTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const fullscreenTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const dialogEditorRef = useRef<HTMLDivElement | null>(null);
+  const fullscreenEditorRef = useRef<HTMLDivElement | null>(null);
 
   const handleCreateSubject = async () => {
     if (!newSubName.trim()) return;
@@ -520,7 +426,7 @@ export default function NotesPage() {
               <div className="flex-1" />
 
               <span className="text-xs text-muted-foreground hidden sm:inline">
-                {noteContent.trim().split(/\s+/).filter(Boolean).length} words
+                {noteContent.replace(/<[^>]+>/g, " ").trim().split(/\s+/).filter(Boolean).length} words
               </span>
 
               <Button
@@ -569,18 +475,27 @@ export default function NotesPage() {
 
                 {/* Formatting toolbar */}
                 <div className="mb-4">
-                  <FormatToolbar textareaRef={fullscreenTextareaRef} value={noteContent} onChange={setNoteContent} compact />
+                  <FormatToolbar editorRef={fullscreenEditorRef} onContentChange={setNoteContent} compact />
                 </div>
 
                 {/* Content */}
-                <textarea
-                  ref={fullscreenTextareaRef}
-                  value={noteContent}
-                  onChange={e => setNoteContent(e.target.value)}
-                  placeholder="Start writing your notes here…&#10;&#10;Include key concepts, definitions, examples and explanations for the best AI quiz results."
-                  className="w-full bg-transparent border-none outline-none resize-none text-base leading-8 text-foreground placeholder:text-muted-foreground/40 min-h-[60vh]"
-                  style={{ fontFamily: "inherit" }}
-                />
+                <div className="relative">
+                  <div
+                    key={`fullscreen-${editingNoteId ?? "new"}`}
+                    ref={fullscreenEditorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    dangerouslySetInnerHTML={{ __html: noteContent }}
+                    onInput={e => setNoteContent((e.currentTarget as HTMLDivElement).innerHTML)}
+                    className="w-full min-h-[60vh] bg-transparent focus:outline-none text-base leading-8 text-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6"
+                    style={{ fontFamily: "inherit" }}
+                  />
+                  {(!noteContent || noteContent === "<br>") && (
+                    <div className="absolute top-0 left-0 text-base leading-8 text-muted-foreground/40 pointer-events-none select-none">
+                      Start writing your notes here…
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
@@ -662,15 +577,24 @@ export default function NotesPage() {
               </label>
               <div className="border border-border/50 rounded-2xl overflow-hidden bg-muted/30 focus-within:ring-2 focus-within:ring-primary/30">
                 <div className="px-3 pt-2.5 pb-1.5 border-b border-border/40">
-                  <FormatToolbar textareaRef={dialogTextareaRef} value={noteContent} onChange={setNoteContent} />
+                  <FormatToolbar editorRef={dialogEditorRef} onContentChange={setNoteContent} />
                 </div>
-                <textarea
-                  ref={dialogTextareaRef}
-                  value={noteContent}
-                  onChange={e => setNoteContent(e.target.value)}
-                  placeholder="Write your study notes here. Include key concepts, definitions, examples and explanations…"
-                  className="w-full h-48 p-4 bg-transparent resize-none focus:outline-none text-sm leading-relaxed"
-                />
+                <div className="relative">
+                  <div
+                    key={`dialog-${editingNoteId ?? "new"}`}
+                    ref={dialogEditorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    dangerouslySetInnerHTML={{ __html: noteContent }}
+                    onInput={e => setNoteContent((e.currentTarget as HTMLDivElement).innerHTML)}
+                    className="w-full min-h-[12rem] p-4 bg-transparent focus:outline-none text-sm leading-relaxed overflow-y-auto [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                  />
+                  {(!noteContent || noteContent === "<br>") && (
+                    <div className="absolute top-4 left-4 text-sm text-muted-foreground/50 pointer-events-none select-none">
+                      Write your study notes here. Include key concepts, definitions, examples and explanations…
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
