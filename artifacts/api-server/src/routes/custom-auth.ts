@@ -46,7 +46,7 @@ function buildSessionUser(user: typeof usersTable.$inferSelect) {
 }
 
 router.post("/auth/register", async (req: Request, res: Response) => {
-  const { username, password, firstName, lastName } = req.body;
+  const { username, password } = req.body;
 
   if (!username || !password) {
     res.status(400).json({ error: "Username and password are required." });
@@ -82,8 +82,6 @@ router.post("/auth/register", async (req: Request, res: Response) => {
     .insert(usersTable)
     .values({
       username: username.toLowerCase().trim(),
-      firstName: firstName?.trim() || null,
-      lastName: lastName?.trim() || null,
       passwordHash,
     })
     .returning();

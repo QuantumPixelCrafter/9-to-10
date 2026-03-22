@@ -6,8 +6,6 @@ export type { AuthUser };
 export interface RegisterData {
   username: string;
   password: string;
-  firstName?: string;
-  lastName?: string;
 }
 
 interface AuthState {
@@ -100,13 +98,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   }, []);
 
-  const register = useCallback(async ({ username, password, firstName, lastName }: RegisterData) => {
+  const register = useCallback(async ({ username, password }: RegisterData) => {
     setAuthError(null);
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ username, password, firstName, lastName }),
+      body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
     if (!res.ok) {

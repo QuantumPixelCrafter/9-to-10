@@ -41,8 +41,6 @@ function PasswordStrength({ password }: { password: string }) {
 export default function SignupPage() {
   const { register, authError, clearAuthError, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -71,7 +69,7 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      await register({ username, password, firstName: firstName || undefined, lastName: lastName || undefined });
+      await register({ username, password });
     } catch {
     } finally {
       setLoading(false);
@@ -114,34 +112,6 @@ export default function SignupPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name row */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="firstName">First name</Label>
-                <Input
-                  id="firstName"
-                  type="text"
-                  placeholder="Alex"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  autoComplete="given-name"
-                  className="rounded-xl h-11"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="lastName">Last name</Label>
-                <Input
-                  id="lastName"
-                  type="text"
-                  placeholder="Smith"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  autoComplete="family-name"
-                  className="rounded-xl h-11"
-                />
-              </div>
-            </div>
-
             <div className="space-y-1.5">
               <Label htmlFor="username">Username</Label>
               <Input
