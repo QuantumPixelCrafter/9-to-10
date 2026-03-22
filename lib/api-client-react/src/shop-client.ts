@@ -11,6 +11,7 @@ export interface ShopItem {
   emoji?: string;
   titleText?: string;
   titleStyle?: string;
+  flashOnly?: boolean;
   owned: boolean;
   equipped: boolean;
 }

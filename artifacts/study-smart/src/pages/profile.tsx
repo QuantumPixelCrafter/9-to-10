@@ -63,10 +63,9 @@ function resizeImage(file: File, maxPx: number): Promise<string> {
 }
 
 const APPEARANCE_TABS = [
-  { key: "background" as const, label: "Backdrop",  icon: "🖼️" },
-  { key: "frame"      as const, label: "Frame",     icon: "⭕" },
-  { key: "nametag"   as const, label: "Nametag",   icon: "🏷️" },
-  { key: "title"     as const, label: "Title",     icon: "👑" },
+  { key: "background" as const, label: "Backdrop", icon: "🖼️" },
+  { key: "frame"      as const, label: "Frame",    icon: "⭕" },
+  { key: "tag"        as const, label: "Tags",     icon: "🏷️" },
 ];
 
 export default function ProfilePage() {
@@ -91,7 +90,7 @@ export default function ProfilePage() {
   const [confirmPw, setConfirmPw] = useState("");
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
-  const [appearanceTab, setAppearanceTab] = useState<"background" | "frame" | "nametag" | "title">("background");
+  const [appearanceTab, setAppearanceTab] = useState<"background" | "frame" | "tag">("background");
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -401,32 +400,29 @@ export default function ProfilePage() {
           {/* Items grid */}
           <div className="p-4">
             {(() => {
-              const ownedItems = (shop?.items ?? []).filter(i => i.type === appearanceTab && i.owned);
               if (!shop) {
                 return <div className="py-6 text-center text-sm text-muted-foreground">Loading…</div>;
               }
-              if (ownedItems.length === 0) {
-                return (
+
+              if (appearanceTab === "background") {
+                const ownedItems = shop.items.filter(i => i.type === "background" && i.owned);
+                if (ownedItems.length === 0) return (
                   <div className="py-8 text-center">
-                    <p className="text-sm text-muted-foreground mb-3">You don't own any {APPEARANCE_TABS.find(t => t.key === appearanceTab)?.label.toLowerCase()}s yet.</p>
-                    <button onClick={() => setLocation("/shop")}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold bg-primary text-primary-foreground px-3 py-1.5 rounded-xl hover:bg-primary/90 transition-colors">
+                    <p className="text-sm text-muted-foreground mb-3">You don't own any backdrops yet.</p>
+                    <button onClick={() => setLocation("/shop")} className="inline-flex items-center gap-1.5 text-xs font-bold bg-primary text-primary-foreground px-3 py-1.5 rounded-xl hover:bg-primary/90 transition-colors">
                       <ShoppingBag className="w-3.5 h-3.5" /> Visit Shop
                     </button>
                   </div>
                 );
-              }
-
-              if (appearanceTab === "background") {
                 return (
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                     {ownedItems.map(item => (
                       <button key={item.key} onClick={() => handleEquipItem(item)} disabled={equipMut.isPending}
                         className={cn(
-                          "relative rounded-xl overflow-hidden border-2 transition-all aspect-video",
+                          "relative rounded-xl overflow-hidden border-2 transition-all",
                           item.equipped ? "border-primary shadow-lg shadow-primary/20 scale-[1.02]" : "border-transparent hover:border-border"
-                        )}>
-                        <div className="w-full h-full" style={{ background: getBgStyle(item.key) }} />
+                        )} style={{ aspectRatio: "16/9" }}>
+                        <div className="absolute inset-0" style={{ background: getBgStyle(item.key) }} />
                         {item.equipped && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                             <Check className="w-5 h-5 text-white drop-shadow" />
@@ -442,6 +438,15 @@ export default function ProfilePage() {
               }
 
               if (appearanceTab === "frame") {
+                const ownedItems = shop.items.filter(i => i.type === "frame" && i.owned);
+                if (ownedItems.length === 0) return (
+                  <div className="py-8 text-center">
+                    <p className="text-sm text-muted-foreground mb-3">You don't own any frames yet.</p>
+                    <button onClick={() => setLocation("/shop")} className="inline-flex items-center gap-1.5 text-xs font-bold bg-primary text-primary-foreground px-3 py-1.5 rounded-xl hover:bg-primary/90 transition-colors">
+                      <ShoppingBag className="w-3.5 h-3.5" /> Visit Shop
+                    </button>
+                  </div>
+                );
                 return (
                   <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
                     {ownedItems.map(item => {
@@ -465,44 +470,62 @@ export default function ProfilePage() {
                 );
               }
 
-              if (appearanceTab === "nametag") {
-                return (
-                  <div className="flex flex-wrap gap-2">
-                    {ownedItems.map(item => (
-                      <button key={item.key} onClick={() => handleEquipItem(item)} disabled={equipMut.isPending}
-                        className={cn(
-                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-sm font-bold transition-all",
-                          item.equipped
-                            ? "border-primary bg-primary/10 text-primary shadow-lg shadow-primary/20"
-                            : "border-border bg-muted/40 text-foreground hover:border-primary/40"
-                        )}>
-                        <span>{item.emoji}</span>
-                        {item.name}
-                        {item.equipped && <Check className="w-3 h-3" />}
-                      </button>
-                    ))}
+              if (appearanceTab === "tag") {
+                const ownedNametags = shop.items.filter(i => i.type === "nametag" && i.owned);
+                const ownedTitles  = shop.items.filter(i => i.type === "title" && i.owned && !i.flashOnly);
+                const hasNone = ownedNametags.length === 0 && ownedTitles.length === 0;
+                if (hasNone) return (
+                  <div className="py-8 text-center">
+                    <p className="text-sm text-muted-foreground mb-3">You don't own any nametags or titles yet.</p>
+                    <button onClick={() => setLocation("/shop")} className="inline-flex items-center gap-1.5 text-xs font-bold bg-primary text-primary-foreground px-3 py-1.5 rounded-xl hover:bg-primary/90 transition-colors">
+                      <ShoppingBag className="w-3.5 h-3.5" /> Visit Shop
+                    </button>
                   </div>
                 );
-              }
-
-              if (appearanceTab === "title") {
                 return (
-                  <div className="flex flex-wrap gap-2">
-                    {ownedItems.map(item => {
-                      const ts = getTitleStyle(item.titleStyle);
-                      return (
-                        <button key={item.key} onClick={() => handleEquipItem(item)} disabled={equipMut.isPending}
-                          className={cn(
-                            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-sm font-bold transition-all",
-                            item.equipped
-                              ? "border-primary shadow-lg shadow-primary/20 scale-105"
-                              : "border-border hover:border-primary/40 opacity-80 hover:opacity-100"
-                          )}>
-                          <span className={cn("text-xs font-bold", ts.text)}>{item.titleText}</span>
-                          {item.equipped && <Check className="w-3 h-3 text-primary" />}
-                        </button>
-                      );
-                    })}
+                  <div className="space-y-4">
+                    {ownedNametags.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Nametags</p>
+                        <div className="flex flex-wrap gap-2">
+                          {ownedNametags.map(item => (
+                            <button key={item.key} onClick={() => handleEquipItem(item)} disabled={equipMut.isPending}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-sm font-bold transition-all",
+                                item.equipped
+                                  ? "border-primary bg-primary/10 text-primary shadow-lg shadow-primary/20"
+                                  : "border-border bg-muted/40 text-foreground hover:border-primary/40"
+                              )}>
+                              <span>{item.emoji}</span>
+                              {item.name}
+                              {item.equipped && <Check className="w-3 h-3" />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {ownedTitles.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Titles</p>
+                        <div className="flex flex-wrap gap-2">
+                          {ownedTitles.map(item => {
+                            const ts = getTitleStyle(item.titleStyle);
+                            return (
+                              <button key={item.key} onClick={() => handleEquipItem(item)} disabled={equipMut.isPending}
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 transition-all",
+                                  item.equipped
+                                    ? "border-primary shadow-lg shadow-primary/20"
+                                    : "border-border hover:border-primary/40 opacity-80 hover:opacity-100"
+                                )}>
+                                <span className={cn("text-xs font-bold", ts.text)}>{item.titleText}</span>
+                                {item.equipped && <Check className="w-3 h-3 text-primary" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               }

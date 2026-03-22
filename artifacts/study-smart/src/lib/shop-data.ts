@@ -6,6 +6,7 @@ export interface ShopItemDef {
   emoji?: string;
   titleText?: string;
   titleStyle?: string;
+  flashOnly?: boolean;
 }
 
 export const SHOP_ITEM_DEFS: ShopItemDef[] = [
