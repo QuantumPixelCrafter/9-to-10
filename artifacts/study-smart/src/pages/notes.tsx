@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Layout } from "@/components/layout";
 import { useSubjectsData, useCreateSubjectAction, useDeleteSubjectAction } from "@/hooks/use-subjects";
 import { useNotesData, useCreateNoteAction, useUpdateNoteAction, useDeleteNoteAction } from "@/hooks/use-notes";
@@ -15,12 +15,14 @@ import { useToast } from "@/hooks/use-toast";
 const SUBJECT_COLORS = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#F43F5E', '#EAB308'];
 
 const HIGHLIGHT_COLORS = [
-  { hex: "#FEF08A", label: "Yellow" },
-  { hex: "#BBF7D0", label: "Green" },
-  { hex: "#BAE6FD", label: "Blue" },
-  { hex: "#FBCFE8", label: "Pink" },
-  { hex: "#FED7AA", label: "Orange" },
+  { hex: "rgba(250,204,21,0.55)",  label: "Yellow" },
+  { hex: "rgba(34,197,94,0.45)",   label: "Green"  },
+  { hex: "rgba(96,165,250,0.55)",  label: "Blue"   },
+  { hex: "rgba(236,72,153,0.45)",  label: "Pink"   },
+  { hex: "rgba(249,115,22,0.5)",   label: "Orange" },
 ];
+
+const HIGHLIGHT_SWATCHES = ["#FACC15", "#22C55E", "#60A5FA", "#EC4899", "#F97316"];
 
 const FORMAT_BUTTONS: { cmd: string; icon: React.ReactNode; title: string }[] = [
   { cmd: "bold",      icon: <Bold className="w-3.5 h-3.5" />,      title: "Bold" },
@@ -60,14 +62,14 @@ function FormatToolbar({ editorRef, onContentChange, compact }: FormatToolbarPro
 
       <span className="w-px h-4 bg-border/60 mx-1" />
 
-      {HIGHLIGHT_COLORS.map(({ hex, label }) => (
+      {HIGHLIGHT_COLORS.map(({ hex, label }, i) => (
         <button
-          key={hex}
+          key={label}
           type="button"
           title={`Highlight: ${label}`}
           onMouseDown={e => { e.preventDefault(); exec("hiliteColor", hex); }}
           className="w-5 h-5 rounded-full border-2 border-transparent hover:border-foreground/30 transition-all hover:scale-110"
-          style={{ backgroundColor: hex }}
+          style={{ backgroundColor: HIGHLIGHT_SWATCHES[i] }}
         />
       ))}
     </div>
@@ -104,6 +106,20 @@ export default function NotesPage() {
 
   const dialogEditorRef = useRef<HTMLDivElement | null>(null);
   const fullscreenEditorRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (noteOpen && !fullscreen && dialogEditorRef.current) {
+      dialogEditorRef.current.innerHTML = noteContent;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noteOpen, fullscreen, editingNoteId]);
+
+  useEffect(() => {
+    if (noteOpen && fullscreen && fullscreenEditorRef.current) {
+      fullscreenEditorRef.current.innerHTML = noteContent;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noteOpen, fullscreen, editingNoteId]);
 
   const handleCreateSubject = async () => {
     if (!newSubName.trim()) return;
@@ -481,16 +497,14 @@ export default function NotesPage() {
                 {/* Content */}
                 <div className="relative">
                   <div
-                    key={`fullscreen-${editingNoteId ?? "new"}`}
                     ref={fullscreenEditorRef}
                     contentEditable
                     suppressContentEditableWarning
-                    dangerouslySetInnerHTML={{ __html: noteContent }}
                     onInput={e => setNoteContent((e.currentTarget as HTMLDivElement).innerHTML)}
                     className="w-full min-h-[60vh] bg-transparent focus:outline-none text-base leading-8 text-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6"
                     style={{ fontFamily: "inherit" }}
                   />
-                  {(!noteContent || noteContent === "<br>") && (
+                  {!noteContent.replace(/<[^>]+>/g, "").trim() && (
                     <div className="absolute top-0 left-0 text-base leading-8 text-muted-foreground/40 pointer-events-none select-none">
                       Start writing your notes here…
                     </div>
@@ -581,15 +595,13 @@ export default function NotesPage() {
                 </div>
                 <div className="relative">
                   <div
-                    key={`dialog-${editingNoteId ?? "new"}`}
                     ref={dialogEditorRef}
                     contentEditable
                     suppressContentEditableWarning
-                    dangerouslySetInnerHTML={{ __html: noteContent }}
                     onInput={e => setNoteContent((e.currentTarget as HTMLDivElement).innerHTML)}
                     className="w-full min-h-[12rem] p-4 bg-transparent focus:outline-none text-sm leading-relaxed overflow-y-auto [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                   />
-                  {(!noteContent || noteContent === "<br>") && (
+                  {!noteContent.replace(/<[^>]+>/g, "").trim() && (
                     <div className="absolute top-4 left-4 text-sm text-muted-foreground/50 pointer-events-none select-none">
                       Write your study notes here. Include key concepts, definitions, examples and explanations…
                     </div>
