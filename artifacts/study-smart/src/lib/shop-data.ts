@@ -68,8 +68,9 @@ export function getItemDef(key: string | null | undefined): ShopItemDef | undefi
 }
 
 export function getBgStyle(key: string | null | undefined): string {
+  if (!key) return "";
   const item = getItemDef(key);
-  if (!item?.colors) return "linear-gradient(135deg, hsl(var(--primary)), #7c3aed, hsl(var(--accent)))";
+  if (!item?.colors) return "";
   return `linear-gradient(135deg, ${item.colors.join(", ")})`;
 }
 

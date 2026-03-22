@@ -227,16 +227,16 @@ export default function ProfilePage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden">
           {/* Equipped background banner */}
-          <div className="h-28 relative" style={{ background: bgStyle }}>
-            {equippedBg && (
+          {equippedBg && (
+            <div className="h-28 relative" style={{ background: bgStyle }}>
               <span className="absolute bottom-2 right-3 text-[10px] text-white/60 font-medium">
                 {getItemDef(equippedBg)?.name} background
               </span>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Avatar — overlaps banner */}
-          <div className="px-6 -mt-10 mb-3 flex items-end gap-4">
+          <div className={cn("px-6 mb-3 flex items-end gap-4", equippedBg ? "-mt-10" : "pt-5")}>
             <div className="relative shrink-0">
               <input
                 ref={fileInputRef}

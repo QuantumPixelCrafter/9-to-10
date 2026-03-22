@@ -89,8 +89,8 @@ export default function UserProfilePage() {
 
         {/* Profile card */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden">
-          <div className="h-24" style={{ background: bgStyle }} />
-          <div className="px-6 pb-6 -mt-10">
+          {bgStyle && <div className="h-24" style={{ background: bgStyle }} />}
+          <div className={cn("px-6 pb-6", bgStyle ? "-mt-10" : "pt-6")}>
             <div className="flex items-end gap-4 mb-4">
               {frameGrad ? (
                 <div className="rounded-2xl p-[3px] shadow-xl" style={{ background: frameGrad }}>
