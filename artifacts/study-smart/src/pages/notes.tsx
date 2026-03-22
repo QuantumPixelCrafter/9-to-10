@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, FolderPlus, Plus, Search, Trash2, Edit3, MoreVertical, Sparkles, Folder, AlertCircle, Maximize2, Minimize2, X, Save, Bold, Italic, Underline, Strikethrough, Code, List, Heading2, Quote } from "lucide-react";
+import { BookOpen, FolderPlus, Plus, Search, Trash2, Edit3, MoreVertical, Sparkles, Folder, AlertCircle, Maximize2, Minimize2, X, Save, Bold, Italic, Underline, List } from "lucide-react";
 import { QuizModal } from "@/components/quiz-modal";
 import { motion, AnimatePresence } from "framer-motion";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -14,18 +14,22 @@ import { useToast } from "@/hooks/use-toast";
 
 const SUBJECT_COLORS = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#F43F5E', '#EAB308'];
 
-type FormatType = "bold" | "italic" | "underline" | "strikethrough" | "code" | "heading" | "bullet" | "quote";
+type FormatType = "bold" | "italic" | "underline" | "bullet";
 
 const FORMAT_MARKERS: Record<FormatType, [string, string] | null> = {
   bold: ["**", "**"],
   italic: ["*", "*"],
   underline: ["<u>", "</u>"],
-  strikethrough: ["~~", "~~"],
-  code: ["`", "`"],
-  heading: null,
   bullet: null,
-  quote: null,
 };
+
+const HIGHLIGHT_COLORS = [
+  { hex: "#FEF08A", label: "Yellow" },
+  { hex: "#BBF7D0", label: "Green" },
+  { hex: "#BAE6FD", label: "Blue" },
+  { hex: "#FBCFE8", label: "Pink" },
+  { hex: "#FED7AA", label: "Orange" },
+];
 
 function applyFormat(
   format: FormatType,
@@ -50,8 +54,8 @@ function applyFormat(
     return { newValue, newSelStart: selStart + open.length, newSelEnd: selEnd + open.length };
   }
 
-  if (format === "heading" || format === "bullet" || format === "quote") {
-    const prefix = format === "heading" ? "## " : format === "bullet" ? "- " : "> ";
+  if (format === "bullet") {
+    const prefix = "- ";
     const lineStart = before.lastIndexOf("\n") + 1;
     const linePrefix = value.substring(lineStart, selStart);
     if (linePrefix.startsWith(prefix)) {
@@ -66,15 +70,40 @@ function applyFormat(
   return { newValue: value, newSelStart: selStart, newSelEnd: selEnd };
 }
 
+function applyHighlight(
+  color: string,
+  value: string,
+  selStart: number,
+  selEnd: number,
+): { newValue: string; newSelStart: number; newSelEnd: number } {
+  const selected = value.substring(selStart, selEnd);
+  const before = value.substring(0, selStart);
+  const after = value.substring(selEnd);
+  const open = `<mark style="background:${color}">`;
+  const close = `</mark>`;
+
+  if (before.endsWith(open) && after.startsWith(close)) {
+    const newValue = before.slice(0, -open.length) + selected + after.slice(close.length);
+    return { newValue, newSelStart: selStart - open.length, newSelEnd: selEnd - open.length };
+  }
+
+  const existingMarkRe = /^<mark style="background:#[0-9A-Fa-f]{6}">([\s\S]*?)<\/mark>$/;
+  const match = selected.match(existingMarkRe);
+  if (match) {
+    const inner = match[1];
+    const newValue = before + open + inner + close + after;
+    return { newValue, newSelStart: selStart + open.length, newSelEnd: selStart + open.length + inner.length };
+  }
+
+  const newValue = before + open + selected + close + after;
+  return { newValue, newSelStart: selStart + open.length, newSelEnd: selEnd + open.length };
+}
+
 const FORMAT_BUTTONS: { format: FormatType; icon: React.ReactNode; title: string }[] = [
   { format: "bold", icon: <Bold className="w-3.5 h-3.5" />, title: "Bold (**text**)" },
   { format: "italic", icon: <Italic className="w-3.5 h-3.5" />, title: "Italic (*text*)" },
   { format: "underline", icon: <Underline className="w-3.5 h-3.5" />, title: "Underline" },
-  { format: "strikethrough", icon: <Strikethrough className="w-3.5 h-3.5" />, title: "Strikethrough (~~text~~)" },
-  { format: "code", icon: <Code className="w-3.5 h-3.5" />, title: "Inline code" },
-  { format: "heading", icon: <Heading2 className="w-3.5 h-3.5" />, title: "Heading (## )" },
   { format: "bullet", icon: <List className="w-3.5 h-3.5" />, title: "Bullet list (- )" },
-  { format: "quote", icon: <Quote className="w-3.5 h-3.5" />, title: "Blockquote (> )" },
 ];
 
 interface FormatToolbarProps {
@@ -97,22 +126,43 @@ function FormatToolbar({ textareaRef, value, onChange, compact }: FormatToolbarP
     });
   };
 
-  const dividers: Set<number> = new Set([4, 5]);
+  const handleHighlight = (color: string) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const { selectionStart, selectionEnd } = el;
+    const { newValue, newSelStart, newSelEnd } = applyHighlight(color, value, selectionStart, selectionEnd);
+    onChange(newValue);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(newSelStart, newSelEnd);
+    });
+  };
 
   return (
     <div className={`flex items-center gap-0.5 flex-wrap ${compact ? "" : "bg-muted/40 border border-border/50 rounded-xl px-1.5 py-1"}`}>
-      {FORMAT_BUTTONS.map(({ format, icon, title }, i) => (
-        <span key={format} className="flex items-center">
-          {dividers.has(i) && <span className="w-px h-4 bg-border/60 mx-1" />}
-          <button
-            type="button"
-            title={title}
-            onMouseDown={e => { e.preventDefault(); handleFormat(format); }}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            {icon}
-          </button>
-        </span>
+      {FORMAT_BUTTONS.map(({ format, icon, title }) => (
+        <button
+          key={format}
+          type="button"
+          title={title}
+          onMouseDown={e => { e.preventDefault(); handleFormat(format); }}
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          {icon}
+        </button>
+      ))}
+
+      <span className="w-px h-4 bg-border/60 mx-1" />
+
+      {HIGHLIGHT_COLORS.map(({ hex, label }) => (
+        <button
+          key={hex}
+          type="button"
+          title={`Highlight: ${label}`}
+          onMouseDown={e => { e.preventDefault(); handleHighlight(hex); }}
+          className="w-5 h-5 rounded-full border-2 border-transparent hover:border-foreground/30 transition-all hover:scale-110"
+          style={{ backgroundColor: hex }}
+        />
       ))}
     </div>
   );
