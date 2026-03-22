@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Home, BookOpen, Calendar as CalendarIcon, 
-  Target, Clock, Smile, Menu,
+  Target, Clock, Smile, Menu, Flag,
   BrainCircuit, Sparkles, ChevronRight, Gamepad2, Trophy, User, LogOut, Medal, ShoppingBag, Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ const NAV_ITEMS = [
   { href: "/calendar", label: "Calendar", icon: CalendarIcon, color: "text-purple-500", bg: "bg-purple-500/10" },
   { href: "/mood", label: "Mood Check-in", icon: Smile, color: "text-pink-500", bg: "bg-pink-500/10" },
   { href: "/games", label: "Minigames", icon: Gamepad2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  { href: "/objectives", label: "Objectives", icon: Flag, color: "text-sky-500", bg: "bg-sky-500/10" },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy, color: "text-amber-500", bg: "bg-amber-500/10" },
   { href: "/achievements", label: "Achievements", icon: Medal, color: "text-yellow-500", bg: "bg-yellow-500/10" },
   { href: "/quiz", label: "AI Quiz", icon: Sparkles, color: "text-amber-500", bg: "bg-amber-500/10" },
