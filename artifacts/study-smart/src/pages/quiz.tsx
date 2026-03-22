@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, CheckCircle2, XCircle, ArrowRight, Trophy, Upload, RotateCcw, Sparkles, BookOpen } from "lucide-react";
 import {
   type LevelGroup, type QuizSubject, type QuizTopic, type Difficulty,
-  LEVEL_GROUP_INFO, LEVEL_TO_GROUP, LEVEL_LABELS,
+  LEVEL_GROUP_INFO, LEVEL_TO_GROUP, LEVEL_LABELS, LEVEL_GROUP_SECTIONS,
   getSubjectsForGroup, DIFFICULTY_LABELS,
 } from "@/lib/quiz-curriculum";
 
@@ -180,41 +180,43 @@ export default function QuizPage() {
                 <p className="text-muted-foreground max-w-md mx-auto">Select your education level to get started. Our AI will craft quiz questions tailored to your curriculum.</p>
               </div>
 
-              <div className="space-y-4">
-                {(["primary", "secondary", "university"] as LevelGroup[]).map(g => {
-                  const info = LEVEL_GROUP_INFO[g];
-                  return (
-                    <motion.button
-                      key={g}
-                      onClick={() => pickGroup(g)}
-                      whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-                      className="w-full text-left bg-card border border-border/60 rounded-3xl p-6 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 group"
-                    >
-                      <div className="flex items-start gap-5">
-                        <div className={cn("w-14 h-14 rounded-2xl bg-gradient-to-br flex items-center justify-center text-2xl shrink-0 shadow-lg", info.gradient)}>
-                          {info.emoji}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-lg font-bold group-hover:text-primary transition-colors">{info.label}</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">{info.description}</p>
-                          <div className="bg-muted/60 rounded-xl px-3 py-2 text-xs text-muted-foreground font-medium">
-                            <span className="font-bold text-foreground">Levels: </span>{info.levelDesc}
-                          </div>
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {info.levels.map(l => (
-                              <span key={l} className={cn(
-                                "text-[10px] font-bold px-2 py-0.5 rounded-full text-white bg-gradient-to-r", info.gradient
-                              )}>{l}</span>
-                            ))}
-                          </div>
-                        </div>
-                        <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-1" />
-                      </div>
-                    </motion.button>
-                  );
-                })}
+              <div className="space-y-6">
+                {LEVEL_GROUP_SECTIONS.map(section => (
+                  <div key={section.label}>
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 pl-1">{section.label}</p>
+                    <div className={cn("gap-3", section.groups.length > 1 ? "grid grid-cols-2" : "flex")}>
+                      {section.groups.map(g => {
+                        const info = LEVEL_GROUP_INFO[g];
+                        return (
+                          <motion.button
+                            key={g}
+                            onClick={() => pickGroup(g)}
+                            whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                            className="w-full text-left bg-card border border-border/60 rounded-2xl p-4 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 group"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={cn("w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center text-xl shrink-0 shadow-md", info.gradient)}>
+                                {info.emoji}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-bold group-hover:text-primary transition-colors leading-tight">{info.label}</h3>
+                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                  {info.levels.map(l => (
+                                    <span key={l} className={cn(
+                                      "text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white bg-gradient-to-r", info.gradient
+                                    )}>{l}</span>
+                                  ))}
+                                </div>
+                              </div>
+                              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-0.5" />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{info.description}</p>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </motion.div>
           )}
