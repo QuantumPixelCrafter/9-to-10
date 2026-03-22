@@ -318,7 +318,8 @@ export default function LeaderboardPage() {
                       <motion.div key={entry.id}
                         initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: idx * 0.02 }}
-                        className={cn("flex items-center gap-4 px-5 py-4 transition-colors", isMe ? "bg-primary/5" : "hover:bg-muted/30")}
+                        onClick={() => setLocation(`/users/${entry.userId}`)}
+                        className={cn("flex items-center gap-4 px-5 py-4 transition-colors cursor-pointer", isMe ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/30")}
                       >
                         <div className="w-8 flex items-center justify-center shrink-0">
                           <RankBadge rank={idx + 1} />

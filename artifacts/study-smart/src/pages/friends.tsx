@@ -65,7 +65,10 @@ function FriendListItem({
         <Avatar user={u} size="md" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <p className="font-semibold text-sm truncate">{u.displayName}</p>
+            <button
+              onClick={(e) => { e.stopPropagation(); onViewProfile(); }}
+              className="font-semibold text-sm truncate hover:underline hover:text-primary transition-colors text-left"
+            >{u.displayName}</button>
             {nametag && <span className="text-sm">{nametag.emoji}</span>}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
@@ -180,7 +183,10 @@ export default function FriendsPage() {
                       <div key={u.id} className="flex items-center gap-3 px-3 py-2.5">
                         <Avatar user={u} size="sm" />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1"><p className="font-semibold text-sm truncate">{u.displayName}</p>{nametag && <span>{nametag.emoji}</span>}</div>
+                          <div className="flex items-center gap-1">
+                          <button onClick={() => setLocation(`/users/${u.id}`)} className="font-semibold text-sm truncate hover:underline hover:text-primary transition-colors text-left">{u.displayName}</button>
+                          {nametag && <span>{nametag.emoji}</span>}
+                        </div>
                           <LevelBadge gameLevel={u.gameLevel} />
                         </div>
                         <div className="flex gap-1">
@@ -258,7 +264,7 @@ export default function FriendsPage() {
                 </button>
                 <Avatar user={selectedFriendUser} size="sm" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm truncate">{selectedFriendUser.displayName}</p>
+                  <button onClick={() => setLocation(`/users/${selectedFriendUser.id}`)} className="font-bold text-sm truncate hover:underline hover:text-primary transition-colors text-left">{selectedFriendUser.displayName}</button>
                   <LevelBadge gameLevel={selectedFriendUser.gameLevel} />
                 </div>
                 <button onClick={() => setLocation(`/users/${selectedFriendUser.id}`)} className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
