@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Layout } from "@/components/layout";
 import { useSubjectsData, useCreateSubjectAction, useDeleteSubjectAction } from "@/hooks/use-subjects";
 import { useNotesData, useCreateNoteAction, useUpdateNoteAction, useDeleteNoteAction } from "@/hooks/use-notes";
@@ -6,13 +6,117 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, FolderPlus, Plus, Search, Trash2, Edit3, MoreVertical, Sparkles, Folder, AlertCircle, Maximize2, Minimize2, X, Save } from "lucide-react";
+import { BookOpen, FolderPlus, Plus, Search, Trash2, Edit3, MoreVertical, Sparkles, Folder, AlertCircle, Maximize2, Minimize2, X, Save, Bold, Italic, Underline, Strikethrough, Code, List, Heading2, Quote } from "lucide-react";
 import { QuizModal } from "@/components/quiz-modal";
 import { motion, AnimatePresence } from "framer-motion";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 
 const SUBJECT_COLORS = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#F43F5E', '#EAB308'];
+
+type FormatType = "bold" | "italic" | "underline" | "strikethrough" | "code" | "heading" | "bullet" | "quote";
+
+const FORMAT_MARKERS: Record<FormatType, [string, string] | null> = {
+  bold: ["**", "**"],
+  italic: ["*", "*"],
+  underline: ["<u>", "</u>"],
+  strikethrough: ["~~", "~~"],
+  code: ["`", "`"],
+  heading: null,
+  bullet: null,
+  quote: null,
+};
+
+function applyFormat(
+  format: FormatType,
+  value: string,
+  selStart: number,
+  selEnd: number,
+): { newValue: string; newSelStart: number; newSelEnd: number } {
+  const selected = value.substring(selStart, selEnd);
+  const before = value.substring(0, selStart);
+  const after = value.substring(selEnd);
+
+  const markers = FORMAT_MARKERS[format];
+
+  if (markers) {
+    const [open, close] = markers;
+    const isWrapped = before.endsWith(open) && after.startsWith(close);
+    if (isWrapped) {
+      const newValue = before.slice(0, -open.length) + selected + after.slice(close.length);
+      return { newValue, newSelStart: selStart - open.length, newSelEnd: selEnd - open.length };
+    }
+    const newValue = before + open + selected + close + after;
+    return { newValue, newSelStart: selStart + open.length, newSelEnd: selEnd + open.length };
+  }
+
+  if (format === "heading" || format === "bullet" || format === "quote") {
+    const prefix = format === "heading" ? "## " : format === "bullet" ? "- " : "> ";
+    const lineStart = before.lastIndexOf("\n") + 1;
+    const linePrefix = value.substring(lineStart, selStart);
+    if (linePrefix.startsWith(prefix)) {
+      const newValue = value.substring(0, lineStart) + value.substring(lineStart + prefix.length);
+      const offset = -prefix.length;
+      return { newValue, newSelStart: selStart + offset, newSelEnd: selEnd + offset };
+    }
+    const newValue = value.substring(0, lineStart) + prefix + value.substring(lineStart);
+    return { newValue, newSelStart: selStart + prefix.length, newSelEnd: selEnd + prefix.length };
+  }
+
+  return { newValue: value, newSelStart: selStart, newSelEnd: selEnd };
+}
+
+const FORMAT_BUTTONS: { format: FormatType; icon: React.ReactNode; title: string }[] = [
+  { format: "bold", icon: <Bold className="w-3.5 h-3.5" />, title: "Bold (**text**)" },
+  { format: "italic", icon: <Italic className="w-3.5 h-3.5" />, title: "Italic (*text*)" },
+  { format: "underline", icon: <Underline className="w-3.5 h-3.5" />, title: "Underline" },
+  { format: "strikethrough", icon: <Strikethrough className="w-3.5 h-3.5" />, title: "Strikethrough (~~text~~)" },
+  { format: "code", icon: <Code className="w-3.5 h-3.5" />, title: "Inline code" },
+  { format: "heading", icon: <Heading2 className="w-3.5 h-3.5" />, title: "Heading (## )" },
+  { format: "bullet", icon: <List className="w-3.5 h-3.5" />, title: "Bullet list (- )" },
+  { format: "quote", icon: <Quote className="w-3.5 h-3.5" />, title: "Blockquote (> )" },
+];
+
+interface FormatToolbarProps {
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  value: string;
+  onChange: (val: string) => void;
+  compact?: boolean;
+}
+
+function FormatToolbar({ textareaRef, value, onChange, compact }: FormatToolbarProps) {
+  const handleFormat = (format: FormatType) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const { selectionStart, selectionEnd } = el;
+    const { newValue, newSelStart, newSelEnd } = applyFormat(format, value, selectionStart, selectionEnd);
+    onChange(newValue);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(newSelStart, newSelEnd);
+    });
+  };
+
+  const dividers: Set<number> = new Set([4, 5]);
+
+  return (
+    <div className={`flex items-center gap-0.5 flex-wrap ${compact ? "" : "bg-muted/40 border border-border/50 rounded-xl px-1.5 py-1"}`}>
+      {FORMAT_BUTTONS.map(({ format, icon, title }, i) => (
+        <span key={format} className="flex items-center">
+          {dividers.has(i) && <span className="w-px h-4 bg-border/60 mx-1" />}
+          <button
+            type="button"
+            title={title}
+            onMouseDown={e => { e.preventDefault(); handleFormat(format); }}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            {icon}
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export default function NotesPage() {
   const { toast } = useToast();
@@ -41,6 +145,9 @@ export default function NotesPage() {
   const [quizSubjectName, setQuizSubjectName] = useState<string>("");
   const [search, setSearch] = useState("");
   const [fullscreen, setFullscreen] = useState(false);
+
+  const dialogTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fullscreenTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const handleCreateSubject = async () => {
     if (!newSubName.trim()) return;
@@ -408,10 +515,16 @@ export default function NotesPage() {
                 />
 
                 {/* Divider */}
-                <div className="h-px bg-border/50 mb-8" />
+                <div className="h-px bg-border/50 mb-6" />
+
+                {/* Formatting toolbar */}
+                <div className="mb-4">
+                  <FormatToolbar textareaRef={fullscreenTextareaRef} value={noteContent} onChange={setNoteContent} compact />
+                </div>
 
                 {/* Content */}
                 <textarea
+                  ref={fullscreenTextareaRef}
                   value={noteContent}
                   onChange={e => setNoteContent(e.target.value)}
                   placeholder="Start writing your notes here…&#10;&#10;Include key concepts, definitions, examples and explanations for the best AI quiz results."
@@ -497,12 +610,18 @@ export default function NotesPage() {
                   — The more detail you write, the better your AI quiz will be!
                 </span>
               </label>
-              <textarea
-                value={noteContent}
-                onChange={e => setNoteContent(e.target.value)}
-                placeholder="Write your study notes here. Include key concepts, definitions, examples and explanations…"
-                className="w-full h-56 p-4 bg-muted/30 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 border border-border/50 text-sm leading-relaxed"
-              />
+              <div className="border border-border/50 rounded-2xl overflow-hidden bg-muted/30 focus-within:ring-2 focus-within:ring-primary/30">
+                <div className="px-3 pt-2.5 pb-1.5 border-b border-border/40">
+                  <FormatToolbar textareaRef={dialogTextareaRef} value={noteContent} onChange={setNoteContent} />
+                </div>
+                <textarea
+                  ref={dialogTextareaRef}
+                  value={noteContent}
+                  onChange={e => setNoteContent(e.target.value)}
+                  placeholder="Write your study notes here. Include key concepts, definitions, examples and explanations…"
+                  className="w-full h-48 p-4 bg-transparent resize-none focus:outline-none text-sm leading-relaxed"
+                />
+              </div>
             </div>
 
             <div className="flex justify-end gap-3">
