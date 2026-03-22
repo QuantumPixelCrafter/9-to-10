@@ -262,4 +262,21 @@ router.put("/auth/change-password", async (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
+router.delete("/auth/account", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const userId = req.user.id;
+
+  await db.delete(usersTable).where(eq(usersTable.id, userId));
+
+  const sid = getSessionId(req);
+  if (sid) await deleteSession(sid);
+  res.clearCookie(SESSION_COOKIE, { path: "/" });
+
+  res.json({ success: true });
+});
+
 export default router;

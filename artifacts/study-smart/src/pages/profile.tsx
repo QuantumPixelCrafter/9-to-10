@@ -6,7 +6,7 @@ import { useThemeMode } from "@/lib/theme-context";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Sun, Moon, Monitor, Languages, Globe, Globe2, Palette } from "lucide-react";
+import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Sun, Moon, Monitor, Languages, Globe, Globe2, Palette, Trash2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -91,6 +91,9 @@ export default function ProfilePage() {
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [appearanceTab, setAppearanceTab] = useState<"background" | "frame" | "tag">("background");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -195,6 +198,20 @@ export default function ProfilePage() {
       setConfirmPw("");
     } catch (err: any) {
       toast({ title: err?.message ?? "Failed to change password", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE") return;
+    setIsDeletingAccount(true);
+    try {
+      const res = await fetch("/api/auth/account", { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error("Failed to delete account");
+      await logout();
+      setLocation("/login");
+    } catch {
+      toast({ title: "Failed to delete account. Please try again.", variant: "destructive" });
+      setIsDeletingAccount(false);
     }
   };
 
@@ -868,6 +885,68 @@ export default function ProfilePage() {
             <p className="font-semibold text-sm mb-1">Tip: Earn points, customise your profile!</p>
             <p className="text-sm text-muted-foreground">Complete achievements to earn points, then visit the Shop to buy backgrounds, frames, and nametags for your profile.</p>
           </div>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 space-y-3">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <p className="font-semibold text-sm">Danger Zone</p>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Permanently delete your account and all associated data. Your name will be removed from the leaderboard.
+            This action cannot be undone.
+          </p>
+
+          {!showDeleteConfirm ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-destructive/40 text-destructive hover:bg-destructive hover:text-white gap-1.5 rounded-xl"
+              onClick={() => { setShowDeleteConfirm(true); setDeleteConfirmText(""); }}
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete My Account
+            </Button>
+          ) : (
+            <div className="space-y-3 pt-1">
+              <p className="text-xs text-muted-foreground font-medium">
+                Type <span className="font-mono font-bold text-destructive">DELETE</span> to confirm
+              </p>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                placeholder="Type DELETE here"
+                className="w-full rounded-xl border border-destructive/30 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-destructive/40 font-mono"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={deleteConfirmText !== "DELETE" || isDeletingAccount}
+                  onClick={handleDeleteAccount}
+                  className="bg-destructive hover:bg-destructive/90 text-white rounded-xl gap-1.5 flex-1"
+                >
+                  {isDeletingAccount ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  {isDeletingAccount ? "Deleting…" : "Permanently Delete"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); }}
+                  disabled={isDeletingAccount}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Layout>

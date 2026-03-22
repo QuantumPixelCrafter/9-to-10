@@ -346,11 +346,12 @@ export default function NotesPage() {
 
                         {/* Generate Quiz Button - clearly visible */}
                         <Button
-                          className="w-full rounded-xl bg-gradient-to-r from-primary to-primary/80 text-white hover:opacity-90 shadow-md shadow-primary/20 font-semibold"
+                          size="sm"
+                          className="w-full rounded-xl bg-gradient-to-r from-primary to-primary/80 text-white hover:opacity-90 shadow-md shadow-primary/20 font-semibold flex items-center justify-center gap-1.5 text-xs"
                           onClick={() => { setQuizNoteId(note.id); setQuizSubjectName(subjects.find(s => s.id === note.subjectId)?.name ?? ""); }}
                         >
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          Generate Quiz
+                          <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                          <span>Generate Quiz</span>
                         </Button>
                       </div>
                     </motion.div>
