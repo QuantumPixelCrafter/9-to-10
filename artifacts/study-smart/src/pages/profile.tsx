@@ -1,15 +1,16 @@
 import { useState, useRef } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useGetLeaderboard, useGetAchievements, useUploadProfilePicture, useUpdateName, useChangePassword, useUpdatePreferences } from "@workspace/api-client-react";
+import { useGetLeaderboard, useGetAchievements, useUploadProfilePicture, useUpdateName, useChangePassword, useUpdatePreferences, useGetShop, useEquipItem } from "@workspace/api-client-react";
+import type { ShopItem } from "@workspace/api-client-react";
 import { useThemeMode } from "@/lib/theme-context";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Sun, Moon, Monitor, Languages, Globe, Globe2 } from "lucide-react";
+import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Sun, Moon, Monitor, Languages, Globe, Globe2, Palette } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { getBgStyle, getFrameGradient, getItemDef } from "@/lib/shop-data";
+import { getBgStyle, getFrameGradient, getItemDef, getTitleStyle } from "@/lib/shop-data";
 
 const LEVELS = [
   { code: "P1", label: "P1", group: "Primary" },
@@ -61,14 +62,23 @@ function resizeImage(file: File, maxPx: number): Promise<string> {
   });
 }
 
+const APPEARANCE_TABS = [
+  { key: "background" as const, label: "Backdrop",  icon: "🖼️" },
+  { key: "frame"      as const, label: "Frame",     icon: "⭕" },
+  { key: "nametag"   as const, label: "Nametag",   icon: "🏷️" },
+  { key: "title"     as const, label: "Title",     icon: "👑" },
+];
+
 export default function ProfilePage() {
   const { user, logout, updateLevel } = useAuth();
   const { data: lb } = useGetLeaderboard();
   const { data: achData } = useGetAchievements();
+  const { data: shop } = useGetShop();
   const uploadPicMut = useUploadProfilePicture();
   const updateNameMut = useUpdateName();
   const changePasswordMut = useChangePassword();
   const updatePrefsMut = useUpdatePreferences();
+  const equipMut = useEquipItem();
   const { theme, setTheme } = useThemeMode();
   const [savingLevel, setSavingLevel] = useState(false);
   const [uploadingPic, setUploadingPic] = useState(false);
@@ -81,6 +91,7 @@ export default function ProfilePage() {
   const [confirmPw, setConfirmPw] = useState("");
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
+  const [appearanceTab, setAppearanceTab] = useState<"background" | "frame" | "nametag" | "title">("background");
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,9 +103,23 @@ export default function ProfilePage() {
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Anonymous";
   const initials = displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "?";
 
-  const bgStyle = getBgStyle(user?.equippedBackground);
-  const frameGrad = getFrameGradient(user?.equippedFrame);
-  const nametagDef = getItemDef(user?.equippedNametag);
+  const equippedBg = shop?.equipped.background ?? user?.equippedBackground ?? null;
+  const equippedFrame = shop?.equipped.frame ?? user?.equippedFrame ?? null;
+  const equippedNametag = shop?.equipped.nametag ?? user?.equippedNametag ?? null;
+  const equippedTitle = shop?.equipped.title ?? (user as any)?.equippedTitle ?? null;
+
+  const bgStyle = getBgStyle(equippedBg);
+  const frameGrad = getFrameGradient(equippedFrame);
+  const nametagDef = getItemDef(equippedNametag);
+  const titleDef = getItemDef(equippedTitle);
+
+  const handleEquipItem = (item: ShopItem) => {
+    const isEquipped = item.equipped;
+    equipMut.mutate({ itemKey: isEquipped ? "" : item.key, slot: item.type }, {
+      onSuccess: () => toast({ title: isEquipped ? `Unequipped "${item.name}"` : `Equipped "${item.name}"! ✨` }),
+      onError: () => toast({ title: "Failed to update", variant: "destructive" }),
+    });
+  };
 
   const myMemoryBest = lb?.memoryMatch?.filter(e => e.userId === user?.id).sort((a, b) => b.score - a.score)[0];
   const myBubbleBest = lb?.bubblePop?.filter(e => e.userId === user?.id).sort((a, b) => b.score - a.score)[0];
@@ -207,9 +232,9 @@ export default function ProfilePage() {
           className="bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden">
           {/* Equipped background banner */}
           <div className="h-28 relative" style={{ background: bgStyle }}>
-            {user?.equippedBackground && (
+            {equippedBg && (
               <span className="absolute bottom-2 right-3 text-[10px] text-white/60 font-medium">
-                {getItemDef(user.equippedBackground)?.name} background
+                {getItemDef(equippedBg)?.name} background
               </span>
             )}
           </div>
@@ -309,6 +334,14 @@ export default function ProfilePage() {
                         {nametagDef.emoji} {nametagDef.name}
                       </span>
                     )}
+                    {titleDef && (() => {
+                      const ts = getTitleStyle(titleDef.titleStyle);
+                      return (
+                        <span className={cn("inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full", ts.bg, ts.text)}>
+                          {titleDef.titleText}
+                        </span>
+                      );
+                    })()}
                   </div>
                   {user?.email && (
                     <p className="text-muted-foreground text-sm flex items-center gap-1.5 mt-1">
@@ -333,6 +366,149 @@ export default function ProfilePage() {
                 <LogOut className="w-4 h-4" /> Sign Out
               </Button>
             </div>
+          </div>
+        </motion.div>
+
+        {/* Appearance Customization */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}
+          className="bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden">
+          <div className="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-border/40">
+            <div className="w-9 h-9 rounded-xl bg-fuchsia-500/10 flex items-center justify-center">
+              <Palette className="w-5 h-5 text-fuchsia-500" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base">Appearance</h3>
+              <p className="text-xs text-muted-foreground">Equip cosmetics from your collection</p>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex border-b border-border/40">
+            {APPEARANCE_TABS.map(tab => (
+              <button key={tab.key} onClick={() => setAppearanceTab(tab.key)}
+                className={cn(
+                  "flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-bold transition-colors border-b-2",
+                  appearanceTab === tab.key
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}>
+                <span className="text-base">{tab.icon}</span>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Items grid */}
+          <div className="p-4">
+            {(() => {
+              const ownedItems = (shop?.items ?? []).filter(i => i.type === appearanceTab && i.owned);
+              if (!shop) {
+                return <div className="py-6 text-center text-sm text-muted-foreground">Loading…</div>;
+              }
+              if (ownedItems.length === 0) {
+                return (
+                  <div className="py-8 text-center">
+                    <p className="text-sm text-muted-foreground mb-3">You don't own any {APPEARANCE_TABS.find(t => t.key === appearanceTab)?.label.toLowerCase()}s yet.</p>
+                    <button onClick={() => setLocation("/shop")}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold bg-primary text-primary-foreground px-3 py-1.5 rounded-xl hover:bg-primary/90 transition-colors">
+                      <ShoppingBag className="w-3.5 h-3.5" /> Visit Shop
+                    </button>
+                  </div>
+                );
+              }
+
+              if (appearanceTab === "background") {
+                return (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {ownedItems.map(item => (
+                      <button key={item.key} onClick={() => handleEquipItem(item)} disabled={equipMut.isPending}
+                        className={cn(
+                          "relative rounded-xl overflow-hidden border-2 transition-all aspect-video",
+                          item.equipped ? "border-primary shadow-lg shadow-primary/20 scale-[1.02]" : "border-transparent hover:border-border"
+                        )}>
+                        <div className="w-full h-full" style={{ background: getBgStyle(item.key) }} />
+                        {item.equipped && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <Check className="w-5 h-5 text-white drop-shadow" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-1.5 py-0.5">
+                          <p className="text-[9px] font-bold text-white truncate">{item.name}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                );
+              }
+
+              if (appearanceTab === "frame") {
+                return (
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                    {ownedItems.map(item => {
+                      const grad = getFrameGradient(item.key);
+                      return (
+                        <button key={item.key} onClick={() => handleEquipItem(item)} disabled={equipMut.isPending}
+                          className={cn(
+                            "flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all",
+                            item.equipped ? "border-primary shadow-lg shadow-primary/20 bg-primary/5" : "border-transparent hover:border-border bg-muted/30"
+                          )}>
+                          <div className="rounded-xl p-[3px]" style={{ background: grad ?? "transparent" }}>
+                            <div className="w-9 h-9 rounded-[10px] bg-card flex items-center justify-center">
+                              {item.equipped ? <Check className="w-4 h-4 text-primary" /> : <User className="w-4 h-4 text-muted-foreground" />}
+                            </div>
+                          </div>
+                          <p className="text-[9px] font-semibold text-center leading-tight">{item.name}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
+              if (appearanceTab === "nametag") {
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {ownedItems.map(item => (
+                      <button key={item.key} onClick={() => handleEquipItem(item)} disabled={equipMut.isPending}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-sm font-bold transition-all",
+                          item.equipped
+                            ? "border-primary bg-primary/10 text-primary shadow-lg shadow-primary/20"
+                            : "border-border bg-muted/40 text-foreground hover:border-primary/40"
+                        )}>
+                        <span>{item.emoji}</span>
+                        {item.name}
+                        {item.equipped && <Check className="w-3 h-3" />}
+                      </button>
+                    ))}
+                  </div>
+                );
+              }
+
+              if (appearanceTab === "title") {
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {ownedItems.map(item => {
+                      const ts = getTitleStyle(item.titleStyle);
+                      return (
+                        <button key={item.key} onClick={() => handleEquipItem(item)} disabled={equipMut.isPending}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-sm font-bold transition-all",
+                            item.equipped
+                              ? "border-primary shadow-lg shadow-primary/20 scale-105"
+                              : "border-border hover:border-primary/40 opacity-80 hover:opacity-100"
+                          )}>
+                          <span className={cn("text-xs font-bold", ts.text)}>{item.titleText}</span>
+                          {item.equipped && <Check className="w-3 h-3 text-primary" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
           </div>
         </motion.div>
 
@@ -453,15 +629,16 @@ export default function ProfilePage() {
               <span className="font-bold text-sm">Shop</span>
             </div>
             <div className="space-y-1">
-              {user?.equippedBackground || user?.equippedFrame || user?.equippedNametag ? (
+              {equippedBg || equippedFrame || equippedNametag || equippedTitle ? (
                 <>
                   <p className="text-xs text-muted-foreground">Equipped:</p>
-                  {user.equippedBackground && <p className="text-[11px] font-medium">🖼️ {getItemDef(user.equippedBackground)?.name}</p>}
-                  {user.equippedFrame && <p className="text-[11px] font-medium">⭕ {getItemDef(user.equippedFrame)?.name} frame</p>}
-                  {user.equippedNametag && <p className="text-[11px] font-medium">{getItemDef(user.equippedNametag)?.emoji} {getItemDef(user.equippedNametag)?.name} tag</p>}
+                  {equippedBg && <p className="text-[11px] font-medium">🖼️ {getItemDef(equippedBg)?.name}</p>}
+                  {equippedFrame && <p className="text-[11px] font-medium">⭕ {getItemDef(equippedFrame)?.name} frame</p>}
+                  {equippedNametag && <p className="text-[11px] font-medium">{getItemDef(equippedNametag)?.emoji} {getItemDef(equippedNametag)?.name} tag</p>}
+                  {equippedTitle && <p className="text-[11px] font-medium">👑 {getItemDef(equippedTitle)?.name}</p>}
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground">Buy backgrounds, frames & nametags</p>
+                <p className="text-xs text-muted-foreground">Buy backgrounds, frames, nametags & titles</p>
               )}
             </div>
           </motion.button>
