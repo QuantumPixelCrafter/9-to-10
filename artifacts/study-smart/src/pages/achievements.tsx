@@ -8,9 +8,48 @@ import { Star, Lock, CheckCircle2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const PERIODIC_META = {
-  weekly:   { label: "Weekly",   color: "bg-sky-500/15 text-sky-600 dark:text-sky-400",      dot: "bg-sky-500" },
-  monthly:  { label: "Monthly",  color: "bg-violet-500/15 text-violet-600 dark:text-violet-400", dot: "bg-violet-500" },
-  seasonal: { label: "Seasonal", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
+  weekly:   { label: "Weekly",   color: "bg-sky-500/15 text-sky-600 dark:text-sky-400",         dot: "bg-sky-500",    ringColor: "ring-sky-400/30" },
+  monthly:  { label: "Monthly",  color: "bg-violet-500/15 text-violet-600 dark:text-violet-400", dot: "bg-violet-500", ringColor: "ring-violet-400/30" },
+  seasonal: { label: "Seasonal", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400",   dot: "bg-amber-500",  ringColor: "ring-amber-400/30" },
+};
+
+// ── Period end-date helpers ───────────────────────────────────────────────────
+
+function getWeekEnd(): Date {
+  const now = new Date();
+  const day = now.getDay(); // 0 = Sun
+  const daysUntilSunday = day === 0 ? 0 : 7 - day;
+  const end = new Date(now);
+  end.setDate(end.getDate() + daysUntilSunday);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
+function getMonthEnd(): Date {
+  const now = new Date();
+  // Day 0 of next month = last day of this month
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+}
+
+function getSeasonEnd(): Date {
+  const now = new Date();
+  const lastMonthOfQ = (Math.floor(now.getMonth() / 3) + 1) * 3; // 3, 6, 9, or 12
+  return new Date(now.getFullYear(), lastMonthOfQ, 0, 23, 59, 59, 999);
+}
+
+function daysUntil(date: Date): number {
+  const now = new Date();
+  return Math.max(0, Math.ceil((date.getTime() - now.getTime()) / 86400000));
+}
+
+function fmtDate(date: Date): string {
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+const PERIOD_ENDS = {
+  weekly:   getWeekEnd(),
+  monthly:  getMonthEnd(),
+  seasonal: getSeasonEnd(),
 };
 
 const CATEGORY_META: Record<string, { label: string; color: string; bg: string; gradient: string; border: string }> = {
@@ -115,15 +154,25 @@ export default function AchievementsPage() {
           </div>
         </motion.div>
 
-        {/* Legend for Challenges */}
-        <div className="flex items-center gap-3 px-1 flex-wrap">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Refreshes:</span>
-          {(Object.entries(PERIODIC_META) as [keyof typeof PERIODIC_META, typeof PERIODIC_META[keyof typeof PERIODIC_META]][]).map(([key, m]) => (
-            <span key={key} className={cn("flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full", m.color)}>
-              <span className={cn("w-1.5 h-1.5 rounded-full", m.dot)} />
-              {m.label}
-            </span>
-          ))}
+        {/* Period reset cards */}
+        <div className="grid grid-cols-3 gap-2">
+          {(Object.entries(PERIODIC_META) as [keyof typeof PERIODIC_META, typeof PERIODIC_META[keyof typeof PERIODIC_META]][]).map(([period, m]) => {
+            const end = PERIOD_ENDS[period];
+            const days = daysUntil(end);
+            const urgency = days === 0 ? "Ends today!" : days === 1 ? "1 day left" : `${days} days left`;
+            return (
+              <div key={period} className={cn("rounded-2xl border p-3 space-y-1 ring-1", m.color, m.ringColor, "bg-card border-border")}>
+                <div className="flex items-center gap-1.5">
+                  <span className={cn("w-2 h-2 rounded-full shrink-0", m.dot)} />
+                  <span className="text-[11px] font-bold uppercase tracking-wider">{m.label}</span>
+                </div>
+                <p className="text-xs font-semibold text-foreground">Ends {fmtDate(end)}</p>
+                <p className={cn("text-[10px] font-medium", days <= 2 ? "text-red-500 dark:text-red-400" : "text-muted-foreground")}>
+                  {urgency}
+                </p>
+              </div>
+            );
+          })}
         </div>
 
         {/* Achievement Index */}
@@ -165,10 +214,7 @@ export default function AchievementsPage() {
                     <span className={cn("text-xs font-bold px-2.5 py-1 rounded-full shrink-0", meta.bg, meta.color)}>
                       {meta.label}
                     </span>
-                    {cat === "challenges" && (
-                      <span className="text-[10px] text-muted-foreground font-medium shrink-0">resets weekly · monthly · seasonally</span>
-                    )}
-                    <div className="flex-1 h-px bg-border" />
+                      <div className="flex-1 h-px bg-border" />
                     <span className="text-xs text-muted-foreground font-semibold shrink-0">
                       {catEarned} / {catAchievements.length}
                     </span>
