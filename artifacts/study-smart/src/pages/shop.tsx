@@ -7,16 +7,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Star, ShoppingBag, Check, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getTitleStyle, getItemDef } from "@/lib/shop-data";
+import { getItemDef } from "@/lib/shop-data";
 
 const TYPE_TABS = [
   { key: "background", label: "Backgrounds", emoji: "🖼️", desc: "Profile card backdrop" },
   { key: "frame",      label: "Frames",       emoji: "⭕", desc: "Avatar ring border" },
   { key: "nametag",    label: "Nametags",     emoji: "🏷️", desc: "Emoji tag next to your name" },
-  { key: "title",      label: "Titles",       emoji: "👑", desc: "Text title under your name" },
 ] as const;
 
-type TabKey = "background" | "frame" | "nametag" | "title";
+type TabKey = "background" | "frame" | "nametag";
 
 function BackgroundPreview({ colors, size = "lg" }: { colors?: string[]; size?: "lg" | "sm" }) {
   if (!colors || colors.length === 0) return <div className={cn("rounded-xl bg-muted", size === "lg" ? "h-20 w-full" : "h-10 w-16 rounded-lg")} />;
@@ -47,20 +46,6 @@ function NametagPreview({ item }: { item: ShopItem }) {
   );
 }
 
-function TitlePreview({ item }: { item: ShopItem }) {
-  const def = getItemDef(item.key);
-  const style = getTitleStyle(def?.titleStyle);
-  const isGradientText = def?.titleStyle === "rainbow" || def?.titleStyle === "divine";
-  return (
-    <div className={cn("inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold", style.bg, !isGradientText && style.text)}>
-      {isGradientText ? (
-        <span className={cn("font-black", style.text)}>
-          {item.name}
-        </span>
-      ) : item.name}
-    </div>
-  );
-}
 
 export default function ShopPage() {
   const { toast } = useToast();
@@ -127,11 +112,10 @@ export default function ShopPage() {
             className="bg-card border border-border/50 rounded-2xl p-4"
           >
             <p className="text-xs font-bold text-muted-foreground mb-3 uppercase tracking-wider">Currently Equipped</p>
-            <div className="grid grid-cols-4 gap-3 text-center">
-              {(["background", "frame", "nametag", "title"] as const).map(slot => {
+            <div className="grid grid-cols-3 gap-3 text-center">
+              {(["background", "frame", "nametag"] as const).map(slot => {
                 const key = (shop.equipped as Record<string, string | null>)[slot];
                 const item = shop.items.find((i: ShopItem) => i.key === key);
-                const def = getItemDef(key);
                 return (
                   <div key={slot} className="space-y-1.5">
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase">{slot}</p>
@@ -140,11 +124,6 @@ export default function ShopPage() {
                         {slot === "background" && <BackgroundPreview colors={item.colors} size="sm" />}
                         {slot === "frame" && <FramePreview colors={item.colors} size="sm" />}
                         {slot === "nametag" && <span className="text-xl">{item.emoji}</span>}
-                        {slot === "title" && (
-                          <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", getTitleStyle(def?.titleStyle).bg, getTitleStyle(def?.titleStyle).text)}>
-                            {def?.titleText ?? item.name}
-                          </span>
-                        )}
                         <p className="text-[10px] font-medium text-muted-foreground truncate w-full">{item.name}</p>
                       </div>
                     ) : (
@@ -198,10 +177,7 @@ export default function ShopPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18 }}
-              className={cn(
-                "grid gap-4",
-                activeTab === "title" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2"
-              )}
+              className="grid gap-4 grid-cols-1 sm:grid-cols-2"
             >
               {items.map((item: ShopItem, i: number) => (
                 <motion.div
@@ -229,12 +205,6 @@ export default function ShopPage() {
                         <NametagPreview item={item} />
                       </div>
                     )}
-                    {item.type === "title" && (
-                      <div className="flex justify-center py-4">
-                        <TitlePreview item={item} />
-                      </div>
-                    )}
-
                     {/* Status badges */}
                     {item.equipped && (
                       <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">

@@ -1,4 +1,4 @@
-export type ShopItemType = "background" | "frame" | "nametag" | "title";
+export type ShopItemType = "background" | "frame" | "nametag";
 
 export interface ShopItem {
   key: string;
@@ -8,8 +8,6 @@ export interface ShopItem {
   description: string;
   emoji?: string;
   colors?: string[];
-  titleText?: string;
-  titleStyle?: string;
   developerOnly?: boolean;
 }
 
@@ -73,19 +71,6 @@ export const SHOP_ITEMS: ShopItem[] = [
   { key: "tag_celestial",  name: "Celestial",    type: "nametag", price: 10000, description: "Ultimate — only the truly chosen bear this mark", emoji: "✨" },
   { key: "tag_developer",  name: "Developer",    type: "nametag", price: 0,     description: "Reserved for the one who built this. That's you.", emoji: "🛠️", developerOnly: true },
 
-  // ── Titles ────────────────────────────────────────────────────────────────
-  { key: "title_student",     name: "The Student",     type: "title", price: 200,   description: "A humble beginning",           titleText: "The Student",     titleStyle: "default" },
-  { key: "title_scholar",     name: "The Scholar",     type: "title", price: 600,  description: "For dedicated learners",        titleText: "The Scholar",     titleStyle: "blue" },
-  { key: "title_nightowl",    name: "Night Owl",       type: "title", price: 800,  description: "Burns the midnight oil",        titleText: "Night Owl",       titleStyle: "purple" },
-  { key: "title_quizmaster",  name: "Quiz Master",     type: "title", price: 1200,  description: "Ace every single quiz",         titleText: "Quiz Master",     titleStyle: "amber" },
-  { key: "title_studybeast",  name: "Study Beast",     type: "title", price: 1200,  description: "Unstoppable study machine",     titleText: "Study Beast",     titleStyle: "green" },
-  { key: "title_topgun",      name: "Top Gun",         type: "title", price: 1600,  description: "Flying above the rest",         titleText: "Top Gun",         titleStyle: "red" },
-  { key: "title_sage",        name: "The Sage",        type: "title", price: 1600,  description: "Wise beyond their years",       titleText: "The Sage",        titleStyle: "teal" },
-  { key: "title_prodigy",     name: "Prodigy",         type: "title", price: 2000,  description: "Born with exceptional talent",  titleText: "Prodigy",         titleStyle: "pink" },
-  { key: "title_valedictorian", name: "Valedictorian", type: "title", price: 3200,  description: "Top of the entire class",       titleText: "Valedictorian",   titleStyle: "gold" },
-  { key: "title_legend",      name: "Legend",          type: "title", price: 4000, description: "The highest honour of all",     titleText: "Legend",          titleStyle: "rainbow" },
-  { key: "title_chosen",      name: "The Chosen One",  type: "title", price: 10000, description: "Ultimate — a title beyond legend itself", titleText: "The Chosen One",  titleStyle: "divine" },
-  { key: "title_developer",   name: "Developer",       type: "title", price: 0,     description: "The one who built it all. Respect.",       titleText: "Developer",       titleStyle: "developer", developerOnly: true },
 ];
 
 export function getItem(key: string): ShopItem | undefined {

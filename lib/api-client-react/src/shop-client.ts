@@ -4,14 +4,11 @@ import { customFetch } from "./custom-fetch";
 export interface ShopItem {
   key: string;
   name: string;
-  type: "background" | "frame" | "nametag" | "title";
+  type: "background" | "frame" | "nametag";
   price: number;
   description: string;
   colors?: string[];
   emoji?: string;
-  titleText?: string;
-  titleStyle?: string;
-  flashOnly?: boolean;
   owned: boolean;
   equipped: boolean;
 }
@@ -19,7 +16,7 @@ export interface ShopItem {
 export interface ShopResponse {
   items: ShopItem[];
   balance: number;
-  equipped: { background: string | null; frame: string | null; nametag: string | null; title: string | null };
+  equipped: { background: string | null; frame: string | null; nametag: string | null };
 }
 
 export const getShopQueryKey = () => ["shop"] as const;

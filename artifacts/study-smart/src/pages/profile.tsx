@@ -10,7 +10,7 @@ import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap,
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { getBgStyle, getFrameGradient, getItemDef, getTitleStyle } from "@/lib/shop-data";
+import { getBgStyle, getFrameGradient, getItemDef } from "@/lib/shop-data";
 
 const LEVELS = [
   { code: "P1", label: "P1", group: "Primary" },
@@ -105,12 +105,9 @@ export default function ProfilePage() {
   const equippedBg = shop?.equipped.background ?? user?.equippedBackground ?? null;
   const equippedFrame = shop?.equipped.frame ?? user?.equippedFrame ?? null;
   const equippedNametag = shop?.equipped.nametag ?? user?.equippedNametag ?? null;
-  const equippedTitle = shop?.equipped.title ?? (user as any)?.equippedTitle ?? null;
-
   const bgStyle = getBgStyle(equippedBg);
   const frameGrad = getFrameGradient(equippedFrame);
   const nametagDef = getItemDef(equippedNametag);
-  const titleDef = getItemDef(equippedTitle);
 
   const handleEquipItem = (item: ShopItem) => {
     const isEquipped = item.equipped;
@@ -333,14 +330,6 @@ export default function ProfilePage() {
                         {nametagDef.emoji} {nametagDef.name}
                       </span>
                     )}
-                    {titleDef && (() => {
-                      const ts = getTitleStyle(titleDef.titleStyle);
-                      return (
-                        <span className={cn("inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full", ts.bg, ts.text)}>
-                          {titleDef.titleText}
-                        </span>
-                      );
-                    })()}
                   </div>
                   {user?.email && (
                     <p className="text-muted-foreground text-sm flex items-center gap-1.5 mt-1">
@@ -472,60 +461,29 @@ export default function ProfilePage() {
 
               if (appearanceTab === "tag") {
                 const ownedNametags = shop.items.filter(i => i.type === "nametag" && i.owned);
-                const ownedTitles  = shop.items.filter(i => i.type === "title" && i.owned && !i.flashOnly);
-                const hasNone = ownedNametags.length === 0 && ownedTitles.length === 0;
-                if (hasNone) return (
+                if (ownedNametags.length === 0) return (
                   <div className="py-8 text-center">
-                    <p className="text-sm text-muted-foreground mb-3">You don't own any nametags or titles yet.</p>
+                    <p className="text-sm text-muted-foreground mb-3">You don't own any nametags yet.</p>
                     <button onClick={() => setLocation("/shop")} className="inline-flex items-center gap-1.5 text-xs font-bold bg-primary text-primary-foreground px-3 py-1.5 rounded-xl hover:bg-primary/90 transition-colors">
                       <ShoppingBag className="w-3.5 h-3.5" /> Visit Shop
                     </button>
                   </div>
                 );
                 return (
-                  <div className="space-y-4">
-                    {ownedNametags.length > 0 && (
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Nametags</p>
-                        <div className="flex flex-wrap gap-2">
-                          {ownedNametags.map(item => (
-                            <button key={item.key} onClick={() => handleEquipItem(item)} disabled={equipMut.isPending}
-                              className={cn(
-                                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-sm font-bold transition-all",
-                                item.equipped
-                                  ? "border-primary bg-primary/10 text-primary shadow-lg shadow-primary/20"
-                                  : "border-border bg-muted/40 text-foreground hover:border-primary/40"
-                              )}>
-                              <span>{item.emoji}</span>
-                              {item.name}
-                              {item.equipped && <Check className="w-3 h-3" />}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {ownedTitles.length > 0 && (
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Titles</p>
-                        <div className="flex flex-wrap gap-2">
-                          {ownedTitles.map(item => {
-                            const ts = getTitleStyle(item.titleStyle);
-                            return (
-                              <button key={item.key} onClick={() => handleEquipItem(item)} disabled={equipMut.isPending}
-                                className={cn(
-                                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 transition-all",
-                                  item.equipped
-                                    ? "border-primary shadow-lg shadow-primary/20"
-                                    : "border-border hover:border-primary/40 opacity-80 hover:opacity-100"
-                                )}>
-                                <span className={cn("text-xs font-bold", ts.text)}>{item.titleText}</span>
-                                {item.equipped && <Check className="w-3 h-3 text-primary" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+                  <div className="flex flex-wrap gap-2">
+                    {ownedNametags.map(item => (
+                      <button key={item.key} onClick={() => handleEquipItem(item)} disabled={equipMut.isPending}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-sm font-bold transition-all",
+                          item.equipped
+                            ? "border-primary bg-primary/10 text-primary shadow-lg shadow-primary/20"
+                            : "border-border bg-muted/40 text-foreground hover:border-primary/40"
+                        )}>
+                        <span>{item.emoji}</span>
+                        {item.name}
+                        {item.equipped && <Check className="w-3 h-3" />}
+                      </button>
+                    ))}
                   </div>
                 );
               }
@@ -652,16 +610,15 @@ export default function ProfilePage() {
               <span className="font-bold text-sm">Shop</span>
             </div>
             <div className="space-y-1">
-              {equippedBg || equippedFrame || equippedNametag || equippedTitle ? (
+              {equippedBg || equippedFrame || equippedNametag ? (
                 <>
                   <p className="text-xs text-muted-foreground">Equipped:</p>
                   {equippedBg && <p className="text-[11px] font-medium">🖼️ {getItemDef(equippedBg)?.name}</p>}
                   {equippedFrame && <p className="text-[11px] font-medium">⭕ {getItemDef(equippedFrame)?.name} frame</p>}
                   {equippedNametag && <p className="text-[11px] font-medium">{getItemDef(equippedNametag)?.emoji} {getItemDef(equippedNametag)?.name} tag</p>}
-                  {equippedTitle && <p className="text-[11px] font-medium">👑 {getItemDef(equippedTitle)?.name}</p>}
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground">Buy backgrounds, frames, nametags & titles</p>
+                <p className="text-xs text-muted-foreground">Buy backgrounds, frames & nametags</p>
               )}
             </div>
           </motion.button>
