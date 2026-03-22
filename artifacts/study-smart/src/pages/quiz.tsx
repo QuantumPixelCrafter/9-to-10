@@ -228,24 +228,6 @@ export default function QuizPage() {
                 <ChevronLeft className="w-4 h-4" /> Back
               </button>
 
-              {/* Level picker inside subject step */}
-              <div className="bg-card border border-border/60 rounded-2xl p-4 mb-5 shadow-sm">
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Your Level</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {groupInfo.levels.map(l => (
-                    <button key={l} onClick={() => setLevel(l)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border",
-                        level === l
-                          ? cn("text-white border-transparent bg-gradient-to-r shadow-md", groupInfo.gradient)
-                          : "bg-muted/60 text-muted-foreground border-transparent hover:bg-muted"
-                      )}>
-                      {l} <span className="text-[9px] font-normal opacity-70 ml-0.5">{LEVEL_LABELS[l]?.replace(groupInfo.short + " ", "")}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <h3 className="text-lg font-bold mb-4">Choose a Subject</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {subjects.map(s => (
