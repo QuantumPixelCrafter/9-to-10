@@ -115,6 +115,9 @@ export default function TimetablePage() {
 
   const handleSave = async () => {
     if (!subject) return;
+    const selectedDateStr = format(selectedDate, "yyyy-MM-dd");
+    const resolvedStart = startDate || selectedDateStr;
+    const resolvedEnd = endDate || startDate || selectedDateStr;
     try {
       await createMut.mutateAsync({
         data: {
@@ -125,8 +128,8 @@ export default function TimetablePage() {
           color,
           notificationEnabled: notify,
           eventType,
-          startDate: startDate || null,
-          endDate: endDate || null,
+          startDate: resolvedStart,
+          endDate: resolvedEnd,
         },
       });
       setOpen(false);
@@ -415,7 +418,7 @@ export default function TimetablePage() {
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Leave blank to repeat every {DAYS[day]} indefinitely.
+                Leave blank to add only for <span className="font-medium">{format(selectedDate, "MMM d, yyyy")}</span>. Set a range to repeat on multiple {DAYS[day]}s.
               </p>
             </div>
 
