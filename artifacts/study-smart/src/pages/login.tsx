@@ -11,7 +11,7 @@ import { Link } from "wouter";
 export default function LoginPage() {
   const { loginWithCredentials, authError, clearAuthError, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -25,7 +25,7 @@ export default function LoginPage() {
     clearAuthError();
     setLoading(true);
     try {
-      await loginWithCredentials(email, password);
+      await loginWithCredentials(username, password);
     } catch {
     } finally {
       setLoading(false);
@@ -69,15 +69,15 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email address</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); clearAuthError(); }}
+                id="username"
+                type="text"
+                placeholder="your_username"
+                value={username}
+                onChange={(e) => { setUsername(e.target.value); clearAuthError(); }}
                 required
-                autoComplete="email"
+                autoComplete="username"
                 className="rounded-xl h-11"
               />
             </div>

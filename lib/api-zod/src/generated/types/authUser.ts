@@ -9,6 +9,8 @@
 export interface AuthUser {
   id: string;
   /** @nullable */
+  username: string | null;
+  /** @nullable */
   email: string | null;
   /** @nullable */
   firstName: string | null;

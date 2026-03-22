@@ -43,7 +43,7 @@ export default function SignupPage() {
   const [, setLocation] = useLocation();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -71,7 +71,7 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      await register({ email, password, firstName: firstName || undefined, lastName: lastName || undefined });
+      await register({ username, password, firstName: firstName || undefined, lastName: lastName || undefined });
     } catch {
     } finally {
       setLoading(false);
@@ -143,17 +143,18 @@ export default function SignupPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email address</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); clearAuthError(); }}
+                id="username"
+                type="text"
+                placeholder="your_username"
+                value={username}
+                onChange={(e) => { setUsername(e.target.value.replace(/\s/g, "")); clearAuthError(); }}
                 required
-                autoComplete="email"
+                autoComplete="username"
                 className="rounded-xl h-11"
               />
+              <p className="text-xs text-muted-foreground">Letters, numbers, and underscores only. At least 3 characters.</p>
             </div>
 
             <div className="space-y-1.5">

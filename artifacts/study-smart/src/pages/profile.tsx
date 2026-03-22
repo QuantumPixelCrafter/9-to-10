@@ -6,7 +6,7 @@ import { useThemeMode } from "@/lib/theme-context";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, Mail, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Sun, Moon, Monitor, Languages, Globe, Globe2, Palette, Trash2, AlertTriangle } from "lucide-react";
+import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Sun, Moon, Monitor, Languages, Globe, Globe2, Palette, Trash2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -348,9 +348,9 @@ export default function ProfilePage() {
                       </span>
                     )}
                   </div>
-                  {user?.email && (
+                  {user?.username && (
                     <p className="text-muted-foreground text-sm flex items-center gap-1.5 mt-1">
-                      <Mail className="w-3.5 h-3.5" /> {user.email}
+                      <User className="w-3.5 h-3.5" /> @{user.username}
                     </p>
                   )}
                   {user?.level && (
@@ -680,11 +680,11 @@ export default function ProfilePage() {
               <span className="text-sm text-muted-foreground w-24">Display name</span>
               <span className="font-medium">{displayName}</span>
             </div>
-            {user?.email && (
+            {user?.username && (
               <div className="flex items-center gap-3 py-2.5 border-b border-border/40">
-                <Mail className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground w-24">Email</span>
-                <span className="font-medium">{user.email}</span>
+                <User className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground w-24">Username</span>
+                <span className="font-medium">@{user.username}</span>
               </div>
             )}
             <div className="flex items-center gap-3 py-2.5">

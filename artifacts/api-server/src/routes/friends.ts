@@ -12,7 +12,7 @@ function requireAuth(req: any, res: any): boolean {
   return true;
 }
 
-// Search users by name or email
+// Search users by name or username
 router.get("/friends/search", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
@@ -38,7 +38,7 @@ router.get("/friends/search", async (req, res) => {
         or(
           ilike(usersTable.firstName, `%${q}%`),
           ilike(usersTable.lastName, `%${q}%`),
-          ilike(usersTable.email, `%${q}%`)
+          ilike(usersTable.username, `%${q}%`)
         )
       )
     )

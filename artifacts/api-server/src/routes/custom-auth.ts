@@ -29,6 +29,7 @@ function setSessionCookie(res: Response, sid: string) {
 function buildSessionUser(user: typeof usersTable.$inferSelect) {
   return {
     id: user.id,
+    username: user.username,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
@@ -45,14 +46,18 @@ function buildSessionUser(user: typeof usersTable.$inferSelect) {
 }
 
 router.post("/auth/register", async (req: Request, res: Response) => {
-  const { email, password, firstName, lastName } = req.body;
+  const { username, password, firstName, lastName } = req.body;
 
-  if (!email || !password) {
-    res.status(400).json({ error: "Email and password are required." });
+  if (!username || !password) {
+    res.status(400).json({ error: "Username and password are required." });
     return;
   }
-  if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    res.status(400).json({ error: "Please enter a valid email address." });
+  if (typeof username !== "string" || username.trim().length < 3) {
+    res.status(400).json({ error: "Username must be at least 3 characters." });
+    return;
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) {
+    res.status(400).json({ error: "Username can only contain letters, numbers, and underscores." });
     return;
   }
   if (typeof password !== "string" || password.length < 6) {
@@ -63,11 +68,11 @@ router.post("/auth/register", async (req: Request, res: Response) => {
   const existing = await db
     .select({ id: usersTable.id })
     .from(usersTable)
-    .where(eq(usersTable.email, email.toLowerCase().trim()))
+    .where(eq(usersTable.username, username.toLowerCase().trim()))
     .limit(1);
 
   if (existing.length > 0) {
-    res.status(409).json({ error: "An account with this email already exists." });
+    res.status(409).json({ error: "This username is already taken." });
     return;
   }
 
@@ -76,7 +81,7 @@ router.post("/auth/register", async (req: Request, res: Response) => {
   const [user] = await db
     .insert(usersTable)
     .values({
-      email: email.toLowerCase().trim(),
+      username: username.toLowerCase().trim(),
       firstName: firstName?.trim() || null,
       lastName: lastName?.trim() || null,
       passwordHash,
@@ -90,27 +95,27 @@ router.post("/auth/register", async (req: Request, res: Response) => {
 });
 
 router.post("/auth/login", async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { username, password } = req.body;
 
-  if (!email || !password) {
-    res.status(400).json({ error: "Email and password are required." });
+  if (!username || !password) {
+    res.status(400).json({ error: "Username and password are required." });
     return;
   }
 
   const [user] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.email, email.toLowerCase().trim()))
+    .where(eq(usersTable.username, username.toLowerCase().trim()))
     .limit(1);
 
   if (!user || !user.passwordHash) {
-    res.status(401).json({ error: "Invalid email or password." });
+    res.status(401).json({ error: "Invalid username or password." });
     return;
   }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
-    res.status(401).json({ error: "Invalid email or password." });
+    res.status(401).json({ error: "Invalid username or password." });
     return;
   }
 

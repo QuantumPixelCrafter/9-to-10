@@ -109,7 +109,7 @@ export function Layout({ children, title, actions }: LayoutProps) {
               <UserAvatar size="sm" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{displayName}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email || "My Profile"}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.username ? `@${user.username}` : "My Profile"}</p>
               </div>
             </div>
           </Link>
@@ -163,7 +163,7 @@ export function Layout({ children, title, actions }: LayoutProps) {
                       <UserAvatar size="md" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm">{displayName}</p>
-                        <p className="text-xs text-muted-foreground">{user?.email || "View profile"}</p>
+                        <p className="text-xs text-muted-foreground">{user?.username ? `@${user.username}` : "View profile"}</p>
                       </div>
                     </div>
                   </SheetTrigger>
