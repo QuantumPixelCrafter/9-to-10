@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Layout } from "@/components/layout";
 import { useGetShop, usePurchaseItem, useEquipItem, type ShopItem } from "@workspace/api-client-react";
-import { useGetAchievements } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -50,13 +49,11 @@ function NametagPreview({ item }: { item: ShopItem }) {
 export default function ShopPage() {
   const { toast } = useToast();
   const { data: shop, isLoading } = useGetShop();
-  const { data: achData } = useGetAchievements();
   const purchaseMut = usePurchaseItem();
   const equipMut = useEquipItem();
   const [activeTab, setActiveTab] = useState<TabKey>("background");
 
   const balance = shop?.balance ?? 0;
-  const totalEarned = achData?.totalPoints ?? 0;
   const items = (shop?.items ?? []).filter((i: ShopItem) => i.type === activeTab);
   const activeTabMeta = TYPE_TABS.find(t => t.key === activeTab)!;
 
@@ -90,7 +87,6 @@ export default function ShopPage() {
                 <p className="text-4xl font-black">{balance.toLocaleString()}</p>
                 <p className="text-lg font-bold text-white/80">pts</p>
               </div>
-              <p className="text-white/70 text-xs mt-1">{totalEarned.toLocaleString()} earned total</p>
             </div>
             <div className="text-right">
               <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-3xl shadow-inner mb-1">
