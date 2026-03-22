@@ -4,6 +4,7 @@ import {
   useCreateSchedule,
   useUpdateSchedule,
   useDeleteSchedule,
+  useSkipScheduleDate,
   getListSchedulesQueryKey,
 } from "@workspace/api-client-react";
 
@@ -36,6 +37,17 @@ export function useUpdateScheduleAction() {
 export function useDeleteScheduleAction() {
   const queryClient = useQueryClient();
   return useDeleteSchedule({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListSchedulesQueryKey() });
+      },
+    },
+  });
+}
+
+export function useSkipScheduleDateAction() {
+  const queryClient = useQueryClient();
+  return useSkipScheduleDate({
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListSchedulesQueryKey() });

@@ -1,18 +1,39 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
-import { useSchedulesData } from "@/hooks/use-schedules";
+import { useSchedulesData, useDeleteScheduleAction, useSkipScheduleDateAction } from "@/hooks/use-schedules";
 import { useGoalsData } from "@/hooks/use-goals";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, parseISO, isSameDay } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Target, BookOpen } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ChevronLeft, ChevronRight, Target, BookOpen, Trash2, CalendarX, CalendarOff } from "lucide-react";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
+import type { Schedule } from "@workspace/api-client-react";
+
+function isScheduleActiveOnDate(schedule: Schedule, dateStr: string): boolean {
+  if (schedule.startDate && dateStr < schedule.startDate) return false;
+  if (schedule.endDate && dateStr > schedule.endDate) return false;
+  let deleted: string[] = [];
+  try { deleted = JSON.parse(schedule.deletedDates ?? "[]"); } catch { deleted = []; }
+  if (deleted.includes(dateStr)) return false;
+  return true;
+}
+
+interface DeleteDialogState {
+  schedule: Schedule;
+  dateStr: string;
+}
 
 export default function CalendarPage() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const { data: schedules = [] } = useSchedulesData();
   const { data: goals = [] } = useGoalsData();
+  const deleteMut = useDeleteScheduleAction();
+  const skipMut = useSkipScheduleDateAction();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState | null>(null);
 
   const daysInMonth = eachDayOfInterval({
     start: startOfMonth(currentDate),
@@ -27,6 +48,33 @@ export default function CalendarPage() {
 
   const handleDayClick = (day: Date) => {
     setLocation(`/timetable?date=${format(day, "yyyy-MM-dd")}`);
+  };
+
+  const handleDeleteChipClick = (e: React.MouseEvent, schedule: Schedule, day: Date) => {
+    e.stopPropagation();
+    setDeleteDialog({ schedule, dateStr: format(day, "yyyy-MM-dd") });
+  };
+
+  const handleSkipDay = async () => {
+    if (!deleteDialog) return;
+    try {
+      await skipMut.mutateAsync({ id: deleteDialog.schedule.id, date: deleteDialog.dateStr });
+      toast({ title: "Event removed for this day" });
+    } catch {
+      toast({ title: "Failed to remove event", variant: "destructive" });
+    }
+    setDeleteDialog(null);
+  };
+
+  const handleDeleteSeries = async () => {
+    if (!deleteDialog) return;
+    try {
+      await deleteMut.mutateAsync({ id: deleteDialog.schedule.id });
+      toast({ title: "Event series deleted" });
+    } catch {
+      toast({ title: "Failed to delete event", variant: "destructive" });
+    }
+    setDeleteDialog(null);
   };
 
   return (
@@ -67,8 +115,11 @@ export default function CalendarPage() {
             const isCurrentMonth = isSameMonth(day, currentDate);
             const isTdy = isToday(day);
             const dayOfWeek = day.getDay();
+            const dateStr = format(day, "yyyy-MM-dd");
 
-            const daySchedules = schedules.filter((s) => s.dayOfWeek === dayOfWeek);
+            const daySchedules = schedules.filter(
+              (s) => s.dayOfWeek === dayOfWeek && isScheduleActiveOnDate(s, dateStr)
+            );
             const dayGoals = goals.filter((g) => isSameDay(parseISO(g.deadline), day));
 
             return (
@@ -108,11 +159,18 @@ export default function CalendarPage() {
                   {daySchedules.slice(0, 2).map((s) => (
                     <div
                       key={s.id}
-                      className="text-[10px] md:text-xs font-medium px-1.5 py-0.5 rounded flex items-center gap-1 truncate"
+                      className="group/chip text-[10px] md:text-xs font-medium px-1.5 py-0.5 rounded flex items-center gap-1 truncate relative"
                       style={{ backgroundColor: `${s.color}18`, color: s.color }}
                     >
                       <BookOpen className="w-3 h-3 shrink-0 hidden md:block" />
-                      <span className="truncate">{s.subject}</span>
+                      <span className="truncate flex-1">{s.subject}</span>
+                      <button
+                        onClick={(e) => handleDeleteChipClick(e, s, day)}
+                        className="opacity-0 group-hover/chip:opacity-100 transition-opacity shrink-0 rounded hover:bg-black/10 p-0.5"
+                        title="Delete event"
+                      >
+                        <Trash2 className="w-2.5 h-2.5" />
+                      </button>
                     </div>
                   ))}
                   {daySchedules.length > 2 && (
@@ -125,9 +183,72 @@ export default function CalendarPage() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Tap any date to view that day's timetable
+          Tap any date to view that day's timetable · Hover events to delete
         </p>
       </div>
+
+      {/* Delete Dialog */}
+      <Dialog open={!!deleteDialog} onOpenChange={(open) => { if (!open) setDeleteDialog(null); }}>
+        <DialogContent className="sm:max-w-sm rounded-3xl border-0 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg">Remove Event</DialogTitle>
+          </DialogHeader>
+          {deleteDialog && (
+            <div className="space-y-4 py-2">
+              <div
+                className="rounded-2xl p-3 text-sm font-semibold"
+                style={{ backgroundColor: `${deleteDialog.schedule.color}15`, color: deleteDialog.schedule.color }}
+              >
+                {deleteDialog.schedule.subject}
+                <p className="text-xs font-normal mt-0.5 opacity-70">
+                  {deleteDialog.dateStr} · {deleteDialog.schedule.startTime}–{deleteDialog.schedule.endTime}
+                </p>
+              </div>
+
+              <p className="text-sm text-muted-foreground">How would you like to remove this event?</p>
+
+              <div className="space-y-2">
+                <button
+                  onClick={handleSkipDay}
+                  disabled={skipMut.isPending || deleteMut.isPending}
+                  className="w-full flex items-start gap-3 p-3 rounded-2xl border border-border hover:bg-muted/50 transition-colors text-left disabled:opacity-50"
+                >
+                  <div className="mt-0.5 p-1.5 rounded-lg bg-orange-500/10 shrink-0">
+                    <CalendarX className="w-4 h-4 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Skip this day only</p>
+                    <p className="text-xs text-muted-foreground">Remove only the <span className="font-medium">{deleteDialog.dateStr}</span> occurrence. The event still repeats on other weeks.</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleDeleteSeries}
+                  disabled={skipMut.isPending || deleteMut.isPending}
+                  className="w-full flex items-start gap-3 p-3 rounded-2xl border border-destructive/30 hover:bg-destructive/5 transition-colors text-left disabled:opacity-50"
+                >
+                  <div className="mt-0.5 p-1.5 rounded-lg bg-destructive/10 shrink-0">
+                    <CalendarOff className="w-4 h-4 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-destructive">Delete entire series</p>
+                    <p className="text-xs text-muted-foreground">Permanently remove this event from all dates
+                      {deleteDialog.schedule.startDate || deleteDialog.schedule.endDate
+                        ? ` (${deleteDialog.schedule.startDate ?? "…"} → ${deleteDialog.schedule.endDate ?? "…"})`
+                        : " indefinitely"}
+                      .
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              <Button variant="ghost" className="w-full rounded-xl" onClick={() => setDeleteDialog(null)}>
+                Cancel
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

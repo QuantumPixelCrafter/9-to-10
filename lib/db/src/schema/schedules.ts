@@ -11,6 +11,9 @@ export const schedulesTable = pgTable("schedules", {
   color: text("color").notNull().default("#6366f1"),
   notificationEnabled: boolean("notification_enabled").notNull().default(true),
   eventType: text("event_type").default("class"),
+  startDate: text("start_date"),
+  endDate: text("end_date"),
+  deletedDates: text("deleted_dates").default("[]"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

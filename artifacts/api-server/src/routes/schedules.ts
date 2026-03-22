@@ -6,6 +6,8 @@ import {
   UpdateScheduleBody,
   UpdateScheduleParams,
   DeleteScheduleParams,
+  SkipScheduleDateParams,
+  SkipScheduleDateBody,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -37,6 +39,40 @@ router.put("/schedules/:id", async (req, res) => {
     return;
   }
   res.json(schedule);
+});
+
+router.patch("/schedules/:id/skip-date", async (req, res) => {
+  const { id } = SkipScheduleDateParams.parse(req.params);
+  const { date } = SkipScheduleDateBody.parse(req.body);
+
+  const [existing] = await db
+    .select()
+    .from(schedulesTable)
+    .where(eq(schedulesTable.id, id));
+
+  if (!existing) {
+    res.status(404).json({ error: "Schedule not found" });
+    return;
+  }
+
+  let deletedDates: string[] = [];
+  try {
+    deletedDates = JSON.parse(existing.deletedDates ?? "[]");
+  } catch {
+    deletedDates = [];
+  }
+
+  if (!deletedDates.includes(date)) {
+    deletedDates.push(date);
+  }
+
+  const [updated] = await db
+    .update(schedulesTable)
+    .set({ deletedDates: JSON.stringify(deletedDates) })
+    .where(eq(schedulesTable.id, id))
+    .returning();
+
+  res.json(updated);
 });
 
 router.delete("/schedules/:id", async (req, res) => {

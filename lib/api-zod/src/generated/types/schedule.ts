@@ -18,5 +18,9 @@ export interface Schedule {
   endTime: string;
   color: string;
   notificationEnabled: boolean;
+  eventType?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  deletedDates?: string | null;
   createdAt: Date;
 }

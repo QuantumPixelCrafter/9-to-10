@@ -1971,6 +1971,80 @@ export const useDeleteSchedule = <
 };
 
 /**
+ * @summary Skip a schedule on a specific date (add to deletedDates)
+ */
+export const getSkipScheduleDateUrl = (id: number) => {
+  return `/api/schedules/${id}/skip-date`;
+};
+
+export const skipScheduleDate = async (
+  id: number,
+  skipScheduleDateBody: { date: string },
+  options?: RequestInit,
+): Promise<Schedule> => {
+  return customFetch<Schedule>(getSkipScheduleDateUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(skipScheduleDateBody),
+  });
+};
+
+export const getSkipScheduleDateMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof skipScheduleDate>>,
+    TError,
+    { id: number; date: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof skipScheduleDate>>,
+  TError,
+  { id: number; date: string },
+  TContext
+> => {
+  const { mutation: mutationOptions } = options ?? {};
+  const mutationKey = ["skipScheduleDate"];
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof skipScheduleDate>>,
+    { id: number; date: string }
+  > = ({ id, date }) => {
+    return skipScheduleDate(id, { date });
+  };
+
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export type SkipScheduleDateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof skipScheduleDate>>
+>;
+export type SkipScheduleDateMutationError = ErrorType<unknown>;
+
+export const useSkipScheduleDate = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof skipScheduleDate>>,
+    TError,
+    { id: number; date: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof skipScheduleDate>>,
+  TError,
+  { id: number; date: string },
+  TContext
+> => {
+  return useMutation(getSkipScheduleDateMutationOptions(options));
+};
+
+/**
  * @summary List all goals
  */
 export const getListGoalsUrl = () => {

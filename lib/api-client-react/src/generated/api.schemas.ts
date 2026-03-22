@@ -190,6 +190,9 @@ export interface Schedule {
   color: string;
   notificationEnabled: boolean;
   eventType?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  deletedDates?: string | null;
   createdAt: string;
 }
 
@@ -205,6 +208,8 @@ export interface CreateScheduleBody {
   color: string;
   notificationEnabled: boolean;
   eventType?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 export interface Goal {

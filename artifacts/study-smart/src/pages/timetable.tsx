@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { Layout } from "@/components/layout";
-import { useSchedulesData, useCreateScheduleAction, useDeleteScheduleAction } from "@/hooks/use-schedules";
+import {
+  useSchedulesData,
+  useCreateScheduleAction,
+  useDeleteScheduleAction,
+} from "@/hooks/use-schedules";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -11,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { format, addDays, subDays, isToday, parseISO } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import type { Schedule } from "@workspace/api-client-react";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const COLORS = ["#F97316", "#3B82F6", "#10B981", "#8B5CF6", "#F43F5E", "#06B6D4", "#F59E0B"];
@@ -37,6 +42,15 @@ function parseDateParam(search: string): Date {
   return new Date();
 }
 
+function isScheduleActiveOnDate(schedule: Schedule, dateStr: string): boolean {
+  if (schedule.startDate && dateStr < schedule.startDate) return false;
+  if (schedule.endDate && dateStr > schedule.endDate) return false;
+  let deleted: string[] = [];
+  try { deleted = JSON.parse(schedule.deletedDates ?? "[]"); } catch { deleted = []; }
+  if (deleted.includes(dateStr)) return false;
+  return true;
+}
+
 export default function TimetablePage() {
   const { toast } = useToast();
   const search = useSearch();
@@ -60,10 +74,13 @@ export default function TimetablePage() {
   const [color, setColor] = useState(COLORS[0]);
   const [notify, setNotify] = useState(true);
   const [eventType, setEventType] = useState("class");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
+  const selectedDateStr = format(selectedDate, "yyyy-MM-dd");
   const dayOfWeek = selectedDate.getDay();
   const daySchedules = schedules
-    .filter((s) => s.dayOfWeek === dayOfWeek)
+    .filter((s) => s.dayOfWeek === dayOfWeek && isScheduleActiveOnDate(s, selectedDateStr))
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   const goToDate = (date: Date) => {
@@ -78,6 +95,8 @@ export default function TimetablePage() {
     setColor(COLORS[0]);
     setNotify(true);
     setEventType("class");
+    setStartDate("");
+    setEndDate("");
     setOpen(true);
   };
 
@@ -98,7 +117,17 @@ export default function TimetablePage() {
     if (!subject) return;
     try {
       await createMut.mutateAsync({
-        data: { subject, dayOfWeek: day, startTime: start, endTime: end, color, notificationEnabled: notify, eventType },
+        data: {
+          subject,
+          dayOfWeek: day,
+          startTime: start,
+          endTime: end,
+          color,
+          notificationEnabled: notify,
+          eventType,
+          startDate: startDate || null,
+          endDate: endDate || null,
+        },
       });
       setOpen(false);
       toast({ title: "Event scheduled!" });
@@ -113,8 +142,15 @@ export default function TimetablePage() {
       const now = new Date();
       const currentDay = now.getDay();
       const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+      const todayStr = format(now, "yyyy-MM-dd");
       schedules.forEach((s) => {
-        if (s.notificationEnabled && s.dayOfWeek === currentDay && s.startTime === currentTime && now.getSeconds() === 0) {
+        if (
+          s.notificationEnabled &&
+          s.dayOfWeek === currentDay &&
+          s.startTime === currentTime &&
+          now.getSeconds() === 0 &&
+          isScheduleActiveOnDate(s, todayStr)
+        ) {
           new Notification("Reminder!", { body: `${getEventType(s.eventType).label}: ${s.subject}` });
         }
       });
@@ -235,6 +271,15 @@ export default function TimetablePage() {
                           <Clock className="w-4 h-4" />
                           {item.startTime} – {item.endTime}
                         </div>
+                        {(item.startDate || item.endDate) && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {item.startDate && item.endDate
+                              ? `${item.startDate} → ${item.endDate}`
+                              : item.startDate
+                              ? `From ${item.startDate}`
+                              : `Until ${item.endDate}`}
+                          </p>
+                        )}
                       </div>
 
                       {item.notificationEnabled && (
@@ -341,6 +386,37 @@ export default function TimetablePage() {
                   className="rounded-xl bg-muted/50 border-transparent focus-visible:bg-background"
                 />
               </div>
+            </div>
+
+            {/* Optional date range */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold block">Active Date Range <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">From</label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="rounded-xl bg-muted/50 border-transparent focus-visible:bg-background text-sm"
+                    style={{ colorScheme: "light dark" }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Until</label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate || undefined}
+                    className="rounded-xl bg-muted/50 border-transparent focus-visible:bg-background text-sm"
+                    style={{ colorScheme: "light dark" }}
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Leave blank to repeat every {DAYS[day]} indefinitely.
+              </p>
             </div>
 
             <div className="flex items-center justify-between bg-muted/30 p-3 rounded-xl border border-border/50">

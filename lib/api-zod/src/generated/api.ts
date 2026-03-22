@@ -325,6 +325,9 @@ export const ListSchedulesResponseItem = zod.object({
   color: zod.string(),
   notificationEnabled: zod.boolean(),
   eventType: zod.string().nullable().optional(),
+  startDate: zod.string().nullable().optional(),
+  endDate: zod.string().nullable().optional(),
+  deletedDates: zod.string().nullable().optional(),
   createdAt: zod.date(),
 });
 export const ListSchedulesResponse = zod.array(ListSchedulesResponseItem);
@@ -346,6 +349,8 @@ export const CreateScheduleBody = zod.object({
   color: zod.string(),
   notificationEnabled: zod.boolean(),
   eventType: zod.string().nullable().optional(),
+  startDate: zod.string().nullable().optional(),
+  endDate: zod.string().nullable().optional(),
 });
 
 /**
@@ -369,6 +374,8 @@ export const UpdateScheduleBody = zod.object({
   color: zod.string(),
   notificationEnabled: zod.boolean(),
   eventType: zod.string().nullable().optional(),
+  startDate: zod.string().nullable().optional(),
+  endDate: zod.string().nullable().optional(),
 });
 
 export const updateScheduleResponseDayOfWeekMin = 0;
@@ -386,6 +393,9 @@ export const UpdateScheduleResponse = zod.object({
   color: zod.string(),
   notificationEnabled: zod.boolean(),
   eventType: zod.string().nullable().optional(),
+  startDate: zod.string().nullable().optional(),
+  endDate: zod.string().nullable().optional(),
+  deletedDates: zod.string().nullable().optional(),
   createdAt: zod.date(),
 });
 
@@ -394,6 +404,17 @@ export const UpdateScheduleResponse = zod.object({
  */
 export const DeleteScheduleParams = zod.object({
   id: zod.coerce.number(),
+});
+
+/**
+ * @summary Skip a schedule on a specific date
+ */
+export const SkipScheduleDateParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SkipScheduleDateBody = zod.object({
+  date: zod.string(),
 });
 
 /**
