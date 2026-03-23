@@ -41,17 +41,18 @@ artifacts-monorepo/
 
 ## Features
 
-1. **Notes & Subjects** - Organize notes by subject folders, create/edit/delete notes
-2. **AI Quiz Generator** - Generate multiple-choice quizzes from notes (Easy/Normal/Difficult)
-3. **Weekly Timetable** - Schedule study sessions by day, browser push notifications
-4. **Goals** - Set goals with deadlines, descriptions, mark complete/incomplete
-5. **Calendar** - Monthly view with schedules and goal deadlines
-6. **Mood Check-in** - Daily mood tracking with history
+1. **Notes & Subjects** - Organize notes by subject folders, create/edit/delete notes; public account users can share notes publicly (AI-moderated via GPT)
+2. **Community Notes** - Publicly shared notes from public-account users, AI-verified for accuracy and appropriateness
+3. **AI Quiz Generator** - Generate multiple-choice quizzes from notes (Easy/Normal/Difficult)
+4. **Weekly Timetable** - Schedule study sessions by day, browser push notifications
+5. **Goals** - Set goals with deadlines, descriptions, mark complete/incomplete
+6. **Calendar** - Monthly view with schedules and goal deadlines
+7. **Mood Check-in** - Daily mood tracking with history
 
 ## Database Schema
 
 - `subjects` - Subject folders (name, color, icon)
-- `notes` - Study notes (title, content, subjectId, lastUsedAt)
+- `notes` - Study notes (title, content, subjectId, userId, isPublic, moderationStatus, moderationNote, lastUsedAt)
 - `schedules` - Study schedules (subject, dayOfWeek, startTime, endTime, color, notificationEnabled, eventType)
 - `goals` - Study goals (title, description, deadline, completed)
 - `moods` - Mood check-ins (mood enum, note, createdAt)
@@ -63,7 +64,10 @@ artifacts-monorepo/
 - `GET/POST /subjects` — list/create subjects
 - `PUT/DELETE /subjects/:id` — update/delete subject
 - `GET/POST /notes` — list/create notes (optional ?subjectId query)
+- `GET /notes/community` — list all AI-approved public community notes
 - `GET/PUT/DELETE /notes/:id` — get/update/delete note
+- `POST /notes/:id/publish` — submit note for AI moderation (public accounts only)
+- `DELETE /notes/:id/unpublish` — remove note from public community
 - `POST /notes/:id/quiz` — AI quiz generation {difficulty, questionCount}
 - `GET/POST /schedules` — list/create schedules
 - `PUT/DELETE /schedules/:id` — update/delete schedule

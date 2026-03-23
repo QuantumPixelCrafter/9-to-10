@@ -1,16 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { Layout } from "@/components/layout";
 import { useSubjectsData, useCreateSubjectAction, useDeleteSubjectAction } from "@/hooks/use-subjects";
-import { useNotesData, useCreateNoteAction, useUpdateNoteAction, useDeleteNoteAction } from "@/hooks/use-notes";
+import { useNotesData, useCreateNoteAction, useUpdateNoteAction, useDeleteNoteAction, useCommunityNotesData, usePublishNoteAction, useUnpublishNoteAction } from "@/hooks/use-notes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, FolderPlus, Plus, Search, Trash2, Edit3, MoreVertical, Sparkles, Folder, AlertCircle, Maximize2, Minimize2, X, Save, Bold, Italic, Underline, List } from "lucide-react";
+import { BookOpen, FolderPlus, Plus, Search, Trash2, Edit3, MoreVertical, Sparkles, Folder, AlertCircle, Maximize2, Minimize2, X, Save, Bold, Italic, Underline, List, Globe2, EyeOff, Clock, CheckCircle2, Users } from "lucide-react";
 import { QuizModal } from "@/components/quiz-modal";
 import { motion, AnimatePresence } from "framer-motion";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@workspace/replit-auth-web";
 
 const SUBJECT_COLORS = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#F43F5E', '#EAB308'];
 
@@ -78,16 +79,23 @@ function FormatToolbar({ editorRef, onContentChange, compact }: FormatToolbarPro
 
 export default function NotesPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isPublicAccount = (user as any)?.isPublic === true;
+
   const { data: subjects = [], isLoading: loadingSubjects } = useSubjectsData();
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
+  const [notesTab, setNotesTab] = useState<"my" | "community">("my");
 
   const { data: notes = [], isLoading: loadingNotes } = useNotesData(selectedSubjectId ?? undefined);
+  const { data: communityNotes = [], isLoading: loadingCommunity } = useCommunityNotesData();
 
   const createSubMut = useCreateSubjectAction();
   const delSubMut = useDeleteSubjectAction();
   const createNoteMut = useCreateNoteAction();
   const updateNoteMut = useUpdateNoteAction();
   const delNoteMut = useDeleteNoteAction();
+  const publishNoteMut = usePublishNoteAction();
+  const unpublishNoteMut = useUnpublishNoteAction();
 
   const [newSubOpen, setNewSubOpen] = useState(false);
   const [newSubName, setNewSubName] = useState("");
@@ -177,6 +185,24 @@ export default function NotesPage() {
 
   const filteredNotes = notes.filter(n => n.title.toLowerCase().includes(search.toLowerCase()));
 
+  const handlePublish = async (noteId: number) => {
+    try {
+      const result = await publishNoteMut.mutateAsync(noteId);
+      toast({ title: "Note submitted for review", description: result.message });
+    } catch {
+      toast({ title: "Could not submit note", variant: "destructive" });
+    }
+  };
+
+  const handleUnpublish = async (noteId: number) => {
+    try {
+      await unpublishNoteMut.mutateAsync(noteId);
+      toast({ title: "Note unpublished" });
+    } catch {
+      toast({ title: "Could not unpublish note", variant: "destructive" });
+    }
+  };
+
   return (
     <Layout
       title="Notes & Subjects"
@@ -243,25 +269,94 @@ export default function NotesPage() {
 
         {/* Notes Area */}
         <div className="flex-1 bg-card rounded-3xl border border-border/50 shadow-sm flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-border/50 flex items-center gap-4 bg-muted/20">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search notes..."
-                className="pl-9 bg-background border-border/50 rounded-xl"
-              />
+          <div className="p-4 border-b border-border/50 bg-muted/20 space-y-3">
+            {/* Tab switcher */}
+            <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-fit">
+              <button
+                onClick={() => setNotesTab("my")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${notesTab === "my" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <BookOpen className="w-3.5 h-3.5" /> My Notes
+              </button>
+              <button
+                onClick={() => setNotesTab("community")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${notesTab === "community" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <Users className="w-3.5 h-3.5" /> Community
+                {communityNotes.length > 0 && (
+                  <span className="bg-primary/20 text-primary rounded-full px-1.5 text-[10px]">{communityNotes.length}</span>
+                )}
+              </button>
             </div>
-            {selectedSubjectId && (
-              <span className="text-sm font-medium px-3 py-1 bg-primary/10 text-primary rounded-full shrink-0">
-                {subjects.find(s => s.id === selectedSubjectId)?.name}
-              </span>
+            {notesTab === "my" && (
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Search notes..."
+                    className="pl-9 bg-background border-border/50 rounded-xl"
+                  />
+                </div>
+                {selectedSubjectId && (
+                  <span className="text-sm font-medium px-3 py-1 bg-primary/10 text-primary rounded-full shrink-0">
+                    {subjects.find(s => s.id === selectedSubjectId)?.name}
+                  </span>
+                )}
+              </div>
             )}
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 md:p-6">
-            {subjects.length === 0 && !loadingSubjects ? (
+            {notesTab === "community" ? (
+              loadingCommunity ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3].map(i => <div key={i} className="h-52 bg-muted animate-pulse rounded-2xl" />)}
+                </div>
+              ) : communityNotes.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                  <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                    <Globe2 className="w-8 h-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">No community notes yet</h3>
+                  <p className="text-muted-foreground max-w-sm">
+                    {isPublicAccount
+                      ? "Be the first to share a note! Open any note's menu and click \"Share Publicly\"."
+                      : "Community notes are shared by users with public accounts. Check back later!"}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-max">
+                  {communityNotes.map((note: any) => (
+                    <div
+                      key={note.id}
+                      className="bg-background rounded-2xl border border-border/60 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex flex-col overflow-hidden"
+                    >
+                      <div className="h-1.5 w-full bg-emerald-500" />
+                      <div className="p-5 flex flex-col flex-1">
+                        <div className="flex items-start gap-2 mb-2">
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1 block">
+                              {note.subjectName ?? "General"} · {note.authorName}
+                            </span>
+                            <h4 className="font-bold text-base leading-snug truncate">{note.title}</h4>
+                          </div>
+                          <div className="flex items-center gap-1 text-[10px] text-emerald-600 font-semibold shrink-0 mt-0.5">
+                            <CheckCircle2 className="w-3 h-3" /> AI Verified
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-4 leading-relaxed flex-1">
+                          {note.content
+                            ? note.content.replace(/<[^>]*>/g, " ").trim() || <span className="italic opacity-60">No content</span>
+                            : <span className="italic opacity-60">No content yet</span>}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : subjects.length === 0 && !loadingSubjects ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-8">
                 <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 mx-auto">
                   <Folder className="w-8 h-8 text-primary" />
@@ -294,7 +389,7 @@ export default function NotesPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-max">
                 <AnimatePresence>
-                  {filteredNotes.map((note) => (
+                  {filteredNotes.map((note: any) => (
                     <motion.div
                       layout
                       initial={{ opacity: 0, scale: 0.95 }}
@@ -330,6 +425,29 @@ export default function NotesPage() {
                               <DropdownMenuItem onClick={() => openEditNote(note)} className="gap-2 cursor-pointer">
                                 <Edit3 className="w-4 h-4" /> Edit
                               </DropdownMenuItem>
+                              {isPublicAccount && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  {note.isPublic ? (
+                                    <DropdownMenuItem
+                                      onClick={() => handleUnpublish(note.id)}
+                                      className="gap-2 cursor-pointer"
+                                      disabled={unpublishNoteMut.isPending}
+                                    >
+                                      <EyeOff className="w-4 h-4" /> Unpublish
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem
+                                      onClick={() => handlePublish(note.id)}
+                                      className="gap-2 cursor-pointer text-emerald-600 focus:text-emerald-600"
+                                      disabled={publishNoteMut.isPending}
+                                    >
+                                      <Globe2 className="w-4 h-4" /> Share Publicly
+                                    </DropdownMenuItem>
+                                  )}
+                                </>
+                              )}
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => delNoteMut.mutate({ id: note.id })}
                                 className="text-destructive gap-2 cursor-pointer focus:text-destructive"
@@ -339,6 +457,27 @@ export default function NotesPage() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
+
+                        {/* Moderation status badge */}
+                        {note.isPublic && (
+                          <div className="mb-2">
+                            {note.moderationStatus === "pending" && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-full">
+                                <Clock className="w-2.5 h-2.5" /> Pending review
+                              </span>
+                            )}
+                            {note.moderationStatus === "approved" && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full">
+                                <CheckCircle2 className="w-2.5 h-2.5" /> Public · AI Verified
+                              </span>
+                            )}
+                            {note.moderationStatus === "rejected" && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/30 px-2 py-0.5 rounded-full" title={note.moderationNote ?? ""}>
+                                <AlertCircle className="w-2.5 h-2.5" /> Not approved
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed flex-1 mb-4">
                           {note.content || <span className="italic opacity-60">No content yet</span>}

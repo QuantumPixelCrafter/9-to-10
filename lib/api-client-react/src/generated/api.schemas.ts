@@ -25,6 +25,9 @@ export interface AuthUser {
   equippedNametag?: string | null;
   equippedTitle?: string | null;
   isPublic?: boolean;
+  showNameOnLeaderboard?: boolean;
+  showNameInSearch?: boolean;
+  allowProfileView?: boolean;
 }
 
 export interface AuthUserEnvelope {

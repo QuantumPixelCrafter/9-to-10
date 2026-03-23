@@ -7,6 +7,7 @@ import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Sun, Moon, Monitor, Languages, Globe, Globe2, Palette, Trash2, AlertTriangle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -765,6 +766,47 @@ export default function ProfilePage() {
               })}
             </div>
           </div>
+
+          {/* Private Account Fine-grained Settings */}
+          {(user as any)?.isPublic === false && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Privacy Preferences</p>
+              <div className="space-y-2">
+                {([
+                  {
+                    key: "showNameOnLeaderboard" as const,
+                    label: "Show name on leaderboard",
+                    sub: "Others see your display name instead of just your username",
+                  },
+                  {
+                    key: "showNameInSearch" as const,
+                    label: "Show name in friend search",
+                    sub: "Others see your display name when searching for friends",
+                  },
+                  {
+                    key: "allowProfileView" as const,
+                    label: "Allow profile view from leaderboard",
+                    sub: "Others can click your name in the leaderboard to view your profile",
+                  },
+                ]).map(({ key, label, sub }) => (
+                  <div key={key} className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-xl bg-muted/30">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium leading-snug">{label}</p>
+                      <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{sub}</p>
+                    </div>
+                    <Switch
+                      checked={((user as any)?.[key] ?? true) as boolean}
+                      onCheckedChange={async (v) => {
+                        await updatePrefsMut.mutateAsync({ [key]: v });
+                      }}
+                      disabled={updatePrefsMut.isPending}
+                      className="shrink-0"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* Change Password */}

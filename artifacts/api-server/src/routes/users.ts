@@ -28,6 +28,7 @@ router.get("/users/:userId", async (req, res) => {
       equippedFrame: usersTable.equippedFrame,
       equippedNametag: usersTable.equippedNametag,
       isPublic: usersTable.isPublic,
+      allowProfileView: usersTable.allowProfileView,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
@@ -39,7 +40,9 @@ router.get("/users/:userId", async (req, res) => {
     return;
   }
 
-  if (user.isPublic === false && user.id !== req.user.id) {
+  const isOwnProfile = user.id === req.user.id;
+  const canView = user.isPublic !== false || isOwnProfile || user.allowProfileView !== false;
+  if (!canView) {
     res.status(403).json({ error: "This profile is private." });
     return;
   }
@@ -125,6 +128,7 @@ router.get("/users", async (req, res) => {
       xp: usersTable.xp,
       equippedNametag: usersTable.equippedNametag,
       isPublic: usersTable.isPublic,
+      showNameInSearch: usersTable.showNameInSearch,
     })
     .from(usersTable)
     .orderBy(usersTable.gameLevel);
@@ -132,10 +136,14 @@ router.get("/users", async (req, res) => {
   res.json(
     users
       .filter(u => u.isPublic !== false || u.id === req.user.id)
-      .map(u => ({
-        ...u,
-        displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || "Anonymous",
-      }))
+      .map(u => {
+        const showName = u.showNameInSearch !== false || u.id === req.user.id;
+        const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ");
+        return {
+          ...u,
+          displayName: showName ? (fullName || u.username || "Anonymous") : (u.username || "Anonymous"),
+        };
+      })
   );
 });
 

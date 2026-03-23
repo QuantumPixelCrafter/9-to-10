@@ -42,6 +42,9 @@ function buildSessionUser(user: typeof usersTable.$inferSelect) {
     xp: user.xp ?? 0,
     gameLevel: user.gameLevel ?? 1,
     isPublic: user.isPublic ?? true,
+    showNameOnLeaderboard: user.showNameOnLeaderboard ?? true,
+    showNameInSearch: user.showNameInSearch ?? true,
+    allowProfileView: user.allowProfileView ?? true,
   };
 }
 
@@ -136,7 +139,7 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
     return;
   }
 
-  const { level, firstName, lastName, isPublic } = req.body;
+  const { level, firstName, lastName, isPublic, showNameOnLeaderboard, showNameInSearch, allowProfileView } = req.body;
   const validLevels = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
 
   if (isPublic !== undefined && typeof isPublic !== "boolean") {
@@ -159,6 +162,9 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
   if (firstName !== undefined) updates.firstName = firstName.trim();
   if (lastName !== undefined) updates.lastName = lastName?.trim() || null;
   if (isPublic !== undefined) updates.isPublic = isPublic;
+  if (showNameOnLeaderboard !== undefined && typeof showNameOnLeaderboard === "boolean") updates.showNameOnLeaderboard = showNameOnLeaderboard;
+  if (showNameInSearch !== undefined && typeof showNameInSearch === "boolean") updates.showNameInSearch = showNameInSearch;
+  if (allowProfileView !== undefined && typeof allowProfileView === "boolean") updates.allowProfileView = allowProfileView;
 
   const [updated] = await db
     .update(usersTable)

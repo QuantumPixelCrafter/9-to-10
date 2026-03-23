@@ -31,6 +31,9 @@ export const usersTable = pgTable("users", {
   gameLevel: integer("game_level").notNull().default(1),
   bonusPoints: integer("bonus_points").notNull().default(0),
   isPublic: boolean("is_public").notNull().default(true),
+  showNameOnLeaderboard: boolean("show_name_on_leaderboard").notNull().default(true),
+  showNameInSearch: boolean("show_name_in_search").notNull().default(true),
+  allowProfileView: boolean("allow_profile_view").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

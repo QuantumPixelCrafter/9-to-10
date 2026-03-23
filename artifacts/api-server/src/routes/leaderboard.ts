@@ -80,6 +80,9 @@ async function buildScoreBoard(
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
       profileImageUrl: usersTable.profileImageUrl,
+      showNameOnLeaderboard: usersTable.showNameOnLeaderboard,
+      isPublic: usersTable.isPublic,
+      allowProfileView: usersTable.allowProfileView,
     })
     .from(scoresTable)
     .leftJoin(usersTable, eq(scoresTable.userId, usersTable.id))
@@ -90,21 +93,31 @@ async function buildScoreBoard(
       usersTable.firstName,
       usersTable.lastName,
       usersTable.profileImageUrl,
+      usersTable.showNameOnLeaderboard,
+      usersTable.isPublic,
+      usersTable.allowProfileView,
     )
     .orderBy(desc(sql<number>`max(${scoresTable.score})`))
     .limit(50);
 
-  return rows.map((row, i) => ({
-    id: i + 1,
-    userId: row.userId,
-    displayName: [row.firstName, row.lastName].filter(Boolean).join(" ") || row.username || "Anonymous",
-    profileImageUrl: row.profileImageUrl ?? null,
-    gameType,
-    score: row.bestScore,
-    subject: row.subject ?? null,
-    userLevel: row.userLevel ?? null,
-    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
-  }));
+  return rows.map((row, i) => {
+    const showName = row.showNameOnLeaderboard !== false;
+    const fullName = [row.firstName, row.lastName].filter(Boolean).join(" ");
+    const displayName = showName ? (fullName || row.username || "Anonymous") : (row.username || "Anonymous");
+    const profileViewable = row.isPublic !== false || row.allowProfileView !== false;
+    return {
+      id: i + 1,
+      userId: row.userId,
+      displayName,
+      profileImageUrl: row.profileImageUrl ?? null,
+      profileViewable,
+      gameType,
+      score: row.bestScore,
+      subject: row.subject ?? null,
+      userLevel: row.userLevel ?? null,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    };
+  });
 }
 
 router.get("/leaderboard", async (req, res) => {
@@ -159,22 +172,32 @@ router.get("/leaderboard", async (req, res) => {
       gameLevel: usersTable.gameLevel,
       xp: usersTable.xp,
       equippedNametag: usersTable.equippedNametag,
+      showNameOnLeaderboard: usersTable.showNameOnLeaderboard,
+      isPublic: usersTable.isPublic,
+      allowProfileView: usersTable.allowProfileView,
     })
     .from(usersTable)
     .orderBy(desc(usersTable.xp))
     .limit(50);
 
-  const levelBoard = xpBoard.map((u, i) => ({
-    rank: i + 1,
-    userId: u.id,
-    displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || "Anonymous",
-    profileImageUrl: u.profileImageUrl ?? null,
-    level: u.level ?? null,
-    gameLevel: u.gameLevel ?? 1,
-    xp: u.xp ?? 0,
-    equippedNametag: u.equippedNametag ?? null,
-    levelProgress: getLevelProgress(u.xp ?? 0),
-  }));
+  const levelBoard = xpBoard.map((u, i) => {
+    const showName = u.showNameOnLeaderboard !== false;
+    const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ");
+    const displayName = showName ? (fullName || u.username || "Anonymous") : (u.username || "Anonymous");
+    const profileViewable = u.isPublic !== false || u.allowProfileView !== false;
+    return {
+      rank: i + 1,
+      userId: u.id,
+      displayName,
+      profileImageUrl: u.profileImageUrl ?? null,
+      profileViewable,
+      level: u.level ?? null,
+      gameLevel: u.gameLevel ?? 1,
+      xp: u.xp ?? 0,
+      equippedNametag: u.equippedNametag ?? null,
+      levelProgress: getLevelProgress(u.xp ?? 0),
+    };
+  });
 
   res.json({
     memoryMatch,
