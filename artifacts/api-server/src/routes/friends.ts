@@ -23,6 +23,7 @@ router.get("/friends/search", async (req, res) => {
   const results = await db
     .select({
       id: usersTable.id,
+      username: usersTable.username,
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
       profileImageUrl: usersTable.profileImageUrl,
@@ -61,7 +62,7 @@ router.get("/friends/search", async (req, res) => {
     );
     return {
       ...u,
-      displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || "Anonymous",
+      displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || "Anonymous",
       friendshipId: fs?.id ?? null,
       friendshipStatus: fs?.status ?? null,
       iAmRequester: fs?.requesterId === req.user.id,
@@ -92,6 +93,7 @@ router.get("/friends", async (req, res) => {
   const users = userIds.length > 0
     ? await db.select({
         id: usersTable.id,
+        username: usersTable.username,
         firstName: usersTable.firstName,
         lastName: usersTable.lastName,
         profileImageUrl: usersTable.profileImageUrl,
@@ -119,7 +121,7 @@ router.get("/friends", async (req, res) => {
       iAmRequester: f.requesterId === req.user.id,
       user: u ? {
         ...u,
-        displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || "Anonymous",
+        displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || "Anonymous",
       } : null,
     };
   });

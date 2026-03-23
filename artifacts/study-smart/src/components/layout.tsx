@@ -34,7 +34,7 @@ const NAV_ITEMS = [
 
 function UserAvatar({ size = "sm" }: { size?: "sm" | "md" }) {
   const { user } = useAuth();
-  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Me";
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.username || "Me";
   const initials = displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "?";
   const dim = size === "sm" ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm";
 
@@ -52,7 +52,7 @@ export function Layout({ children, title, actions }: LayoutProps) {
   const [location] = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const { user, logout } = useAuth();
-  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Student";
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.username || "Student";
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);

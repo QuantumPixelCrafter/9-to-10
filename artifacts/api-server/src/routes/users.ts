@@ -17,6 +17,7 @@ router.get("/users/:userId", async (req, res) => {
   const [user] = await db
     .select({
       id: usersTable.id,
+      username: usersTable.username,
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
       profileImageUrl: usersTable.profileImageUrl,
@@ -87,7 +88,7 @@ router.get("/users/:userId", async (req, res) => {
 
   res.json({
     id: user.id,
-    displayName: [user.firstName, user.lastName].filter(Boolean).join(" ") || "Anonymous",
+    displayName: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username || "Anonymous",
     profileImageUrl: user.profileImageUrl ?? null,
     level: user.level ?? null,
     gameLevel: user.gameLevel ?? 1,
@@ -115,6 +116,7 @@ router.get("/users", async (req, res) => {
   const users = await db
     .select({
       id: usersTable.id,
+      username: usersTable.username,
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
       profileImageUrl: usersTable.profileImageUrl,
@@ -132,7 +134,7 @@ router.get("/users", async (req, res) => {
       .filter(u => u.isPublic !== false || u.id === req.user.id)
       .map(u => ({
         ...u,
-        displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || "Anonymous",
+        displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || "Anonymous",
       }))
   );
 });

@@ -102,7 +102,7 @@ export default function ProfilePage() {
   const earnedCount = achData?.achievements.filter(a => a.earned).length ?? 0;
   const totalCount = achData?.achievements.length ?? 0;
 
-  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Anonymous";
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.username || "Anonymous";
   const initials = displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "?";
 
   const equippedBg = shop?.equipped.background ?? user?.equippedBackground ?? null;

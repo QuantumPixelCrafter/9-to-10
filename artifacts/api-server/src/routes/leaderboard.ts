@@ -76,6 +76,7 @@ async function buildScoreBoard(
       subject: sql<string>`(array_agg(${scoresTable.subject} order by ${scoresTable.score} desc))[1]`.as("subject"),
       userLevel: sql<string>`(array_agg(${scoresTable.userLevel} order by ${scoresTable.score} desc))[1]`.as("user_level"),
       createdAt: sql<Date>`max(${scoresTable.createdAt})`.as("created_at"),
+      username: usersTable.username,
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
       profileImageUrl: usersTable.profileImageUrl,
@@ -85,6 +86,7 @@ async function buildScoreBoard(
     .where(and(...conditions))
     .groupBy(
       scoresTable.userId,
+      usersTable.username,
       usersTable.firstName,
       usersTable.lastName,
       usersTable.profileImageUrl,
@@ -95,7 +97,7 @@ async function buildScoreBoard(
   return rows.map((row, i) => ({
     id: i + 1,
     userId: row.userId,
-    displayName: [row.firstName, row.lastName].filter(Boolean).join(" ") || "Anonymous",
+    displayName: [row.firstName, row.lastName].filter(Boolean).join(" ") || row.username || "Anonymous",
     profileImageUrl: row.profileImageUrl ?? null,
     gameType,
     score: row.bestScore,
@@ -149,6 +151,7 @@ router.get("/leaderboard", async (req, res) => {
   const xpBoard = await db
     .select({
       id: usersTable.id,
+      username: usersTable.username,
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
       profileImageUrl: usersTable.profileImageUrl,
@@ -164,7 +167,7 @@ router.get("/leaderboard", async (req, res) => {
   const levelBoard = xpBoard.map((u, i) => ({
     rank: i + 1,
     userId: u.id,
-    displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || "Anonymous",
+    displayName: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || "Anonymous",
     profileImageUrl: u.profileImageUrl ?? null,
     level: u.level ?? null,
     gameLevel: u.gameLevel ?? 1,
@@ -233,7 +236,7 @@ router.post("/leaderboard/scores", async (req, res) => {
   res.json({
     id: saved.id,
     userId: saved.userId,
-    displayName: [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Anonymous",
+    displayName: [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.username || "Anonymous",
     profileImageUrl: user?.profileImageUrl ?? null,
     gameType: saved.gameType,
     score: saved.score,
