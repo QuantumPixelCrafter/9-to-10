@@ -1,25 +1,22 @@
-import { useParams, useLocation } from "wouter";
+import { useParams } from "wouter";
 import { Layout } from "@/components/layout";
-import { useGetUserProfile, useSendFriendRequest, useAcceptFriendRequest, useDeclineFriendRequest, useRemoveFriend } from "@workspace/api-client-react";
+import { useGetUserProfile, useSendFriendRequest, useRemoveFriend } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { getBgStyle, getFrameGradient, getItemDef } from "@/lib/shop-data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, GraduationCap, MessageCircle, UserCheck, UserPlus } from "lucide-react";
+import { ArrowLeft, EyeOff, GraduationCap, UserCheck, UserMinus, UserPlus } from "lucide-react";
 
 export default function UserProfilePage() {
   const params = useParams<{ userId: string }>();
   const userId = params.userId ?? "";
   const { user: me } = useAuth();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
 
   const { data: profile, isLoading, refetch } = useGetUserProfile(userId);
   const sendReqMut = useSendFriendRequest();
-  const acceptMut = useAcceptFriendRequest();
-  const declineMut = useDeclineFriendRequest();
   const removeMut = useRemoveFriend();
 
   if (isLoading) {
@@ -36,6 +33,7 @@ export default function UserProfilePage() {
   }
 
   const isMe = me?.id === profile.id;
+  const isPublic = (profile as any).isPublic !== false;
   const bgStyle = getBgStyle(profile.equippedBackground);
   const frameGrad = getFrameGradient(profile.equippedFrame);
   const nametagDef = getItemDef(profile.equippedNametag);
@@ -43,32 +41,34 @@ export default function UserProfilePage() {
   const fs = profile.friendship;
   const isFriend = fs?.status === "accepted";
   const isPending = fs?.status === "pending";
-  const isIncoming = isPending && !fs?.iAmRequester;
+
+  const username = (profile as any).username ?? null;
+  const displayName = isPublic ? profile.displayName : null;
 
   const handleAddFriend = () => {
     sendReqMut.mutate(profile.id, {
-      onSuccess: () => { toast({ title: "Friend request sent!" }); refetch(); },
+      onSuccess: () => {
+        toast({ title: "Friend request sent!", description: "They'll receive a message in their inbox." });
+        refetch();
+      },
+      onError: () => toast({ title: "Could not send request", variant: "destructive" }),
     });
   };
-  const handleAccept = () => {
-    if (!fs) return;
-    acceptMut.mutate(fs.id, { onSuccess: () => { toast({ title: "Friend accepted!" }); refetch(); } });
-  };
+
   const handleRemove = () => {
     if (!fs) return;
     removeMut.mutate(fs.id, { onSuccess: () => { toast({ title: "Removed" }); refetch(); } });
   };
 
-  const displayName = [profile.displayName].filter(Boolean).join("") || profile.username || null;
+  const initials = (displayName ?? username ?? "?").slice(0, 2).toUpperCase();
 
   return (
-    <Layout title={displayName ?? "Profile"}>
+    <Layout title={displayName ?? username ?? "Profile"}>
       <div className="max-w-md mx-auto space-y-5 pb-12">
         <button onClick={() => history.back()} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
 
-        {/* Profile card */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
           className="bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden">
 
@@ -77,32 +77,32 @@ export default function UserProfilePage() {
 
           <div className={cn("px-6 pb-6", bgStyle ? "-mt-10" : "pt-6")}>
             <div className="flex items-end gap-4 mb-5">
-              {/* Avatar with optional frame */}
+              {/* Avatar */}
               {frameGrad ? (
                 <div className="rounded-2xl p-[3px] shadow-xl shrink-0" style={{ background: frameGrad }}>
                   <div className="w-20 h-20 rounded-[14px] overflow-hidden bg-card">
-                    {profile.profileImageUrl ? (
+                    {isPublic && profile.profileImageUrl ? (
                       <img src={profile.profileImageUrl} alt={displayName ?? ""} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-2xl font-bold">
-                        {(displayName ?? "?").slice(0, 2).toUpperCase()}
+                        {initials}
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
                 <div className="w-20 h-20 rounded-2xl border-4 border-card shadow-xl overflow-hidden bg-gradient-to-br from-primary to-accent shrink-0">
-                  {profile.profileImageUrl ? (
+                  {isPublic && profile.profileImageUrl ? (
                     <img src={profile.profileImageUrl} alt={displayName ?? ""} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">
-                      {(displayName ?? "?").slice(0, 2).toUpperCase()}
+                      {initials}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Name + nametag + level */}
+              {/* Identity */}
               <div className="pb-1 flex-1 min-w-0">
                 <div className="flex items-center flex-wrap gap-2">
                   {displayName && <h2 className="text-xl font-bold">{displayName}</h2>}
@@ -112,8 +112,8 @@ export default function UserProfilePage() {
                     </span>
                   )}
                 </div>
-                {profile.username && (
-                  <p className="text-sm text-muted-foreground mt-0.5">@{profile.username}</p>
+                {username && (
+                  <p className="text-sm text-muted-foreground mt-0.5">@{username}</p>
                 )}
                 {profile.level && (
                   <span className="mt-2 inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded-full">
@@ -123,32 +123,37 @@ export default function UserProfilePage() {
               </div>
             </div>
 
-            {/* Friend actions (only if viewing someone else's profile) */}
+            {/* Private account notice */}
+            {!isPublic && (
+              <div className="mb-4 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-muted/60 border border-border/50">
+                <EyeOff className="w-4 h-4 text-muted-foreground shrink-0" />
+                <p className="text-sm text-muted-foreground">This account is private.</p>
+              </div>
+            )}
+
+            {/* Friend actions */}
             {!isMe && (
               <div className="flex gap-2">
                 {!fs && (
                   <Button size="sm" onClick={handleAddFriend} disabled={sendReqMut.isPending} className="rounded-xl gap-1.5">
-                    <UserPlus className="w-3.5 h-3.5" /> Add Friend
+                    <UserPlus className="w-3.5 h-3.5" />
+                    {sendReqMut.isPending ? "Sending…" : "Add Friend"}
                   </Button>
                 )}
-                {isIncoming && (
-                  <>
-                    <Button size="sm" onClick={handleAccept} className="rounded-xl gap-1.5">
-                      <UserCheck className="w-3.5 h-3.5" /> Accept
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={handleRemove} className="rounded-xl">Decline</Button>
-                  </>
+                {isPending && fs?.iAmRequester && (
+                  <Button size="sm" variant="outline" disabled className="rounded-xl gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5" /> Request sent
+                  </Button>
                 )}
-                {isPending && !isIncoming && (
-                  <Button size="sm" variant="outline" disabled className="rounded-xl">Pending…</Button>
+                {isPending && !fs?.iAmRequester && (
+                  <Button size="sm" variant="outline" disabled className="rounded-xl gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5" /> Check your inbox
+                  </Button>
                 )}
                 {isFriend && (
-                  <>
-                    <Button size="sm" onClick={() => setLocation("/friends")} className="rounded-xl gap-1.5">
-                      <MessageCircle className="w-3.5 h-3.5" /> Chat
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={handleRemove} className="rounded-xl text-destructive hover:bg-destructive hover:text-white border-destructive/30">Remove</Button>
-                  </>
+                  <Button size="sm" variant="outline" onClick={handleRemove} className="rounded-xl gap-1.5 text-destructive hover:bg-destructive hover:text-white border-destructive/30">
+                    <UserMinus className="w-3.5 h-3.5" /> Remove Friend
+                  </Button>
                 )}
               </div>
             )}

@@ -14,6 +14,9 @@ import {
   ShieldCheck,
   ShieldX,
   Trash2,
+  UserCheck,
+  UserX,
+  Users,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +42,7 @@ interface InboxMessage {
   } | null;
 }
 
-const INTERACTIVE_TYPES = ["developer_request", "developer_request_rejected"];
+const INTERACTIVE_TYPES = ["developer_request", "developer_request_rejected", "friend_request"];
 
 function getSenderName(sender: InboxMessage["sender"]) {
   if (!sender) return "System";
@@ -142,6 +145,35 @@ export default function InboxPage() {
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
+  });
+
+  const acceptFriendMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await customFetch(`/api/inbox/${id}/accept-friend`, { method: "PUT" });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error ?? "Failed"); }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Friend accepted!", description: "You are now friends." });
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["friends"] });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const declineFriendMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await customFetch(`/api/inbox/${id}/decline-friend`, { method: "PUT" });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error ?? "Failed"); }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Request declined" });
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -289,6 +321,49 @@ export default function InboxPage() {
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg text-sm font-semibold">
                         <Coins className="w-4 h-4" />
                         +{msg.points} bonus points
+                      </div>
+                    )}
+
+                    {/* Friend request */}
+                    {msg.type === "friend_request" && (
+                      <div className="space-y-3">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-lg text-sm font-semibold">
+                          <Users className="w-4 h-4" />
+                          Friend request
+                        </div>
+                        {msg.status === "pending" && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="rounded-xl gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                              onClick={(e) => { e.stopPropagation(); acceptFriendMutation.mutate(msg.id); }}
+                              disabled={acceptFriendMutation.isPending || declineFriendMutation.isPending}
+                            >
+                              <UserCheck className="w-3.5 h-3.5" />
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-xl gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/5"
+                              onClick={(e) => { e.stopPropagation(); declineFriendMutation.mutate(msg.id); }}
+                              disabled={acceptFriendMutation.isPending || declineFriendMutation.isPending}
+                            >
+                              <UserX className="w-3.5 h-3.5" />
+                              Decline
+                            </Button>
+                          </div>
+                        )}
+                        {msg.status === "accepted" && (
+                          <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-sm font-medium">
+                            <UserCheck className="w-4 h-4" /> You are now friends
+                          </div>
+                        )}
+                        {msg.status === "declined" && (
+                          <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
+                            <UserX className="w-4 h-4" /> Declined
+                          </div>
+                        )}
                       </div>
                     )}
 

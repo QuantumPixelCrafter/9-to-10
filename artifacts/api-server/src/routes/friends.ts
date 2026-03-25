@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, friendshipsTable } from "@workspace/db";
+import { db, usersTable, friendshipsTable, inboxMessagesTable } from "@workspace/db";
 import { eq, or, and, ilike, ne } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -163,6 +163,17 @@ router.post("/friends/request", async (req, res) => {
     .insert(friendshipsTable)
     .values({ requesterId: req.user.id, addresseeId })
     .returning();
+
+  const senderName = [req.user.firstName, req.user.lastName].filter(Boolean).join(" ") || req.user.username || "Someone";
+
+  await db.insert(inboxMessagesTable).values({
+    recipientId: addresseeId,
+    senderId: req.user.id,
+    type: "friend_request",
+    status: "pending",
+    targetUserId: String(friendship.id),
+    message: `${senderName} wants to be your friend.`,
+  });
 
   res.status(201).json(friendship);
 });

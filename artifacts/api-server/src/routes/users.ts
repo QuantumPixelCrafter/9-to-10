@@ -40,11 +40,6 @@ router.get("/users/:userId", async (req, res) => {
   }
 
   const isOwnProfile = user.id === req.user.id;
-  const canView = user.isPublic !== false || isOwnProfile;
-  if (!canView) {
-    res.status(403).json({ error: "This profile is private." });
-    return;
-  }
 
   // Achievements
   const earnedRows = await db
@@ -88,10 +83,14 @@ router.get("/users/:userId", async (req, res) => {
 
   const levelInfo = getLevelProgress(user.xp ?? 0);
 
+  const isPublic = user.isPublic !== false;
+
   res.json({
     id: user.id,
+    username: user.username ?? null,
     displayName: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username || "Anonymous",
     profileImageUrl: user.profileImageUrl ?? null,
+    isPublic,
     level: user.level ?? null,
     gameLevel: user.gameLevel ?? 1,
     xp: user.xp ?? 0,

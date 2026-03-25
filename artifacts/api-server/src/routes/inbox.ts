@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, inboxMessagesTable, usersTable } from "@workspace/db";
+import { db, inboxMessagesTable, usersTable, friendshipsTable } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -296,6 +296,86 @@ router.put("/inbox/:id/skip-notify", async (req: Request, res: Response) => {
   await db.update(inboxMessagesTable)
     .set({ status: "skipped", readAt: new Date() })
     .where(eq(inboxMessagesTable.id, id));
+
+  res.json({ success: true });
+});
+
+router.put("/inbox/:id/accept-friend", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const { id } = req.params;
+
+  const [msg] = await db
+    .select()
+    .from(inboxMessagesTable)
+    .where(and(eq(inboxMessagesTable.id, id), eq(inboxMessagesTable.recipientId, req.user!.id)))
+    .limit(1);
+
+  if (!msg || msg.type !== "friend_request") {
+    res.status(404).json({ error: "Friend request not found." });
+    return;
+  }
+  if (msg.status !== "pending") {
+    res.status(400).json({ error: "Request already handled." });
+    return;
+  }
+
+  const friendshipId = Number(msg.targetUserId);
+  if (!friendshipId) {
+    res.status(400).json({ error: "Invalid friendship reference." });
+    return;
+  }
+
+  await Promise.all([
+    db.update(friendshipsTable)
+      .set({ status: "accepted", updatedAt: new Date() })
+      .where(eq(friendshipsTable.id, friendshipId)),
+    db.update(inboxMessagesTable)
+      .set({ status: "accepted", readAt: new Date() })
+      .where(eq(inboxMessagesTable.id, id)),
+  ]);
+
+  res.json({ success: true });
+});
+
+router.put("/inbox/:id/decline-friend", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const { id } = req.params;
+
+  const [msg] = await db
+    .select()
+    .from(inboxMessagesTable)
+    .where(and(eq(inboxMessagesTable.id, id), eq(inboxMessagesTable.recipientId, req.user!.id)))
+    .limit(1);
+
+  if (!msg || msg.type !== "friend_request") {
+    res.status(404).json({ error: "Friend request not found." });
+    return;
+  }
+  if (msg.status !== "pending") {
+    res.status(400).json({ error: "Request already handled." });
+    return;
+  }
+
+  const friendshipId = Number(msg.targetUserId);
+  if (!friendshipId) {
+    res.status(400).json({ error: "Invalid friendship reference." });
+    return;
+  }
+
+  await Promise.all([
+    db.delete(friendshipsTable).where(eq(friendshipsTable.id, friendshipId)),
+    db.update(inboxMessagesTable)
+      .set({ status: "declined", readAt: new Date() })
+      .where(eq(inboxMessagesTable.id, id)),
+  ]);
 
   res.json({ success: true });
 });
