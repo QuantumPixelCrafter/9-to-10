@@ -161,8 +161,119 @@ router.put("/inbox/:id/reject", async (req: Request, res: Response) => {
     return;
   }
 
+  if (!msg.senderId || !msg.targetUserId) {
+    res.status(400).json({ error: "Missing sender or target user." });
+    return;
+  }
+
+  const [targetUser] = await db
+    .select({ firstName: usersTable.firstName, lastName: usersTable.lastName, username: usersTable.username })
+    .from(usersTable)
+    .where(eq(usersTable.id, msg.targetUserId))
+    .limit(1);
+
+  const targetName = targetUser
+    ? ([targetUser.firstName, targetUser.lastName].filter(Boolean).join(" ") || targetUser.username || "the user")
+    : "the user";
+
+  await Promise.all([
+    db.update(inboxMessagesTable)
+      .set({ status: "rejected", readAt: new Date() })
+      .where(eq(inboxMessagesTable.id, id)),
+    db.insert(inboxMessagesTable).values({
+      recipientId: msg.senderId,
+      senderId: APPROVER_ID,
+      type: "developer_request_rejected",
+      status: "pending_choice",
+      targetUserId: msg.targetUserId,
+      message: `Your promotion request for ${targetName} was rejected. Would you like to notify them?`,
+    }),
+  ]);
+
+  res.json({ success: true });
+});
+
+router.put("/inbox/:id/notify-rejected", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated() || !req.user?.isDeveloper) {
+    res.status(403).json({ error: "Developer access only." });
+    return;
+  }
+
+  const { id } = req.params;
+
+  const [msg] = await db
+    .select()
+    .from(inboxMessagesTable)
+    .where(and(eq(inboxMessagesTable.id, id), eq(inboxMessagesTable.recipientId, req.user!.id)))
+    .limit(1);
+
+  if (!msg) {
+    res.status(404).json({ error: "Message not found." });
+    return;
+  }
+
+  if (msg.type !== "developer_request_rejected") {
+    res.status(400).json({ error: "Not a rejection notice." });
+    return;
+  }
+
+  if (msg.status !== "pending_choice") {
+    res.status(400).json({ error: "Choice has already been made." });
+    return;
+  }
+
+  if (!msg.targetUserId) {
+    res.status(400).json({ error: "No target user on this message." });
+    return;
+  }
+
+  await Promise.all([
+    db.update(inboxMessagesTable)
+      .set({ status: "notified", readAt: new Date() })
+      .where(eq(inboxMessagesTable.id, id)),
+    db.insert(inboxMessagesTable).values({
+      recipientId: msg.targetUserId,
+      senderId: req.user!.id,
+      type: "developer_rejected",
+      status: "none",
+      message: "Your developer promotion request was not approved at this time.",
+    }),
+  ]);
+
+  res.json({ success: true });
+});
+
+router.put("/inbox/:id/skip-notify", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated() || !req.user?.isDeveloper) {
+    res.status(403).json({ error: "Developer access only." });
+    return;
+  }
+
+  const { id } = req.params;
+
+  const [msg] = await db
+    .select()
+    .from(inboxMessagesTable)
+    .where(and(eq(inboxMessagesTable.id, id), eq(inboxMessagesTable.recipientId, req.user!.id)))
+    .limit(1);
+
+  if (!msg) {
+    res.status(404).json({ error: "Message not found." });
+    return;
+  }
+
+  if (msg.type !== "developer_request_rejected") {
+    res.status(400).json({ error: "Not a rejection notice." });
+    return;
+  }
+
+  if (msg.status !== "pending_choice") {
+    res.status(400).json({ error: "Choice has already been made." });
+    return;
+  }
+
   await db.update(inboxMessagesTable)
-    .set({ status: "rejected", readAt: new Date() })
+    .set({ status: "skipped", readAt: new Date() })
     .where(eq(inboxMessagesTable.id, id));
 
   res.json({ success: true });

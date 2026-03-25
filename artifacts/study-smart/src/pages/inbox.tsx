@@ -3,7 +3,17 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { BadgeCheck, Coins, Inbox as InboxIcon, MailOpen, ShieldPlus, ShieldCheck, ShieldX } from "lucide-react";
+import {
+  BadgeCheck,
+  Bell,
+  BellOff,
+  Coins,
+  Inbox as InboxIcon,
+  MailOpen,
+  ShieldPlus,
+  ShieldCheck,
+  ShieldX,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -27,6 +37,8 @@ interface InboxMessage {
     isDeveloper: boolean;
   } | null;
 }
+
+const INTERACTIVE_TYPES = ["developer_request", "developer_request_rejected"];
 
 function getSenderName(sender: InboxMessage["sender"]) {
   if (!sender) return "System";
@@ -103,7 +115,45 @@ export default function InboxPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Rejected", description: "Developer promotion request has been rejected." });
+      toast({ title: "Rejected", description: "The requesting developer has been notified." });
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const notifyRejectedMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await customFetch(`/api/inbox/${id}/notify-rejected`, { method: "PUT" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "User notified", description: "The user has been told their promotion was rejected." });
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const skipNotifyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await customFetch(`/api/inbox/${id}/skip-notify`, { method: "PUT" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Dismissed", description: "The user was not notified." });
       queryClient.invalidateQueries({ queryKey: ["inbox"] });
       queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
     },
@@ -114,6 +164,19 @@ export default function InboxPage() {
 
   const messages = data?.messages ?? [];
   const unreadCount = messages.filter((m) => !m.readAt).length;
+
+  function handleCardClick(msg: InboxMessage) {
+    if (!msg.readAt && !INTERACTIVE_TYPES.includes(msg.type)) {
+      readOneMutation.mutate(msg.id);
+    }
+  }
+
+  function borderClass(msg: InboxMessage) {
+    if (msg.type === "developer_request") return "border-violet-500/30 shadow-sm shadow-violet-500/10";
+    if (msg.type === "developer_request_rejected") return "border-orange-500/30 shadow-sm shadow-orange-500/10";
+    if (!msg.readAt) return "border-indigo-500/30 shadow-sm shadow-indigo-500/10";
+    return "border-border/50";
+  }
 
   return (
     <Layout title="Inbox">
@@ -163,12 +226,8 @@ export default function InboxPage() {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`bg-card border rounded-2xl p-5 transition-all ${
-                  !msg.readAt ? "border-indigo-500/30 shadow-sm shadow-indigo-500/10" : "border-border/50"
-                } ${msg.type === "developer_request" ? "border-violet-500/30 shadow-violet-500/10" : ""}`}
-                onClick={() => {
-                  if (!msg.readAt && msg.type !== "developer_request") readOneMutation.mutate(msg.id);
-                }}
+                className={`bg-card border rounded-2xl p-5 transition-all cursor-default ${borderClass(msg)}`}
+                onClick={() => handleCardClick(msg)}
               >
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-sm font-bold shrink-0 overflow-hidden">
@@ -178,14 +237,16 @@ export default function InboxPage() {
                       getSenderName(msg.sender).slice(0, 2).toUpperCase()
                     )}
                   </div>
+
                   <div className="flex-1 min-w-0 space-y-2">
+                    {/* Header row */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5">
                         <span className="font-semibold text-sm">{getSenderName(msg.sender)}</span>
                         {msg.sender?.isDeveloper && <BadgeCheck className="w-4 h-4 text-blue-500 shrink-0" />}
                       </div>
                       <div className="flex items-center gap-2">
-                        {!msg.readAt && msg.type !== "developer_request" && (
+                        {!msg.readAt && !INTERACTIVE_TYPES.includes(msg.type) && (
                           <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
                         )}
                         <span className="text-xs text-muted-foreground">
@@ -202,11 +263,19 @@ export default function InboxPage() {
                       </div>
                     )}
 
-                    {/* Developer approved notification */}
+                    {/* Developer approved */}
                     {msg.type === "developer_approved" && (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-semibold">
                         <BadgeCheck className="w-4 h-4" />
                         Developer access granted
+                      </div>
+                    )}
+
+                    {/* Developer rejected (notification to the candidate) */}
+                    {msg.type === "developer_rejected" && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive rounded-lg text-sm font-semibold">
+                        <ShieldX className="w-4 h-4" />
+                        Developer promotion not approved
                       </div>
                     )}
 
@@ -222,7 +291,7 @@ export default function InboxPage() {
                             <Button
                               size="sm"
                               className="rounded-xl gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                              onClick={() => approveMutation.mutate(msg.id)}
+                              onClick={(e) => { e.stopPropagation(); approveMutation.mutate(msg.id); }}
                               disabled={approveMutation.isPending || rejectMutation.isPending}
                             >
                               <ShieldCheck className="w-3.5 h-3.5" />
@@ -232,7 +301,7 @@ export default function InboxPage() {
                               size="sm"
                               variant="outline"
                               className="rounded-xl gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/5"
-                              onClick={() => rejectMutation.mutate(msg.id)}
+                              onClick={(e) => { e.stopPropagation(); rejectMutation.mutate(msg.id); }}
                               disabled={approveMutation.isPending || rejectMutation.isPending}
                             >
                               <ShieldX className="w-3.5 h-3.5" />
@@ -248,6 +317,54 @@ export default function InboxPage() {
                         {msg.status === "rejected" && (
                           <div className="flex items-center gap-1.5 text-destructive text-sm font-medium">
                             <ShieldX className="w-4 h-4" /> Rejected
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Rejection notice sent back to the requesting developer */}
+                    {msg.type === "developer_request_rejected" && (
+                      <div className="space-y-3">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-lg text-sm font-semibold">
+                          <ShieldX className="w-4 h-4" />
+                          Promotion rejected
+                        </div>
+                        {msg.status === "pending_choice" && (
+                          <div className="space-y-2">
+                            <p className="text-xs text-muted-foreground">
+                              Do you want to notify the user that their promotion was not approved?
+                            </p>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                className="rounded-xl gap-1.5 bg-orange-600 hover:bg-orange-700 text-white"
+                                onClick={(e) => { e.stopPropagation(); notifyRejectedMutation.mutate(msg.id); }}
+                                disabled={notifyRejectedMutation.isPending || skipNotifyMutation.isPending}
+                              >
+                                <Bell className="w-3.5 h-3.5" />
+                                Notify the user
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="rounded-xl gap-1.5"
+                                onClick={(e) => { e.stopPropagation(); skipNotifyMutation.mutate(msg.id); }}
+                                disabled={notifyRejectedMutation.isPending || skipNotifyMutation.isPending}
+                              >
+                                <BellOff className="w-3.5 h-3.5" />
+                                Don't notify
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        {msg.status === "notified" && (
+                          <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
+                            <Bell className="w-4 h-4" /> User was notified
+                          </div>
+                        )}
+                        {msg.status === "skipped" && (
+                          <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
+                            <BellOff className="w-4 h-4" /> User was not notified
                           </div>
                         )}
                       </div>
