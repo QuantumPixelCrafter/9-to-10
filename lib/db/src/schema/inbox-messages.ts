@@ -9,6 +9,8 @@ export const inboxMessagesTable = pgTable("inbox_messages", {
   type: varchar("type", { length: 50 }).notNull().default("points"),
   points: integer("points").default(0),
   message: text("message"),
+  status: varchar("status", { length: 20 }).notNull().default("none"),
+  targetUserId: varchar("target_user_id"),
   readAt: timestamp("read_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
