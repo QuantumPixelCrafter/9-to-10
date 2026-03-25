@@ -34,6 +34,7 @@ export const usersTable = pgTable("users", {
   showNameOnLeaderboard: boolean("show_name_on_leaderboard").notNull().default(true),
   showNameInSearch: boolean("show_name_in_search").notNull().default(true),
   allowProfileView: boolean("allow_profile_view").notNull().default(true),
+  isDeveloper: boolean("is_developer").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

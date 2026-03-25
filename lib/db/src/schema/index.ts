@@ -10,3 +10,4 @@ export * from "./user-inventory";
 export * from "./friendships";
 export * from "./chat-messages";
 export * from "./leaderboard-rewards";
+export * from "./inbox-messages";

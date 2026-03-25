@@ -20,4 +20,5 @@ export interface AuthUser {
   profileImageUrl: string | null;
   /** @nullable */
   level: string | null;
+  isDeveloper?: boolean;
 }

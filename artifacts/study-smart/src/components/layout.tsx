@@ -4,11 +4,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Home, BookOpen, Calendar as CalendarIcon, 
   Target, Clock, Smile, Menu, Flag,
-  BrainCircuit, Sparkles, ChevronRight, Gamepad2, Trophy, User, LogOut, Medal, ShoppingBag, Users
+  BrainCircuit, Sparkles, ChevronRight, Gamepad2, Trophy, User, LogOut, Medal, ShoppingBag, Users,
+  Inbox, BadgeCheck, Code2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@workspace/replit-auth-web";
+import { useQuery } from "@tanstack/react-query";
+import { customFetch } from "@workspace/api-client-react";
 
 interface LayoutProps {
   children: ReactNode;
@@ -29,8 +32,28 @@ const NAV_ITEMS = [
   { href: "/achievements", label: "Achievements", icon: Medal, color: "text-yellow-500", bg: "bg-yellow-500/10" },
   { href: "/quiz", label: "AI Quiz", icon: Sparkles, color: "text-amber-500", bg: "bg-amber-500/10" },
   { href: "/shop", label: "Shop", icon: ShoppingBag, color: "text-rose-500", bg: "bg-rose-500/10" },
+  { href: "/inbox", label: "Inbox", icon: Inbox, color: "text-indigo-500", bg: "bg-indigo-500/10" },
   { href: "/friends", label: "Friends", icon: Users, color: "text-teal-500", bg: "bg-teal-500/10" },
 ];
+
+const DEVELOPER_NAV_ITEMS = [
+  { href: "/developer", label: "Dev Panel", icon: Code2, color: "text-violet-500", bg: "bg-violet-500/10" },
+];
+
+function useInboxUnreadCount() {
+  const { isAuthenticated } = useAuth();
+  return useQuery({
+    queryKey: ["inbox-unread-count"],
+    queryFn: async () => {
+      const res = await customFetch("/api/inbox");
+      if (!res.ok) return 0;
+      const data = await res.json() as { messages: Array<{ readAt: string | null }> };
+      return data.messages.filter((m) => !m.readAt).length;
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 60000,
+  });
+}
 
 function UserAvatar({ size = "sm" }: { size?: "sm" | "md" }) {
   const { user } = useAuth();
@@ -48,11 +71,34 @@ function UserAvatar({ size = "sm" }: { size?: "sm" | "md" }) {
   );
 }
 
+function NavItem({ item, isActive }: { item: typeof NAV_ITEMS[0]; isActive: boolean }) {
+  return (
+    <div className={`
+      flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 group relative overflow-hidden
+      ${isActive ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}
+    `}>
+      {isActive && (
+        <motion.div 
+          layoutId="activeNav" 
+          className="absolute inset-0 bg-primary/10 rounded-xl"
+          initial={false}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        />
+      )}
+      <div className={`relative z-10 flex items-center justify-center w-8 h-8 rounded-lg ${isActive ? item.bg : 'bg-transparent group-hover:bg-background'}`}>
+        <item.icon className={`w-4 h-4 ${isActive ? item.color : 'text-current'}`} />
+      </div>
+      <span className="relative z-10 text-sm">{item.label}</span>
+    </div>
+  );
+}
+
 export function Layout({ children, title, actions }: LayoutProps) {
   const [location] = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const { user, logout } = useAuth();
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.username || "Student";
+  const { data: unreadCount = 0 } = useInboxUnreadCount();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -76,29 +122,38 @@ export function Layout({ children, title, actions }: LayoutProps) {
           <nav className="space-y-1.5">
             {NAV_ITEMS.map((item) => {
               const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+              const showBadge = item.href === "/inbox" && unreadCount > 0;
               return (
                 <Link key={item.href} href={item.href}>
-                  <div className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 group relative overflow-hidden
-                    ${isActive ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}
-                  `}>
-                    {isActive && (
-                      <motion.div 
-                        layoutId="activeNav" 
-                        className="absolute inset-0 bg-primary/10 rounded-xl"
-                        initial={false}
-                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                      />
+                  <div className="relative">
+                    <NavItem item={item} isActive={isActive} />
+                    {showBadge && (
+                      <span className="absolute top-1.5 right-2 z-20 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-indigo-500 text-white text-[10px] font-bold">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
                     )}
-                    <div className={`relative z-10 flex items-center justify-center w-8 h-8 rounded-lg ${isActive ? item.bg : 'bg-transparent group-hover:bg-background'}`}>
-                      <item.icon className={`w-4 h-4 ${isActive ? item.color : 'text-current'}`} />
-                    </div>
-                    <span className="relative z-10 text-sm">{item.label}</span>
                   </div>
                 </Link>
               );
             })}
           </nav>
+
+          {/* Developer section */}
+          {user?.isDeveloper && (
+            <div className="mt-6">
+              <p className="text-xs font-semibold text-violet-500 uppercase tracking-wider mb-3 px-2">Developer</p>
+              <nav className="space-y-1.5">
+                {DEVELOPER_NAV_ITEMS.map((item) => {
+                  const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <NavItem item={item} isActive={isActive} />
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          )}
         </div>
 
         {/* Profile section at bottom */}
@@ -108,7 +163,10 @@ export function Layout({ children, title, actions }: LayoutProps) {
               ${location === "/profile" ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}>
               <UserAvatar size="sm" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{displayName}</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-sm font-medium truncate">{displayName}</p>
+                  {user?.isDeveloper && <BadgeCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
+                </div>
                 <p className="text-xs text-muted-foreground truncate">{user?.username ? `@${user.username}` : "My Profile"}</p>
               </div>
             </div>
@@ -138,23 +196,55 @@ export function Layout({ children, title, actions }: LayoutProps) {
               </div>
               <div className="p-4 flex-1 overflow-y-auto">
                 <nav className="space-y-2">
-                  {NAV_ITEMS.map((item) => (
-                    <Link key={item.href} href={item.href}>
-                      <SheetTrigger asChild>
-                        <div className={`
-                          flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer
-                          ${location === item.href ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-muted-foreground'}
-                        `}>
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.bg}`}>
-                            <item.icon className={`w-4 h-4 ${item.color}`} />
+                  {NAV_ITEMS.map((item) => {
+                    const showBadge = item.href === "/inbox" && unreadCount > 0;
+                    return (
+                      <Link key={item.href} href={item.href}>
+                        <SheetTrigger asChild>
+                          <div className={`
+                            relative flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer
+                            ${location === item.href ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-muted-foreground'}
+                          `}>
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.bg}`}>
+                              <item.icon className={`w-4 h-4 ${item.color}`} />
+                            </div>
+                            <span>{item.label}</span>
+                            <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
+                            {showBadge && (
+                              <span className="absolute top-2 right-8 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-indigo-500 text-white text-[10px] font-bold">
+                                {unreadCount > 99 ? "99+" : unreadCount}
+                              </span>
+                            )}
                           </div>
-                          <span>{item.label}</span>
-                          <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
-                        </div>
-                      </SheetTrigger>
-                    </Link>
-                  ))}
+                        </SheetTrigger>
+                      </Link>
+                    );
+                  })}
                 </nav>
+
+                {user?.isDeveloper && (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold text-violet-500 uppercase tracking-wider mb-2 px-4">Developer</p>
+                    <nav className="space-y-2">
+                      {DEVELOPER_NAV_ITEMS.map((item) => (
+                        <Link key={item.href} href={item.href}>
+                          <SheetTrigger asChild>
+                            <div className={`
+                              flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer
+                              ${location === item.href ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-muted-foreground'}
+                            `}>
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.bg}`}>
+                                <item.icon className={`w-4 h-4 ${item.color}`} />
+                              </div>
+                              <span>{item.label}</span>
+                              <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
+                            </div>
+                          </SheetTrigger>
+                        </Link>
+                      ))}
+                    </nav>
+                  </div>
+                )}
               </div>
               <div className="p-4 border-t border-border/40">
                 <Link href="/profile">
@@ -162,7 +252,10 @@ export function Layout({ children, title, actions }: LayoutProps) {
                     <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-muted">
                       <UserAvatar size="md" />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{displayName}</p>
+                        <div className="flex items-center gap-1">
+                          <p className="font-medium text-sm">{displayName}</p>
+                          {user?.isDeveloper && <BadgeCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
+                        </div>
                         <p className="text-xs text-muted-foreground">{user?.username ? `@${user.username}` : "View profile"}</p>
                       </div>
                     </div>
@@ -200,6 +293,17 @@ export function Layout({ children, title, actions }: LayoutProps) {
         </div>
         <div className="flex items-center gap-3">
           {actions}
+          {/* Inbox icon */}
+          <Link href="/inbox">
+            <div className="relative cursor-pointer w-9 h-9 rounded-xl flex items-center justify-center hover:bg-muted transition-colors">
+              <Inbox className="w-5 h-5 text-muted-foreground" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-0.5 flex items-center justify-center rounded-full bg-indigo-500 text-white text-[9px] font-bold">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </div>
+          </Link>
           <Link href="/profile">
             <div className="cursor-pointer hover:opacity-80 transition-opacity">
               <UserAvatar size="sm" />

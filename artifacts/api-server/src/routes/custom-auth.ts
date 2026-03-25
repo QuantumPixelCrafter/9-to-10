@@ -45,6 +45,7 @@ function buildSessionUser(user: typeof usersTable.$inferSelect) {
     showNameOnLeaderboard: user.showNameOnLeaderboard ?? true,
     showNameInSearch: user.showNameInSearch ?? true,
     allowProfileView: user.allowProfileView ?? true,
+    isDeveloper: user.isDeveloper ?? false,
   };
 }
 

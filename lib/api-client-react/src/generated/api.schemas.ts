@@ -28,6 +28,7 @@ export interface AuthUser {
   showNameOnLeaderboard?: boolean;
   showNameInSearch?: boolean;
   allowProfileView?: boolean;
+  isDeveloper?: boolean;
 }
 
 export interface AuthUserEnvelope {
