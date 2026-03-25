@@ -243,6 +243,27 @@ router.put("/inbox/:id/notify-rejected", async (req: Request, res: Response) => 
   res.json({ success: true });
 });
 
+router.delete("/inbox/:id", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const { id } = req.params;
+
+  const deleted = await db
+    .delete(inboxMessagesTable)
+    .where(and(eq(inboxMessagesTable.id, id), eq(inboxMessagesTable.recipientId, req.user!.id)))
+    .returning({ id: inboxMessagesTable.id });
+
+  if (deleted.length === 0) {
+    res.status(404).json({ error: "Message not found." });
+    return;
+  }
+
+  res.json({ success: true });
+});
+
 router.put("/inbox/:id/skip-notify", async (req: Request, res: Response) => {
   if (!req.isAuthenticated() || !req.user?.isDeveloper) {
     res.status(403).json({ error: "Developer access only." });

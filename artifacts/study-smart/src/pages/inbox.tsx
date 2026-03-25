@@ -13,6 +13,7 @@ import {
   ShieldPlus,
   ShieldCheck,
   ShieldX,
+  Trash2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -143,6 +144,24 @@ export default function InboxPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await customFetch(`/api/inbox/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Failed to delete");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
   const skipNotifyMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await customFetch(`/api/inbox/${id}/skip-notify`, { method: "PUT" });
@@ -242,7 +261,9 @@ export default function InboxPage() {
                     {/* Header row */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-semibold text-sm">{getSenderName(msg.sender)}</span>
+                        <span className={`text-sm ${!msg.readAt ? "font-bold" : "font-normal text-muted-foreground"}`}>
+                          {getSenderName(msg.sender)}
+                        </span>
                         {msg.sender?.isDeveloper && <BadgeCheck className="w-4 h-4 text-blue-500 shrink-0" />}
                       </div>
                       <div className="flex items-center gap-2">
@@ -252,6 +273,14 @@ export default function InboxPage() {
                         <span className="text-xs text-muted-foreground">
                           {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
                         </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(msg.id); }}
+                          disabled={deleteMutation.isPending}
+                          className="p-1 rounded-lg text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-30"
+                          title="Delete message"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
 
