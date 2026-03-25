@@ -28,7 +28,6 @@ router.get("/users/:userId", async (req, res) => {
       equippedFrame: usersTable.equippedFrame,
       equippedNametag: usersTable.equippedNametag,
       isPublic: usersTable.isPublic,
-      allowProfileView: usersTable.allowProfileView,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
@@ -41,7 +40,7 @@ router.get("/users/:userId", async (req, res) => {
   }
 
   const isOwnProfile = user.id === req.user.id;
-  const canView = user.isPublic !== false || isOwnProfile || user.allowProfileView !== false;
+  const canView = user.isPublic !== false || isOwnProfile;
   if (!canView) {
     res.status(403).json({ error: "This profile is private." });
     return;

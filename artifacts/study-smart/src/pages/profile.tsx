@@ -783,11 +783,6 @@ export default function ProfilePage() {
                     label: "Show name in friend search",
                     sub: "Others see your display name when searching for friends",
                   },
-                  {
-                    key: "allowProfileView" as const,
-                    label: "Allow profile view from leaderboard",
-                    sub: "Others can click your name in the leaderboard to view your profile",
-                  },
                 ]).map(({ key, label, sub }) => (
                   <div key={key} className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-xl bg-muted/30">
                     <div className="min-w-0">
