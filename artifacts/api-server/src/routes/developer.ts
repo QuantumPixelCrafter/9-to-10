@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, usersTable, inboxMessagesTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, ne, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -33,46 +33,47 @@ router.get("/developer/users", requireDeveloper, async (req: Request, res: Respo
   res.json({ users });
 });
 
-router.post("/developer/give-points", requireDeveloper, async (req: Request, res: Response) => {
-  const { recipientId, points, message } = req.body;
+router.post("/developer/gift-all", requireDeveloper, async (req: Request, res: Response) => {
+  const { giftName, points } = req.body;
 
-  if (!recipientId || typeof recipientId !== "string") {
-    res.status(400).json({ error: "recipientId is required." });
+  if (!giftName || typeof giftName !== "string" || giftName.trim().length === 0) {
+    res.status(400).json({ error: "giftName is required." });
     return;
   }
   if (!points || typeof points !== "number" || points <= 0 || !Number.isInteger(points)) {
     res.status(400).json({ error: "points must be a positive integer." });
     return;
   }
-  if (points > 10000) {
-    res.status(400).json({ error: "Cannot give more than 10,000 points at once." });
+  if (points > 100000) {
+    res.status(400).json({ error: "Cannot gift more than 100,000 points at once." });
     return;
   }
 
-  const [recipient] = await db
-    .select({ id: usersTable.id })
-    .from(usersTable)
-    .where(eq(usersTable.id, recipientId))
-    .limit(1);
+  const name = giftName.trim();
 
-  if (!recipient) {
-    res.status(404).json({ error: "User not found." });
+  const allUsers = await db
+    .select({ id: usersTable.id })
+    .from(usersTable);
+
+  if (allUsers.length === 0) {
+    res.json({ success: true, recipientCount: 0 });
     return;
   }
 
   await db.update(usersTable)
-    .set({ bonusPoints: sql`${usersTable.bonusPoints} + ${points}` })
-    .where(eq(usersTable.id, recipientId));
+    .set({ bonusPoints: sql`${usersTable.bonusPoints} + ${points}` });
 
-  await db.insert(inboxMessagesTable).values({
-    recipientId,
-    senderId: req.user!.id,
-    type: "points",
-    points,
-    message: message?.trim() || null,
-  });
+  await db.insert(inboxMessagesTable).values(
+    allUsers.map((u) => ({
+      recipientId: u.id,
+      senderId: req.user!.id,
+      type: "points",
+      points,
+      message: `A gift from the development team: ${name}`,
+    }))
+  );
 
-  res.json({ success: true });
+  res.json({ success: true, recipientCount: allUsers.length });
 });
 
 router.post("/developer/request-promote", requireDeveloper, async (req: Request, res: Response) => {
