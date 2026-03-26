@@ -5,11 +5,14 @@ import { useGetChatBalance, useUpdatePreferences } from "@workspace/api-client-r
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Coins, MessageCircle, Settings } from "lucide-react";
+import { useThemeMode } from "@/lib/theme-context";
+import { cn } from "@/lib/utils";
+import { AlertTriangle, Coins, MessageCircle, Settings, Sun, Moon, Monitor, Globe2, EyeOff } from "lucide-react";
 
 export default function Preferences() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { theme, setTheme } = useThemeMode();
 
   const { data: balanceData, isLoading } = useGetChatBalance(!!user);
   const updatePrefsMut = useUpdatePreferences();
@@ -42,14 +45,26 @@ export default function Preferences() {
     });
   };
 
+  const handleVisibility = async (value: boolean) => {
+    try {
+      await updatePrefsMut.mutateAsync({ isPublic: value });
+      toast({ title: value ? "Account set to public" : "Account set to private" });
+      window.location.reload();
+    } catch {
+      toast({ title: "Failed to update visibility", variant: "destructive" });
+    }
+  };
+
   const currentBalance = balanceData?.balance;
   const messageCost = balanceData?.messageCost ?? 10;
   const parsedThreshold = parseInt(thresholdInput, 10);
   const thresholdValid = !isNaN(parsedThreshold) && parsedThreshold >= 0;
 
+  const isPublic = (user as any)?.isPublic ?? true;
+
   return (
     <Layout title="Preferences">
-      <div className="max-w-xl space-y-8 pb-10">
+      <div className="max-w-xl space-y-6 pb-10">
 
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -60,6 +75,110 @@ export default function Preferences() {
             <h2 className="text-xl font-bold">Preferences</h2>
             <p className="text-sm text-muted-foreground">Customise your Mind Forge experience</p>
           </div>
+        </div>
+
+        {/* Appearance */}
+        <div className="bg-card border border-border/50 rounded-2xl p-6 space-y-5">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-primary/10 shrink-0 mt-0.5">
+              <Monitor className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Appearance</h3>
+              <p className="text-sm text-muted-foreground">Choose between light, dark, or system-based theme.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { value: "light",  label: "Light",  Icon: Sun },
+              { value: "dark",   label: "Dark",   Icon: Moon },
+              { value: "system", label: "Auto",   Icon: Monitor },
+            ] as const).map(({ value, label, Icon }) => (
+              <button
+                key={value}
+                onClick={() => setTheme(value)}
+                className={cn(
+                  "flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-semibold transition-all duration-200",
+                  theme === value
+                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
+                    : "border-border bg-background text-muted-foreground hover:border-primary/40"
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Account Visibility */}
+        <div className="bg-card border border-border/50 rounded-2xl p-6 space-y-5">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-emerald-500/10 shrink-0 mt-0.5">
+              <Globe2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Account Visibility</h3>
+              <p className="text-sm text-muted-foreground">Control who can see your profile and scores.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { value: true,  label: "Public",  sub: "Visible on leaderboard & search", Icon: Globe2 },
+              { value: false, label: "Private", sub: "Hidden from other users",          Icon: EyeOff },
+            ] as const).map(({ value, label, sub, Icon }) => {
+              const isSelected = isPublic === value;
+              return (
+                <button
+                  key={String(value)}
+                  onClick={() => handleVisibility(value)}
+                  disabled={updatePrefsMut.isPending}
+                  className={cn(
+                    "flex flex-col items-start gap-1 p-3 rounded-xl border text-left transition-all duration-200",
+                    isSelected
+                      ? "bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20"
+                      : "border-border bg-background text-muted-foreground hover:border-emerald-400/40"
+                  )}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Icon className="w-3.5 h-3.5" />
+                    <span className="text-xs font-bold">{label}</span>
+                  </div>
+                  <span className={cn("text-[10px] leading-tight", isSelected ? "text-white/70" : "text-muted-foreground/60")}>{sub}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Fine-grained privacy settings (private accounts only) */}
+          {isPublic === false && (
+            <div className="border-t border-border/40 pt-4 space-y-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Privacy Preferences</p>
+              {([
+                {
+                  key: "showNameOnLeaderboard" as const,
+                  label: "Show name on leaderboard",
+                  sub: "Others see your display name instead of just your username",
+                },
+              ]).map(({ key, label, sub }) => (
+                <div key={key} className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-xl bg-muted/30">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium leading-snug">{label}</p>
+                    <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{sub}</p>
+                  </div>
+                  <Switch
+                    checked={((user as any)?.[key] ?? true) as boolean}
+                    onCheckedChange={async (v) => {
+                      await updatePrefsMut.mutateAsync({ [key]: v });
+                    }}
+                    disabled={updatePrefsMut.isPending}
+                    className="shrink-0"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Messaging cost section */}
@@ -128,7 +247,7 @@ export default function Preferences() {
           </div>
         </div>
 
-        {/* Save button */}
+        {/* Save button (for messaging prefs) */}
         <Button
           onClick={handleSave}
           disabled={updatePrefsMut.isPending || isLoading || (warningEnabled && !thresholdValid)}

@@ -1,14 +1,12 @@
 import { useState, useRef } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useGetLeaderboard, useGetAchievements, useUploadProfilePicture, useUpdateName, useChangePassword, useUpdatePreferences, useGetShop, useEquipItem, customFetch } from "@workspace/api-client-react";
+import { useGetLeaderboard, useGetAchievements, useUploadProfilePicture, useUpdateName, useChangePassword, useGetShop, useEquipItem, customFetch } from "@workspace/api-client-react";
 import type { ShopItem } from "@workspace/api-client-react";
 import { useMutation } from "@tanstack/react-query";
-import { useThemeMode } from "@/lib/theme-context";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Sun, Moon, Monitor, Languages, Globe, Globe2, Palette, Trash2, AlertTriangle, ChevronRight, CheckCircle } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Globe, Globe2, Palette, Trash2, AlertTriangle, ChevronRight, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -79,10 +77,7 @@ export default function ProfilePage() {
   const uploadPicMut = useUploadProfilePicture();
   const updateNameMut = useUpdateName();
   const changePasswordMut = useChangePassword();
-  const updatePrefsMut = useUpdatePreferences();
   const equipMut = useEquipItem();
-  const { theme, setTheme } = useThemeMode();
-
   const gradeChangeMut = useMutation({
     mutationFn: ({ requestedGradeIndex, reason }: { requestedGradeIndex: number; reason: string }) =>
       customFetch("/api/grade-change-request", {
@@ -191,16 +186,6 @@ export default function ProfilePage() {
       window.location.reload();
     } catch {
       toast({ title: "Failed to update name", variant: "destructive" });
-    }
-  };
-
-  const handleVisibility = async (value: boolean) => {
-    try {
-      await updatePrefsMut.mutateAsync({ isPublic: value });
-      toast({ title: value ? "Account set to public" : "Account set to private" });
-      window.location.reload();
-    } catch {
-      toast({ title: "Failed to update visibility", variant: "destructive" });
     }
   };
 
@@ -874,109 +859,6 @@ export default function ProfilePage() {
               <span className="font-medium">{user?.level ? `${user.level} (${LEVELS.find(l => l.code === user.level)?.group})` : "Not set"}</span>
             </div>
           </div>
-        </motion.div>
-
-        {/* Preferences */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.23 }}
-          className="bg-card rounded-3xl border border-border/60 shadow-sm p-6 space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center">
-              <Monitor className="w-5 h-5 text-blue-500" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base">Preferences</h3>
-              <p className="text-xs text-muted-foreground">Appearance, language and privacy settings</p>
-            </div>
-          </div>
-
-          {/* Theme */}
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Appearance</p>
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                { value: "light",  label: "Light",  Icon: Sun },
-                { value: "dark",   label: "Dark",   Icon: Moon },
-                { value: "system", label: "Auto",   Icon: Monitor },
-              ] as const).map(({ value, label, Icon }) => (
-                <button
-                  key={value}
-                  onClick={() => setTheme(value)}
-                  className={cn(
-                    "flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-semibold transition-all duration-200",
-                    theme === value
-                      ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20"
-                      : "border-border bg-background text-muted-foreground hover:border-primary/40"
-                  )}
-                >
-                  <Icon className="w-4 h-4" />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Account Visibility */}
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Account Visibility</p>
-            <div className="grid grid-cols-2 gap-2">
-              {([
-                { value: true,  label: "Public",  sub: "Visible on leaderboard & search", Icon: Globe2 },
-                { value: false, label: "Private", sub: "Hidden from other users", Icon: EyeOff },
-              ] as const).map(({ value, label, sub, Icon }) => {
-                const isSelected = ((user as any)?.isPublic ?? true) === value;
-                return (
-                  <button
-                    key={String(value)}
-                    onClick={() => handleVisibility(value)}
-                    disabled={updatePrefsMut.isPending}
-                    className={cn(
-                      "flex flex-col items-start gap-1 p-3 rounded-xl border text-left transition-all duration-200",
-                      isSelected
-                        ? "bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20"
-                        : "border-border bg-background text-muted-foreground hover:border-emerald-400/40"
-                    )}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <Icon className="w-3.5 h-3.5" />
-                      <span className="text-xs font-bold">{label}</span>
-                    </div>
-                    <span className={cn("text-[10px] leading-tight", isSelected ? "text-white/70" : "text-muted-foreground/60")}>{sub}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Private Account Fine-grained Settings */}
-          {(user as any)?.isPublic === false && (
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Privacy Preferences</p>
-              <div className="space-y-2">
-                {([
-                  {
-                    key: "showNameOnLeaderboard" as const,
-                    label: "Show name on leaderboard",
-                    sub: "Others see your display name instead of just your username",
-                  },
-                ]).map(({ key, label, sub }) => (
-                  <div key={key} className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-xl bg-muted/30">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium leading-snug">{label}</p>
-                      <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{sub}</p>
-                    </div>
-                    <Switch
-                      checked={((user as any)?.[key] ?? true) as boolean}
-                      onCheckedChange={async (v) => {
-                        await updatePrefsMut.mutateAsync({ [key]: v });
-                      }}
-                      disabled={updatePrefsMut.isPending}
-                      className="shrink-0"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </motion.div>
 
         {/* Change Password */}
