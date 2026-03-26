@@ -383,6 +383,14 @@ export default function InboxPage() {
                       </div>
                     )}
 
+                    {/* Retry pass weekly grant */}
+                    {msg.type === "retry_pass_grant" && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-semibold">
+                        <span>🔄</span>
+                        +3 Retry Passes granted
+                      </div>
+                    )}
+
                     {/* Developer request (shown to approver) */}
                     {msg.type === "developer_request" && (
                       <div className="space-y-3">

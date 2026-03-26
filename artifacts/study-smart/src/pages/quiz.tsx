@@ -1,12 +1,13 @@
 import { useState, useCallback } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useSubmitScore } from "@workspace/api-client-react";
-import { useMutation } from "@tanstack/react-query";
+import { useGetPowerups, useUsePowerup } from "@workspace/api-client-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, CheckCircle2, XCircle, ArrowRight, Trophy, Upload, RotateCcw, Sparkles, BookOpen } from "lucide-react";
+import { ChevronLeft, CheckCircle2, XCircle, ArrowRight, Trophy, Upload, RotateCcw, Sparkles, BookOpen, Lightbulb, Zap } from "lucide-react";
 import {
   type LevelGroup, type QuizSubject, type QuizTopic, type Difficulty,
   LEVEL_GROUP_INFO, LEVEL_TO_GROUP, LEVEL_LABELS, LEVEL_GROUP_SECTIONS,
@@ -51,6 +52,9 @@ function ProgressDots({ step }: { step: Step }) {
 export default function QuizPage() {
   const { user, isAuthenticated } = useAuth();
   const submitScoreMut = useSubmitScore();
+  const { data: powerupsData, refetch: refetchPowerups } = useGetPowerups();
+  const usePowerupMut = useUsePowerup();
+  const qc = useQueryClient();
 
   const [step, setStep] = useState<Step>("levelGroup");
   const [levelGroup, setLevelGroup] = useState<LevelGroup | null>(null);
@@ -66,6 +70,15 @@ export default function QuizPage() {
   const [showExp, setShowExp] = useState(false);
   const [score, setScore] = useState(0);
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
+
+  const [doublePointsActive, setDoublePointsActive] = useState(false);
+  const [doublePointsUsed, setDoublePointsUsed] = useState(false);
+  const [hintUsedThisQ, setHintUsedThisQ] = useState(false);
+  const [eliminatedOptions, setEliminatedOptions] = useState<Set<number>>(new Set());
+
+  const hintQty = powerupsData?.inventory.find(p => p.key === "hint_token")?.quantity ?? 0;
+  const doubleQty = powerupsData?.inventory.find(p => p.key === "double_points")?.quantity ?? 0;
+  const retryQty = powerupsData?.inventory.find(p => p.key === "retry_pass")?.quantity ?? 0;
 
   const generateMut = useMutation({
     mutationFn: async (params: { level: string; subject: string; topic: string; difficulty: string; questionCount: number }) => {
@@ -112,6 +125,19 @@ export default function QuizPage() {
     setSelected(null);
     setShowExp(false);
     setScoreSubmitted(false);
+    setHintUsedThisQ(false);
+    setEliminatedOptions(new Set());
+
+    if (doublePointsActive && !doublePointsUsed) {
+      try {
+        await usePowerupMut.mutateAsync("double_points");
+        setDoublePointsUsed(true);
+        refetchPowerups();
+      } catch {
+        setDoublePointsActive(false);
+      }
+    }
+
     try {
       const data = await generateMut.mutateAsync({ level, subject: subject.name, topic: topic.name, difficulty, questionCount });
       setQuiz(data);
@@ -122,14 +148,31 @@ export default function QuizPage() {
   };
 
   const handleAnswer = useCallback((idx: number) => {
-    if (showExp || !quiz) return;
+    if (showExp || !quiz || eliminatedOptions.has(idx)) return;
     setSelected(idx);
     setShowExp(true);
     if (idx === quiz.questions[currentQ].correctAnswer) setScore(s => s + 1);
-  }, [showExp, quiz, currentQ]);
+  }, [showExp, quiz, currentQ, eliminatedOptions]);
+
+  const handleUseHint = async () => {
+    if (!quiz || hintUsedThisQ || hintQty <= 0 || showExp) return;
+    const q = quiz.questions[currentQ];
+    const wrongOptions = q.options.map((_, i) => i).filter(i => i !== q.correctAnswer);
+    const toEliminate = wrongOptions.sort(() => Math.random() - 0.5).slice(0, 2);
+    try {
+      await usePowerupMut.mutateAsync("hint_token");
+      setEliminatedOptions(new Set(toEliminate));
+      setHintUsedThisQ(true);
+      refetchPowerups();
+    } catch {
+      // not enough hints
+    }
+  };
 
   const nextQuestion = () => {
     if (!quiz) return;
+    setHintUsedThisQ(false);
+    setEliminatedOptions(new Set());
     if (currentQ < quiz.questions.length - 1) {
       setCurrentQ(i => i + 1);
       setSelected(null);
@@ -146,19 +189,37 @@ export default function QuizPage() {
     setTopic(null);
     setQuiz(null);
     setScoreSubmitted(false);
+    setDoublePointsActive(false);
+    setDoublePointsUsed(false);
+    setHintUsedThisQ(false);
+    setEliminatedOptions(new Set());
   };
 
   const retryTopic = () => {
     setQuiz(null);
     setStep("settings");
     setScoreSubmitted(false);
+    setDoublePointsActive(false);
+    setDoublePointsUsed(false);
+    setHintUsedThisQ(false);
+    setEliminatedOptions(new Set());
+  };
+
+  const retryWithPass = async () => {
+    try {
+      await usePowerupMut.mutateAsync("retry_pass");
+      refetchPowerups();
+      retryTopic();
+    } catch {
+      // no passes left
+    }
   };
 
   const q = quiz?.questions[currentQ];
-  const finalScore = quiz ? calcScore(score, quiz.questions.length, quiz.difficulty) : 0;
+  const rawScore = quiz ? calcScore(score, quiz.questions.length, quiz.difficulty) : 0;
+  const finalScore = doublePointsActive ? rawScore * 2 : rawScore;
   const pct = quiz ? Math.round((score / quiz.questions.length) * 100) : 0;
   const subjects = levelGroup ? getSubjectsForGroup(levelGroup) : [];
-
   const groupInfo = levelGroup ? LEVEL_GROUP_INFO[levelGroup] : null;
 
   return (
@@ -333,15 +394,56 @@ export default function QuizPage() {
                   </div>
                 </div>
 
+                {/* Power-up activations */}
+                {(doubleQty > 0 || hintQty > 0) && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-bold">Power-ups</p>
+                    {doubleQty > 0 && (
+                      <button
+                        onClick={() => setDoublePointsActive(v => !v)}
+                        className={cn(
+                          "w-full flex items-center gap-3 rounded-2xl border p-3.5 text-left transition-all",
+                          doublePointsActive
+                            ? "border-amber-400 bg-amber-500/10 shadow-md shadow-amber-500/10"
+                            : "border-border/60 bg-card hover:border-amber-400/40"
+                        )}
+                      >
+                        <span className="text-2xl">⚡</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold">Double Points Boost</p>
+                          <p className="text-xs text-muted-foreground">All quiz points ×2 · {doubleQty} charge{doubleQty !== 1 ? "s" : ""} available</p>
+                        </div>
+                        <div className={cn(
+                          "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
+                          doublePointsActive ? "border-amber-500 bg-amber-500" : "border-muted-foreground/40"
+                        )}>
+                          {doublePointsActive && <CheckCircle2 className="w-3 h-3 text-white" />}
+                        </div>
+                      </button>
+                    )}
+                    {hintQty > 0 && (
+                      <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/30 p-3.5">
+                        <span className="text-2xl">💡</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold">Hint Tokens</p>
+                          <p className="text-xs text-muted-foreground">{hintQty} available · Use during quiz to eliminate 2 wrong answers</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {generateMut.isError && (
                   <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-sm text-red-600 dark:text-red-400 text-center">
                     Failed to generate quiz. Please try again.
                   </div>
                 )}
 
-                <Button size="lg" onClick={startQuiz} className="w-full rounded-2xl shadow-xl shadow-primary/20 text-base gap-2">
-                  <Sparkles className="w-5 h-5" />
-                  Generate {questionCount}-Question Quiz
+                <Button size="lg" onClick={startQuiz} className={cn(
+                  "w-full rounded-2xl shadow-xl text-base gap-2",
+                  doublePointsActive ? "bg-gradient-to-r from-amber-500 to-orange-500 border-0 shadow-amber-500/20" : "shadow-primary/20"
+                )}>
+                  {doublePointsActive ? <><Zap className="w-5 h-5" /> Generate Quiz (2× Points!)</> : <><Sparkles className="w-5 h-5" /> Generate {questionCount}-Question Quiz</>}
                 </Button>
               </div>
             </motion.div>
@@ -355,6 +457,9 @@ export default function QuizPage() {
               <div className="text-center">
                 <p className="font-bold text-lg">AI is crafting your quiz…</p>
                 <p className="text-muted-foreground text-sm mt-1">Generating {questionCount} {difficulty} questions on {topic?.name}</p>
+                {doublePointsActive && (
+                  <p className="text-amber-500 text-sm font-bold mt-2">⚡ Double Points active!</p>
+                )}
               </div>
             </motion.div>
           )}
@@ -369,7 +474,26 @@ export default function QuizPage() {
                   <BookOpen className="w-4 h-4" />
                   <span className="font-medium">{quiz.topic}</span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  {doublePointsActive && (
+                    <div className="flex items-center gap-1 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-400/30">
+                      ⚡ 2×
+                    </div>
+                  )}
+                  {!showExp && hintQty > 0 && !hintUsedThisQ && (
+                    <button
+                      onClick={handleUseHint}
+                      disabled={usePowerupMut.isPending}
+                      className="flex items-center gap-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-1 rounded-full border border-blue-400/30 transition-all"
+                    >
+                      <Lightbulb className="w-3 h-3" /> Hint ×{hintQty}
+                    </button>
+                  )}
+                  {hintUsedThisQ && (
+                    <div className="text-[10px] text-muted-foreground font-medium bg-muted px-2 py-0.5 rounded-full">
+                      💡 Hint used
+                    </div>
+                  )}
                   <div className="text-sm font-bold text-primary">{score} / {currentQ + (showExp ? 1 : 0)} correct</div>
                   <div className="text-xs text-muted-foreground font-medium bg-muted px-2 py-1 rounded-full">
                     {currentQ + 1} / {quiz.questions.length}
@@ -393,19 +517,23 @@ export default function QuizPage() {
                 {q.options.map((opt, idx) => {
                   const isCorrect = idx === q.correctAnswer;
                   const isSelected = idx === selected;
+                  const isEliminated = eliminatedOptions.has(idx);
                   return (
                     <motion.button key={idx} onClick={() => handleAnswer(idx)} whileTap={{ scale: 0.99 }}
-                      disabled={showExp}
+                      disabled={showExp || isEliminated}
                       className={cn(
                         "w-full text-left p-4 rounded-2xl border transition-all duration-200 flex items-center gap-3",
-                        !showExp ? "bg-card border-border/60 hover:border-primary/40 hover:bg-primary/5 cursor-pointer"
+                        isEliminated
+                          ? "opacity-30 bg-muted/20 border-border/20 cursor-not-allowed line-through"
+                          : !showExp ? "bg-card border-border/60 hover:border-primary/40 hover:bg-primary/5 cursor-pointer"
                           : isCorrect ? "bg-green-500/10 border-green-500 text-green-700 dark:text-green-300"
                           : isSelected ? "bg-red-500/10 border-red-500 text-red-700 dark:text-red-300"
                           : "bg-muted/30 border-border/30 text-muted-foreground cursor-default"
                       )}>
                       <span className={cn(
                         "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
-                        !showExp ? "bg-muted text-muted-foreground"
+                        isEliminated ? "bg-muted/40 text-muted-foreground/40"
+                          : !showExp ? "bg-muted text-muted-foreground"
                           : isCorrect ? "bg-green-500 text-white"
                           : isSelected ? "bg-red-500 text-white"
                           : "bg-muted text-muted-foreground"
@@ -415,6 +543,7 @@ export default function QuizPage() {
                       <span className="text-sm font-medium flex-1">{opt}</span>
                       {showExp && isCorrect && <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />}
                       {showExp && isSelected && !isCorrect && <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
+                      {isEliminated && <XCircle className="w-4 h-4 text-muted-foreground/30 shrink-0" />}
                     </motion.button>
                   );
                 })}
@@ -452,11 +581,16 @@ export default function QuizPage() {
                 </motion.div>
                 <h2 className="text-2xl font-bold mb-1">{pct >= 80 ? "Excellent!" : pct >= 50 ? "Good job!" : "Keep studying!"}</h2>
                 <p className="text-muted-foreground text-sm">{quiz.topic} · {LEVEL_LABELS[quiz.level] ?? quiz.level}</p>
+                {doublePointsActive && (
+                  <div className="inline-flex items-center gap-1.5 mt-2 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs font-bold px-3 py-1 rounded-full border border-amber-400/30">
+                    ⚡ Double Points applied — score doubled!
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: "Score", value: finalScore.toLocaleString(), sub: "pts", highlight: true },
+                  { label: "Score", value: finalScore.toLocaleString(), sub: doublePointsActive ? "pts (2×)" : "pts", highlight: true },
                   { label: "Correct", value: `${score}/${quiz.questions.length}`, sub: "answers", highlight: false },
                   { label: "Accuracy", value: `${pct}%`, sub: "correct", highlight: false },
                 ].map(({ label, value, sub, highlight }) => (
@@ -493,6 +627,19 @@ export default function QuizPage() {
                     <CheckCircle2 className="w-4 h-4" /> Score submitted to leaderboard!
                   </div>
                 )}
+
+                {/* Retry Pass */}
+                {retryQty > 0 && (
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-2xl gap-2 border-blue-400/40 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
+                    onClick={retryWithPass}
+                    disabled={usePowerupMut.isPending}
+                  >
+                    🔄 Use Retry Pass ({retryQty} left) — redo this quiz
+                  </Button>
+                )}
+
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={retryTopic}>
                     <RotateCcw className="w-4 h-4" /> Try Again

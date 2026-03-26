@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Layout } from "@/components/layout";
 import { useGetShop, usePurchaseItem, useEquipItem, type ShopItem } from "@workspace/api-client-react";
+import { useGetPowerups, usePurchasePowerup, type PowerupDef } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Star, ShoppingBag, Check, Zap } from "lucide-react";
+import { Star, ShoppingBag, Check, Zap, Inbox, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getItemDef } from "@/lib/shop-data";
 
@@ -12,9 +13,10 @@ const TYPE_TABS = [
   { key: "background", label: "Backgrounds", emoji: "🖼️", desc: "Profile card backdrop" },
   { key: "frame",      label: "Frames",       emoji: "⭕", desc: "Avatar ring border" },
   { key: "nametag",    label: "Nametags",     emoji: "🏷️", desc: "Emoji tag next to your name" },
+  { key: "powerups",   label: "Power-ups",    emoji: "⚡", desc: "Consumable boosts for your quiz sessions" },
 ] as const;
 
-type TabKey = "background" | "frame" | "nametag";
+type TabKey = "background" | "frame" | "nametag" | "powerups";
 
 function BackgroundPreview({ colors, size = "lg" }: { colors?: string[]; size?: "lg" | "sm" }) {
   if (!colors || colors.length === 0) return <div className={cn("rounded-xl bg-muted", size === "lg" ? "h-20 w-full" : "h-10 w-16 rounded-lg")} />;
@@ -45,17 +47,89 @@ function NametagPreview({ item }: { item: ShopItem }) {
   );
 }
 
+function PowerupCard({ item, balance, onBuy, isPending }: {
+  item: PowerupDef;
+  balance: number;
+  onBuy: (type: string) => void;
+  isPending: boolean;
+}) {
+  const canAfford = balance >= item.price;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.97 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-card border border-border/50 rounded-2xl p-5 space-y-4 hover:shadow-md transition-all"
+    >
+      <div className="flex items-start gap-4">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/15 to-accent/15 border border-primary/20 flex items-center justify-center text-3xl shrink-0 shadow-sm">
+          {item.emoji}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-0.5">
+            <p className="font-bold text-sm">{item.name}</p>
+            {item.quantity > 0 && (
+              <div className="bg-primary text-primary-foreground text-xs font-black px-2 py-0.5 rounded-full">
+                ×{item.quantity}
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground leading-snug">{item.description}</p>
+        </div>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground/70 italic leading-snug border-t border-border/30 pt-3">
+        {item.longDescription}
+      </p>
+
+      {item.purchasable ? (
+        <Button
+          size="sm"
+          className={cn("w-full rounded-xl", !canAfford && "opacity-70")}
+          variant={canAfford ? "default" : "outline"}
+          onClick={() => onBuy(item.key)}
+          disabled={isPending || !canAfford}
+        >
+          {!canAfford ? (
+            <span className="text-muted-foreground text-xs flex items-center gap-1">
+              Need {(item.price - balance).toLocaleString()} more pts
+            </span>
+          ) : (
+            <>
+              <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />
+              Buy · {item.price.toLocaleString()} pts
+            </>
+          )}
+        </Button>
+      ) : (
+        <div className="flex items-center justify-center gap-2 py-2 rounded-xl bg-muted/40 border border-border/30">
+          <Inbox className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground font-medium">Collect 3 free per week from your inbox</span>
+        </div>
+      )}
+    </motion.div>
+  );
+}
 
 export default function ShopPage() {
   const { toast } = useToast();
-  const { data: shop, isLoading } = useGetShop();
+  const { data: shop, isLoading: shopLoading } = useGetShop();
+  const { data: powerupsData, isLoading: powerupsLoading } = useGetPowerups();
   const purchaseMut = usePurchaseItem();
   const equipMut = useEquipItem();
+  const purchasePowerupMut = usePurchasePowerup();
   const [activeTab, setActiveTab] = useState<TabKey>("background");
 
-  const balance = shop?.balance ?? 0;
-  const items = (shop?.items ?? []).filter((i: ShopItem) => i.type === activeTab);
+  const balance = activeTab === "powerups"
+    ? (powerupsData?.balance ?? 0)
+    : (shop?.balance ?? 0);
+
+  const items = activeTab !== "powerups"
+    ? (shop?.items ?? []).filter((i: ShopItem) => i.type === activeTab)
+    : [];
+
   const activeTabMeta = TYPE_TABS.find(t => t.key === activeTab)!;
+  const isLoading = activeTab === "powerups" ? powerupsLoading : shopLoading;
 
   const handlePurchase = (item: ShopItem) => {
     purchaseMut.mutate(item.key, {
@@ -67,6 +141,14 @@ export default function ShopPage() {
   const handleEquip = (item: ShopItem) => {
     equipMut.mutate({ itemKey: item.equipped ? "" : item.key, slot: item.type }, {
       onSuccess: () => toast({ title: item.equipped ? `Unequipped "${item.name}"` : `Equipped "${item.name}"! ✨` }),
+    });
+  };
+
+  const handleBuyPowerup = (type: string) => {
+    const def = powerupsData?.inventory.find(p => p.key === type);
+    purchasePowerupMut.mutate(type, {
+      onSuccess: (r) => toast({ title: `Bought ${def?.name ?? "Power-up"}! ${def?.emoji ?? "⚡"}`, description: `New balance: ${r.newBalance} pts` }),
+      onError: (e: unknown) => toast({ title: "Purchase failed", description: (e as { message?: string })?.message, variant: "destructive" }),
     });
   };
 
@@ -90,17 +172,24 @@ export default function ShopPage() {
             </div>
             <div className="text-right">
               <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-3xl shadow-inner mb-1">
-                🛍️
+                {activeTab === "powerups" ? "⚡" : "🛍️"}
               </div>
-              <p className="text-white/70 text-xs">
-                {(shop?.items ?? []).filter((i: ShopItem) => i.owned).length} / {(shop?.items ?? []).length} owned
-              </p>
+              {activeTab !== "powerups" && (
+                <p className="text-white/70 text-xs">
+                  {(shop?.items ?? []).filter((i: ShopItem) => i.owned).length} / {(shop?.items ?? []).length} owned
+                </p>
+              )}
+              {activeTab === "powerups" && (
+                <p className="text-white/70 text-xs">
+                  {(powerupsData?.inventory ?? []).reduce((s, p) => s + p.quantity, 0)} in stock
+                </p>
+              )}
             </div>
           </div>
         </motion.div>
 
-        {/* Equipped Cosmetics Preview */}
-        {shop?.equipped && (
+        {/* Equipped Cosmetics Preview — only for cosmetics tabs */}
+        {activeTab !== "powerups" && shop?.equipped && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -132,6 +221,27 @@ export default function ShopPage() {
           </motion.div>
         )}
 
+        {/* Power-ups inventory summary */}
+        {activeTab === "powerups" && (powerupsData?.inventory ?? []).some(p => p.quantity > 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-card border border-border/50 rounded-2xl p-4"
+          >
+            <p className="text-xs font-bold text-muted-foreground mb-3 uppercase tracking-wider">Your Inventory</p>
+            <div className="flex flex-wrap gap-2">
+              {(powerupsData?.inventory ?? []).filter(p => p.quantity > 0).map(p => (
+                <div key={p.key} className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-full px-3 py-1.5">
+                  <span className="text-base">{p.emoji}</span>
+                  <span className="text-xs font-bold">{p.name}</span>
+                  <span className="text-xs font-black text-primary">×{p.quantity}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-1">
           {TYPE_TABS.map(tab => (
@@ -155,16 +265,45 @@ export default function ShopPage() {
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="text-lg">{activeTabMeta.emoji}</span>
           <span>{activeTabMeta.desc}</span>
-          <span className="ml-auto text-xs font-medium">{items.filter((i: ShopItem) => i.owned).length}/{items.length} owned</span>
+          {activeTab !== "powerups" && (
+            <span className="ml-auto text-xs font-medium">{items.filter((i: ShopItem) => i.owned).length}/{items.length} owned</span>
+          )}
         </div>
 
-        {/* Items Grid */}
+        {/* Items */}
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: activeTab === "powerups" ? 4 : 6 }).map((_, i) => (
               <div key={i} className="h-44 rounded-2xl bg-muted/40 animate-pulse" />
             ))}
           </div>
+        ) : activeTab === "powerups" ? (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key="powerups"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="grid gap-4 grid-cols-1 sm:grid-cols-2"
+            >
+              {(powerupsData?.inventory ?? []).map((item, i) => (
+                <motion.div
+                  key={item.key}
+                  initial={{ opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.05 }}
+                >
+                  <PowerupCard
+                    item={item}
+                    balance={balance}
+                    onBuy={handleBuyPowerup}
+                    isPending={purchasePowerupMut.isPending}
+                  />
+                </motion.div>
+              ))}
+            </motion.div>
+          </AnimatePresence>
         ) : (
           <AnimatePresence mode="wait">
             <motion.div
@@ -201,7 +340,6 @@ export default function ShopPage() {
                         <NametagPreview item={item} />
                       </div>
                     )}
-                    {/* Status badges */}
                     {item.equipped && (
                       <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                         <Check className="w-3 h-3" /> Equipped

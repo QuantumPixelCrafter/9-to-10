@@ -18,6 +18,7 @@ import usersRouter from "./users";
 import curriculumQuizRouter from "./curriculum-quiz";
 import developerRouter from "./developer";
 import inboxRouter from "./inbox";
+import powerupsRouter from "./powerups";
 
 const router: IRouter = Router();
 
@@ -26,6 +27,7 @@ router.use(authRouter);
 router.use(customAuthRouter);
 router.use(developerRouter);
 router.use(inboxRouter);
+router.use(powerupsRouter);
 router.use(subjectsRouter);
 router.use(notesRouter);
 router.use(quizRouter);

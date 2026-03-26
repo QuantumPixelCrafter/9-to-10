@@ -35,6 +35,7 @@ export const usersTable = pgTable("users", {
   showNameInSearch: boolean("show_name_in_search").notNull().default(true),
   allowProfileView: boolean("allow_profile_view").notNull().default(true),
   isDeveloper: boolean("is_developer").notNull().default(false),
+  lastRetryPassGrantAt: timestamp("last_retry_pass_grant_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
