@@ -30,10 +30,22 @@ type QuizData = {
 const QUESTION_COUNTS = [5, 10, 15] as const;
 type QCount = (typeof QUESTION_COUNTS)[number];
 
-function calcScore(correct: number, total: number, difficulty: string): number {
-  const m = difficulty === "easy" ? 1 : difficulty === "difficult" ? 2 : 1.5;
-  return Math.round(correct * m * 100);
+const X_BASE: Record<LevelGroup, number> = {
+  junior_primary: 1, senior_primary: 2.5,
+  junior_secondary: 4, senior_secondary: 5.5, university: 7,
+};
+const DIFF_OFFSET: Record<string, number> = { easy: 0, normal: 0.5, difficult: 1 };
+
+function calcScore(correct: number, levelGroup: LevelGroup, difficulty: string): number {
+  if (correct === 0) return 2;
+  const x = X_BASE[levelGroup] + (DIFF_OFFSET[difficulty] ?? 0);
+  return Math.round(2 * correct * x);
 }
+
+type WrongAnswer = {
+  question: string; options: string[];
+  correctAnswer: number; userAnswer: number; explanation: string;
+};
 
 function ProgressDots({ step }: { step: Step }) {
   const steps: Step[] = ["levelGroup", "subject", "topic", "settings", "playing"];
@@ -82,6 +94,8 @@ export default function QuizPage() {
   const [hintUsedThisQ, setHintUsedThisQ] = useState(false);
   const [eliminatedOptions, setEliminatedOptions] = useState<Set<number>>(new Set());
   const [randomBonusActive, setRandomBonusActive] = useState(false);
+  const [wrongAnswers, setWrongAnswers] = useState<WrongAnswer[]>([]);
+  const [reviewSent, setReviewSent] = useState(false);
 
   const hintQty = powerupsData?.inventory.find(p => p.key === "hint_token")?.quantity ?? 0;
   const doubleQty = powerupsData?.inventory.find(p => p.key === "double_points")?.quantity ?? 0;
@@ -90,6 +104,11 @@ export default function QuizPage() {
 
   const useRandomBonusMut = useMutation({
     mutationFn: () => customFetch<RandomBonusResult>("/api/powerups/use-random-bonus", { method: "POST" }),
+  });
+
+  const reviewLaterMut = useMutation({
+    mutationFn: (payload: { level: string; subject: string; topic: string; difficulty: string; wrongAnswers: WrongAnswer[] }) =>
+      customFetch<{ inserted: number }>("/api/review", { method: "POST", body: JSON.stringify(payload) }),
   });
 
   const generateMut = useMutation({
@@ -184,7 +203,18 @@ export default function QuizPage() {
     if (showExp || !quiz || eliminatedOptions.has(idx)) return;
     setSelected(idx);
     setShowExp(true);
-    if (idx === quiz.questions[currentQ].correctAnswer) setScore(s => s + 1);
+    const q = quiz.questions[currentQ];
+    if (idx === q.correctAnswer) {
+      setScore(s => s + 1);
+    } else {
+      setWrongAnswers(prev => [...prev, {
+        question: q.question,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        userAnswer: idx,
+        explanation: q.explanation,
+      }]);
+    }
   }, [showExp, quiz, currentQ, eliminatedOptions]);
 
   const handleUseHint = async () => {
@@ -226,6 +256,8 @@ export default function QuizPage() {
     setDoublePointsUsed(false);
     setHintUsedThisQ(false);
     setEliminatedOptions(new Set());
+    setWrongAnswers([]);
+    setReviewSent(false);
   };
 
   const retryTopic = () => {
@@ -236,6 +268,8 @@ export default function QuizPage() {
     setDoublePointsUsed(false);
     setHintUsedThisQ(false);
     setEliminatedOptions(new Set());
+    setWrongAnswers([]);
+    setReviewSent(false);
   };
 
   const retryWithPass = async () => {
@@ -246,11 +280,14 @@ export default function QuizPage() {
     } catch {
       // no passes left
     }
+    setWrongAnswers([]);
+    setReviewSent(false);
   };
 
   const q = quiz?.questions[currentQ];
-  const rawScore = quiz ? calcScore(score, quiz.questions.length, quiz.difficulty) : 0;
-  const finalScore = doublePointsActive ? rawScore * 2 : rawScore;
+  const failed = score === 0 && (quiz?.questions.length ?? 0) > 0;
+  const rawScore = quiz && levelGroup ? calcScore(score, levelGroup, quiz.difficulty) : 0;
+  const finalScore = failed ? 2 : (doublePointsActive ? rawScore * 2 : rawScore);
   const pct = quiz ? Math.round((score / quiz.questions.length) * 100) : 0;
   const subjects = levelGroup ? getSubjectsForGroup(levelGroup) : [];
   const groupInfo = levelGroup ? LEVEL_GROUP_INFO[levelGroup] : null;
@@ -635,11 +672,14 @@ export default function QuizPage() {
               className="space-y-5">
               <div className="text-center">
                 <motion.div className="text-6xl mb-4" animate={{ rotate: [0,-10,10,-10,10,0] }} transition={{ duration: 0.6, delay: 0.2 }}>
-                  {pct >= 80 ? "🏆" : pct >= 50 ? "🎯" : "📚"}
+                  {failed ? "💪" : pct >= 80 ? "🏆" : pct >= 50 ? "🎯" : "📚"}
                 </motion.div>
-                <h2 className="text-2xl font-bold mb-1">{pct >= 80 ? "Excellent!" : pct >= 50 ? "Good job!" : "Keep studying!"}</h2>
+                <h2 className="text-2xl font-bold mb-1">{failed ? "Don't give up!" : pct >= 80 ? "Excellent!" : pct >= 50 ? "Good job!" : "Keep studying!"}</h2>
                 <p className="text-muted-foreground text-sm">{quiz.topic} · {LEVEL_LABELS[quiz.level] ?? quiz.level}</p>
-                {doublePointsActive && (
+                {failed && (
+                  <p className="text-sm text-muted-foreground mt-2 italic">Mistakes are part of learning — try again tomorrow!</p>
+                )}
+                {!failed && doublePointsActive && (
                   <div className="inline-flex items-center gap-1.5 mt-2 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs font-bold px-3 py-1 rounded-full border border-amber-400/30">
                     ⚡ Double Points applied — score doubled!
                   </div>
@@ -648,7 +688,7 @@ export default function QuizPage() {
 
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: "Score", value: finalScore.toLocaleString(), sub: doublePointsActive ? "pts (2×)" : "pts", highlight: true },
+                  { label: "Score", value: finalScore.toLocaleString(), sub: !failed && doublePointsActive ? "pts (2×)" : "pts", highlight: true },
                   { label: "Correct", value: `${score}/${quiz.questions.length}`, sub: "answers", highlight: false },
                   { label: "Accuracy", value: `${pct}%`, sub: "correct", highlight: false },
                 ].map(({ label, value, sub, highlight }) => (
@@ -696,6 +736,30 @@ export default function QuizPage() {
                   >
                     🔄 Use Retry Pass ({retryQty} left) — redo this quiz
                   </Button>
+                )}
+
+                {/* Review Later */}
+                {wrongAnswers.length > 0 && !reviewSent && (
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-2xl gap-2 border-orange-400/40 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10"
+                    disabled={reviewLaterMut.isPending}
+                    onClick={async () => {
+                      await reviewLaterMut.mutateAsync({
+                        level: quiz.level, subject: quiz.subject,
+                        topic: quiz.topic, difficulty: quiz.difficulty,
+                        wrongAnswers,
+                      });
+                      setReviewSent(true);
+                    }}
+                  >
+                    📋 {reviewLaterMut.isPending ? "Saving…" : `Review Later (${wrongAnswers.length} wrong answer${wrongAnswers.length !== 1 ? "s" : ""})`}
+                  </Button>
+                )}
+                {reviewSent && (
+                  <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-3 flex items-center justify-center gap-2 text-orange-600 dark:text-orange-400 font-semibold text-sm">
+                    <CheckCircle2 className="w-4 h-4" /> Saved to your Review list!
+                  </div>
                 )}
 
                 <div className="flex gap-2">

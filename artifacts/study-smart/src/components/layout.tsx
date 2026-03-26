@@ -5,7 +5,7 @@ import {
   Home, BookOpen, Calendar as CalendarIcon, 
   Target, Clock, Smile, Menu, Flag,
   BrainCircuit, Sparkles, ChevronRight, Gamepad2, Trophy, User, LogOut, Medal, ShoppingBag, Users,
-  Inbox, BadgeCheck, Code2, Settings
+  Inbox, BadgeCheck, Code2, Settings, ClipboardList
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -31,6 +31,7 @@ const NAV_ITEMS = [
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy, color: "text-amber-500", bg: "bg-amber-500/10" },
   { href: "/achievements", label: "Achievements", icon: Medal, color: "text-yellow-500", bg: "bg-yellow-500/10" },
   { href: "/quiz", label: "AI Quiz", icon: Sparkles, color: "text-amber-500", bg: "bg-amber-500/10" },
+  { href: "/review", label: "Review", icon: ClipboardList, color: "text-orange-500", bg: "bg-orange-500/10" },
   { href: "/shop", label: "Shop", icon: ShoppingBag, color: "text-rose-500", bg: "bg-rose-500/10" },
   { href: "/inbox", label: "Inbox", icon: Inbox, color: "text-indigo-500", bg: "bg-indigo-500/10" },
   { href: "/friends", label: "Friends", icon: Users, color: "text-teal-500", bg: "bg-teal-500/10" },
