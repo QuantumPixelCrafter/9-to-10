@@ -147,8 +147,20 @@ export function useSendMessage() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ userId, content }: { userId: string; content: string }) =>
-      customFetch<ChatMessage>(`/api/chat/${userId}`, { method: "POST", body: JSON.stringify({ content }) }),
-    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: getChatQueryKey(vars.userId) }),
+      customFetch<ChatMessage & { balanceAfter?: number }>(`/api/chat/${userId}`, { method: "POST", body: JSON.stringify({ content }) }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: getChatQueryKey(vars.userId) });
+      qc.invalidateQueries({ queryKey: ["chat-balance"] });
+    },
+  });
+}
+
+export function useGetChatBalance(enabled: boolean) {
+  return useQuery({
+    queryKey: ["chat-balance"],
+    queryFn: () => customFetch<{ balance: number; threshold: number | null; messageCost: number }>("/api/chat/balance"),
+    enabled,
+    refetchInterval: 5000,
   });
 }
 

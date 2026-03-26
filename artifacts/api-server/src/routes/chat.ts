@@ -1,8 +1,11 @@
 import { Router, type IRouter } from "express";
-import { db, chatMessagesTable, friendshipsTable, usersTable } from "@workspace/db";
-import { eq, or, and, desc } from "drizzle-orm";
+import { db, chatMessagesTable, friendshipsTable, usersTable, inboxMessagesTable, userAchievementsTable } from "@workspace/db";
+import { eq, or, and, sql } from "drizzle-orm";
+import { ACHIEVEMENTS } from "../lib/achievements";
 
 const router: IRouter = Router();
+
+const MESSAGE_COST = 10;
 
 function requireAuth(req: any, res: any): boolean {
   if (!req.isAuthenticated()) {
@@ -29,6 +32,34 @@ async function areFriends(userId: string, otherId: string): Promise<boolean> {
   return !!fs;
 }
 
+async function getUserBalance(userId: string): Promise<number> {
+  const [earned, [userRow]] = await Promise.all([
+    db.select({ key: userAchievementsTable.achievementKey }).from(userAchievementsTable).where(eq(userAchievementsTable.userId, userId)),
+    db.select({ pointsSpent: usersTable.pointsSpent, bonusPoints: usersTable.bonusPoints }).from(usersTable).where(eq(usersTable.id, userId)),
+  ]);
+  const totalEarned = earned.reduce((sum, e) => {
+    const def = ACHIEVEMENTS.find(a => a.key === e.key);
+    return sum + (def?.points ?? 0);
+  }, 0);
+  const bonus = userRow?.bonusPoints ?? 0;
+  const spent = userRow?.pointsSpent ?? 0;
+  return Math.max(0, totalEarned + bonus - spent);
+}
+
+// GET current user's chat balance + warning threshold
+router.get("/chat/balance", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+
+  const [userRow] = await db
+    .select({ chatPointWarningThreshold: usersTable.chatPointWarningThreshold })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+
+  const balance = await getUserBalance(userId);
+  res.json({ balance, threshold: userRow?.chatPointWarningThreshold ?? null, messageCost: MESSAGE_COST });
+});
+
 // GET messages with a specific user (must be friends)
 router.get("/chat/:userId", async (req, res) => {
   if (!requireAuth(req, res)) return;
@@ -49,10 +80,10 @@ router.get("/chat/:userId", async (req, res) => {
         and(eq(chatMessagesTable.senderId, otherId), eq(chatMessagesTable.receiverId, req.user.id))
       )
     )
-    .orderBy(desc(chatMessagesTable.createdAt))
+    .orderBy(chatMessagesTable.createdAt)
     .limit(100);
 
-  // Mark unread messages as read
+  // Mark unread messages from friend as read (only messages we received)
   await db
     .update(chatMessagesTable)
     .set({ readAt: new Date() })
@@ -63,10 +94,10 @@ router.get("/chat/:userId", async (req, res) => {
       )
     );
 
-  res.json(messages.reverse());
+  res.json(messages);
 });
 
-// POST send a message (must be friends)
+// POST send a message (must be friends) — costs 10 pts for sender
 router.post("/chat/:userId", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const otherId = req.params.userId;
@@ -87,12 +118,47 @@ router.post("/chat/:userId", async (req, res) => {
     return;
   }
 
+  // Check sender has enough points
+  const balanceBefore = await getUserBalance(req.user.id);
+  if (balanceBefore < MESSAGE_COST) {
+    res.status(402).json({ error: `Not enough points — sending a message costs ${MESSAGE_COST} pts (you have ${balanceBefore} pts)` });
+    return;
+  }
+
+  // Fetch warning threshold
+  const [userRow] = await db
+    .select({ chatPointWarningThreshold: usersTable.chatPointWarningThreshold })
+    .from(usersTable)
+    .where(eq(usersTable.id, req.user.id));
+  const threshold = userRow?.chatPointWarningThreshold ?? null;
+
+  // Deduct points from sender
+  await db
+    .update(usersTable)
+    .set({ pointsSpent: sql`${usersTable.pointsSpent} + ${MESSAGE_COST}`, updatedAt: new Date() })
+    .where(eq(usersTable.id, req.user.id));
+
+  const balanceAfter = balanceBefore - MESSAGE_COST;
+
+  // Send inbox warning if balance just crossed below threshold
+  if (threshold !== null && balanceBefore > threshold && balanceAfter <= threshold) {
+    const SYSTEM_ID = req.user.id;
+    await db.insert(inboxMessagesTable).values({
+      recipientId: req.user.id,
+      senderId: SYSTEM_ID,
+      type: "chat_point_warning",
+      points: balanceAfter,
+      message: `Your points balance has dropped to ${balanceAfter} pts — at or below your messaging warning threshold of ${threshold} pts. Each message costs ${MESSAGE_COST} pts.`,
+    });
+  }
+
+  // Insert the message
   const [msg] = await db
     .insert(chatMessagesTable)
     .values({ senderId: req.user.id, receiverId: otherId, content: content.trim() })
     .returning();
 
-  res.status(201).json(msg);
+  res.status(201).json({ ...msg, balanceAfter });
 });
 
 // GET unread message count across all friends

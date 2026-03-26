@@ -5,7 +5,7 @@ import {
   Home, BookOpen, Calendar as CalendarIcon, 
   Target, Clock, Smile, Menu, Flag,
   BrainCircuit, Sparkles, ChevronRight, Gamepad2, Trophy, User, LogOut, Medal, ShoppingBag, Users,
-  Inbox, BadgeCheck, Code2
+  Inbox, BadgeCheck, Code2, Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -157,7 +157,7 @@ export function Layout({ children, title, actions }: LayoutProps) {
         </div>
 
         {/* Profile section at bottom */}
-        <div className="p-4 border-t border-border/40">
+        <div className="p-4 border-t border-border/40 space-y-1">
           <Link href="/profile">
             <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all group
               ${location === "/profile" ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}>
@@ -169,6 +169,13 @@ export function Layout({ children, title, actions }: LayoutProps) {
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{user?.username ? `@${user.username}` : "My Profile"}</p>
               </div>
+            </div>
+          </Link>
+          <Link href="/preferences">
+            <div className={`flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-pointer transition-all text-xs
+              ${location === "/preferences" ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+              <Settings className="w-3.5 h-3.5 shrink-0" />
+              Preferences
             </div>
           </Link>
         </div>

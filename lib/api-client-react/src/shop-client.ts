@@ -84,7 +84,7 @@ export function useChangePassword() {
 
 export function useUpdatePreferences() {
   return useMutation({
-    mutationFn: (prefs: { isPublic?: boolean; showNameOnLeaderboard?: boolean; showNameInSearch?: boolean; allowProfileView?: boolean }) =>
+    mutationFn: (prefs: { isPublic?: boolean; showNameOnLeaderboard?: boolean; showNameInSearch?: boolean; allowProfileView?: boolean; chatPointWarningThreshold?: number | null }) =>
       customFetch<{ user: unknown }>("/api/auth/profile", {
         method: "PUT",
         body: JSON.stringify(prefs),

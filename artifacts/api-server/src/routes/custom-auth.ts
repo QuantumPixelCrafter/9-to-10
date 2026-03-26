@@ -140,7 +140,7 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
     return;
   }
 
-  const { level, firstName, lastName, isPublic, showNameOnLeaderboard, showNameInSearch, allowProfileView } = req.body;
+  const { level, firstName, lastName, isPublic, showNameOnLeaderboard, showNameInSearch, allowProfileView, chatPointWarningThreshold } = req.body;
   const validLevels = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
 
   if (isPublic !== undefined && typeof isPublic !== "boolean") {
@@ -166,6 +166,13 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
   if (showNameOnLeaderboard !== undefined && typeof showNameOnLeaderboard === "boolean") updates.showNameOnLeaderboard = showNameOnLeaderboard;
   if (showNameInSearch !== undefined && typeof showNameInSearch === "boolean") updates.showNameInSearch = showNameInSearch;
   if (allowProfileView !== undefined && typeof allowProfileView === "boolean") updates.allowProfileView = allowProfileView;
+  if (chatPointWarningThreshold !== undefined) {
+    if (chatPointWarningThreshold === null) {
+      updates.chatPointWarningThreshold = null;
+    } else if (typeof chatPointWarningThreshold === "number" && chatPointWarningThreshold >= 0) {
+      updates.chatPointWarningThreshold = Math.floor(chatPointWarningThreshold);
+    }
+  }
 
   const [updated] = await db
     .update(usersTable)

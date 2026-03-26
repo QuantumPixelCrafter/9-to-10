@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import {
+  AlertTriangle,
   BadgeCheck,
   Bell,
   BellOff,
@@ -314,6 +315,15 @@ export default function InboxPage() {
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-sm font-semibold">
                         <span>🎁</span>
                         Power-up received!
+                      </div>
+                    )}
+
+                    {/* Chat point warning */}
+                    {msg.type === "chat_point_warning" && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg text-sm font-semibold">
+                        <AlertTriangle className="w-4 h-4" />
+                        Low points balance
+                        {msg.points != null && <span className="font-normal ml-0.5">— {msg.points} pts remaining</span>}
                       </div>
                     )}
 

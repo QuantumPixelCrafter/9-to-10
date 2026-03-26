@@ -28,6 +28,7 @@ import UserProfile from "@/pages/user-profile";
 import Quiz from "@/pages/quiz";
 import InboxPage from "@/pages/inbox";
 import DeveloperPanel from "@/pages/developer-panel";
+import Preferences from "@/pages/preferences";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -88,6 +89,7 @@ function AppRoutes() {
       <Route path="/friends" component={Friends} />
       <Route path="/inbox" component={InboxPage} />
       <Route path="/developer" component={DeveloperPanel} />
+      <Route path="/preferences" component={Preferences} />
       <Route path="/users/:userId" component={UserProfile} />
       <Route path="/login" component={RedirectToHome} />
       <Route path="/signup" component={RedirectToHome} />

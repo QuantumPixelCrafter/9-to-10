@@ -3,7 +3,7 @@ import { Layout } from "@/components/layout";
 import { useAuth } from "@workspace/replit-auth-web";
 import {
   useGetFriends, useSearchUsers, useSendFriendRequest, useAcceptFriendRequest,
-  useDeclineFriendRequest, useRemoveFriend, useGetChat, useSendMessage,
+  useDeclineFriendRequest, useRemoveFriend, useGetChat, useSendMessage, useGetChatBalance,
   useGetPowerups, customFetch,
   type FriendEntry, type FriendUser,
 } from "@workspace/api-client-react";
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, UserPlus, MessageCircle, Check, X, Trash2,
-  ArrowLeft, Send, User, Zap, ChevronRight, Users, Gift, X as XIcon
+  ArrowLeft, Send, User, Zap, ChevronRight, Users, Gift, X as XIcon, AlertTriangle, Coins, Settings
 } from "lucide-react";
 import { getItemDef } from "@/lib/shop-data";
 
@@ -238,6 +238,7 @@ export default function FriendsPage() {
 
   const selectedEntry = friends.find(f => f.user?.id === selectedFriendId && f.status === "accepted");
   const { data: messages = [] } = useGetChat(selectedFriendId ?? "", !!selectedFriendId && !!selectedEntry);
+  const { data: chatBalance } = useGetChatBalance(!!selectedFriendId && !!selectedEntry);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -256,8 +257,15 @@ export default function FriendsPage() {
 
   const handleSendMessage = () => {
     if (!messageText.trim() || !selectedFriendId) return;
+    const balance = chatBalance?.balance ?? null;
+    const cost = chatBalance?.messageCost ?? 10;
+    if (balance !== null && balance < cost) {
+      toast({ title: "Not enough points", description: `Sending a message costs ${cost} pts. You have ${balance} pts.`, variant: "destructive" });
+      return;
+    }
     sendMsgMut.mutate({ userId: selectedFriendId, content: messageText }, {
       onSuccess: () => setMessageText(""),
+      onError: (err: Error) => toast({ title: "Message not sent", description: err.message, variant: "destructive" }),
     });
   };
 
@@ -429,19 +437,43 @@ export default function FriendsPage() {
                 <div ref={chatEndRef} />
               </div>
 
+              {/* Low balance warning banner */}
+              {chatBalance && chatBalance.threshold !== null && chatBalance.balance <= chatBalance.threshold && (
+                <div className="mx-3 mb-0 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-medium shrink-0">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    Low balance — <span className="font-bold">{chatBalance.balance} pts</span> remaining
+                    {chatBalance.balance < chatBalance.messageCost && " (not enough to send)"}
+                  </span>
+                  <a href="/preferences" className="ml-auto flex items-center gap-1 text-amber-500 hover:text-amber-600 transition-colors shrink-0">
+                    <Settings className="w-3 h-3" /> Settings
+                  </a>
+                </div>
+              )}
+
               {/* Message input */}
-              <div className="flex gap-2 p-3 border-t border-border/40 shrink-0">
-                <input
-                  value={messageText}
-                  onChange={e => setMessageText(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Type a message… (Enter to send)"
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  maxLength={2000}
-                />
-                <Button size="icon" onClick={handleSendMessage} disabled={!messageText.trim() || sendMsgMut.isPending} className="rounded-xl w-10 h-10 shrink-0">
-                  <Send className="w-4 h-4" />
-                </Button>
+              <div className="flex flex-col gap-1 p-3 border-t border-border/40 shrink-0">
+                <div className="flex gap-2">
+                  <input
+                    value={messageText}
+                    onChange={e => setMessageText(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type a message… (Enter to send)"
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    maxLength={2000}
+                    disabled={chatBalance !== undefined && chatBalance.balance < (chatBalance.messageCost ?? 10)}
+                  />
+                  <Button size="icon" onClick={handleSendMessage} disabled={!messageText.trim() || sendMsgMut.isPending || (chatBalance !== undefined && chatBalance.balance < (chatBalance.messageCost ?? 10))} className="rounded-xl w-10 h-10 shrink-0">
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60 px-1">
+                  <Coins className="w-3 h-3" />
+                  <span>Each message costs {chatBalance?.messageCost ?? 10} pts</span>
+                  {chatBalance !== undefined && (
+                    <span className="ml-auto font-medium text-muted-foreground">{chatBalance.balance} pts remaining</span>
+                  )}
+                </div>
               </div>
             </div>
           )}
