@@ -23,6 +23,25 @@ interface DevUser {
 
 type ActiveTab = "gift" | "promote";
 
+const POWERUP_NAMES = ["Streak Freeze", "Double Points Boost", "Hint Token", "Retry Pass"];
+const POWERUP_EMOJIS: Record<string, string> = {
+  "Streak Freeze": "🧊",
+  "Double Points Boost": "⚡",
+  "Hint Token": "💡",
+  "Retry Pass": "🔄",
+};
+
+function fuzzyMatch(text: string, query: string): boolean {
+  if (!query.trim()) return false;
+  const t = text.toLowerCase();
+  const q = query.toLowerCase();
+  let qi = 0;
+  for (let i = 0; i < t.length && qi < q.length; i++) {
+    if (t[i] === q[qi]) qi++;
+  }
+  return qi === q.length;
+}
+
 export default function DeveloperPanel() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -34,6 +53,11 @@ export default function DeveloperPanel() {
   // Gift all state
   const [giftName, setGiftName] = useState("");
   const [points, setPoints] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const suggestions = giftName.trim()
+    ? POWERUP_NAMES.filter(name => fuzzyMatch(name, giftName))
+    : [];
 
   // Promote state
   const [search, setSearch] = useState("");
@@ -179,13 +203,33 @@ export default function DeveloperPanel() {
             <form onSubmit={handleGiftSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Gift name</label>
-                <Input
-                  placeholder='e.g. "Spring Celebration" or "Weekend Bonus"'
-                  value={giftName}
-                  onChange={(e) => setGiftName(e.target.value)}
-                  className="rounded-xl"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    placeholder='e.g. "Spring Celebration" or "Weekend Bonus"'
+                    value={giftName}
+                    onChange={(e) => { setGiftName(e.target.value); setShowSuggestions(true); }}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 120)}
+                    className="rounded-xl"
+                    required
+                  />
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute z-10 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+                      {suggestions.map(name => (
+                        <button
+                          key={name}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => { setGiftName(name); setShowSuggestions(false); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-muted transition-colors text-left"
+                        >
+                          <span className="text-base">{POWERUP_EMOJIS[name]}</span>
+                          <span className="font-medium">{name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Points per user</label>
