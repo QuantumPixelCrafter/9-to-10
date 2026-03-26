@@ -41,7 +41,7 @@ export default function LoginPage() {
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-xl tracking-tight">Study Smart</span>
+            <span className="font-bold text-xl tracking-tight">Mind Forge</span>
           </div>
         </Link>
         <Link href="/signup">
@@ -64,7 +64,7 @@ export default function LoginPage() {
               <LogIn className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight mb-1">Welcome back</h1>
-            <p className="text-muted-foreground text-sm">Sign in to your Study Smart account</p>
+            <p className="text-muted-foreground text-sm">Sign in to your Mind Forge account</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">

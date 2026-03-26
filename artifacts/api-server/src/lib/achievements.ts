@@ -16,7 +16,7 @@ export interface AchievementDef {
 export const ACHIEVEMENTS: AchievementDef[] = [
 
   // ─── General (all permanent milestones) ─────────────────────────────────────
-  { key: "welcome",         title: "Welcome!",          description: "Join Study Smart",                                                   requirement: "Create your account",                          icon: "🎉", points: 40,   category: "general" },
+  { key: "welcome",         title: "Welcome!",          description: "Join Mind Forge",                                                   requirement: "Create your account",                          icon: "🎉", points: 40,   category: "general" },
   { key: "level_set",       title: "All Set",            description: "Choose your education level",                                        requirement: "Select your education level in your profile",  icon: "🎓", points: 80,   category: "general" },
   { key: "game_level_1",    title: "First Steps",        description: "You've begun your journey. Every legend starts somewhere.",          requirement: "Reach Game Level 1",                           icon: "👣", points: 40,   category: "general" },
   { key: "game_level_25",   title: "Rising Challenger",  description: "Your skills are sharpening, and your presence is being felt.",       requirement: "Reach Game Level 25",                          icon: "⚔️", points: 300,  category: "general" },

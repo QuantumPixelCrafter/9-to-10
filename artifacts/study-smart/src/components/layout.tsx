@@ -114,7 +114,7 @@ export function Layout({ children, title, actions }: LayoutProps) {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white shadow-lg shadow-primary/20">
             <Sparkles className="w-5 h-5" />
           </div>
-          <span className="font-display font-bold text-xl tracking-tight">Study Smart</span>
+          <span className="font-display font-bold text-xl tracking-tight">Mind Forge</span>
         </div>
         
         <div className="px-4 py-2 flex-1 overflow-y-auto">
@@ -192,7 +192,7 @@ export function Layout({ children, title, actions }: LayoutProps) {
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white">
                   <Sparkles className="w-5 h-5" />
                 </div>
-                <span className="font-display font-bold text-xl tracking-tight">Study Smart</span>
+                <span className="font-display font-bold text-xl tracking-tight">Mind Forge</span>
               </div>
               <div className="p-4 flex-1 overflow-y-auto">
                 <nav className="space-y-2">
@@ -270,8 +270,8 @@ export function Layout({ children, title, actions }: LayoutProps) {
           </Sheet>
           
           <div className="flex flex-col">
-            <span className="font-display font-bold text-lg leading-none">{title || "Study Smart"}</span>
-            {title && <span className="text-xs text-muted-foreground md:hidden">Study Smart App</span>}
+            <span className="font-display font-bold text-lg leading-none">{title || "Mind Forge"}</span>
+            {title && <span className="text-xs text-muted-foreground md:hidden">Mind Forge</span>}
           </div>
         </div>
         

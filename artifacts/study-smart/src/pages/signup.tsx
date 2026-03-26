@@ -85,7 +85,7 @@ export default function SignupPage() {
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-xl tracking-tight">Study Smart</span>
+            <span className="font-bold text-xl tracking-tight">Mind Forge</span>
           </div>
         </Link>
         <Link href="/login">

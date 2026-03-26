@@ -48,7 +48,7 @@ export default function Home() {
                 <Sparkles className="w-4 h-4" /> Welcome back, Student!
               </div>
               <h2 className="text-3xl md:text-5xl font-display font-bold leading-tight">
-                Ready to <span className="text-gradient">Study Smart</span> today?
+                Ready to <span className="text-gradient">Mind Forge</span> today?
               </h2>
               <p className="text-muted-foreground text-lg max-w-xl">
                 You have {todaySchedules.length} classes scheduled for today and {activeGoals.length} active goals to focus on.

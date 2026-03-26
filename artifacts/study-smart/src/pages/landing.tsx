@@ -23,7 +23,7 @@ export default function LandingPage() {
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
-          <span className="font-bold text-xl tracking-tight">Study Smart</span>
+          <span className="font-bold text-xl tracking-tight">Mind Forge</span>
         </div>
         <div className="flex items-center gap-2">
           <Link href="/login">
@@ -161,7 +161,7 @@ export default function LandingPage() {
           <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
             <Sparkles className="w-3 h-3 text-white" />
           </div>
-          <span className="font-bold text-foreground">Study Smart</span>
+          <span className="font-bold text-foreground">Mind Forge</span>
         </div>
         <p>AI-powered student productivity app</p>
       </footer>

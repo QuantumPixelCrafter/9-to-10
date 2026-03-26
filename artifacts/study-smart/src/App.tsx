@@ -54,7 +54,7 @@ function AppRoutes() {
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl shadow-primary/25 animate-pulse">
             <Sparkles className="w-7 h-7 text-white" />
           </div>
-          <p className="text-muted-foreground font-medium">Loading Study Smart…</p>
+          <p className="text-muted-foreground font-medium">Loading Mind Forge…</p>
         </div>
       </div>
     );
