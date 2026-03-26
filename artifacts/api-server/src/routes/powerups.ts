@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable, userPowerupsTable, inboxMessagesTable, userAchievementsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { ACHIEVEMENTS } from "../lib/achievements";
 
 const router: IRouter = Router();
@@ -42,9 +42,28 @@ export const POWERUP_DEFS = [
     price: 0,
     purchasable: false,
   },
+  {
+    key: "random_quiz_bonus",
+    name: "Random Quiz Bonus",
+    emoji: "🎲",
+    description: "Use before a quiz for a surprise reward — bonus points or a random power-up!",
+    longDescription: "50% chance of bonus points (300–1000 pts, most likely ~650) · 50% chance of a random power-up grant. Activate it on the quiz settings screen before generating your quiz.",
+    price: 700,
+    purchasable: true,
+  },
 ] as const;
 
-export type PowerupKey = "streak_freeze" | "double_points" | "hint_token" | "retry_pass";
+export type PowerupKey = "streak_freeze" | "double_points" | "hint_token" | "retry_pass" | "random_quiz_bonus";
+
+// Triangular distribution: min, max, mode
+function triangularRandom(min: number, max: number, mode: number): number {
+  const U = Math.random();
+  const Fc = (mode - min) / (max - min);
+  if (U < Fc) {
+    return Math.round(min + Math.sqrt(U * (max - min) * (mode - min)));
+  }
+  return Math.round(max - Math.sqrt((1 - U) * (max - min) * (max - mode)));
+}
 
 function isNewWeek(lastGrant: Date | null): boolean {
   if (!lastGrant) return true;
@@ -301,6 +320,51 @@ router.post("/powerups/use", async (req, res) => {
     .where(and(eq(userPowerupsTable.userId, req.user.id), eq(userPowerupsTable.type, type)));
 
   res.json({ success: true, remaining: existing[0].quantity - 1 });
+});
+
+// POST /api/powerups/use-random-bonus — consume one Random Quiz Bonus and resolve the reward
+router.post("/powerups/use-random-bonus", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  const userId = req.user.id;
+
+  const existing = await db.select().from(userPowerupsTable)
+    .where(and(eq(userPowerupsTable.userId, userId), eq(userPowerupsTable.type, "random_quiz_bonus")))
+    .limit(1);
+
+  if (existing.length === 0 || existing[0].quantity <= 0) {
+    res.status(400).json({ error: "No Random Quiz Bonus charges remaining" });
+    return;
+  }
+
+  // Consume one charge
+  await db.update(userPowerupsTable)
+    .set({ quantity: existing[0].quantity - 1, updatedAt: new Date() })
+    .where(and(eq(userPowerupsTable.userId, userId), eq(userPowerupsTable.type, "random_quiz_bonus")));
+
+  const isPoints = Math.random() < 0.5;
+
+  if (isPoints) {
+    // Triangular distribution centred on the midpoint 650 (min 300, max 1000)
+    const pts = triangularRandom(300, 1000, 650);
+    await db.update(usersTable)
+      .set({ bonusPoints: sql`${usersTable.bonusPoints} + ${pts}`, updatedAt: new Date() })
+      .where(eq(usersTable.id, userId));
+    res.json({ rewardType: "points", points: pts });
+  } else {
+    // Equal-probability draw from all other power-ups
+    const grantable = ["streak_freeze", "double_points", "hint_token", "retry_pass"] as const;
+    const chosen = grantable[Math.floor(Math.random() * grantable.length)];
+    const chosenDef = POWERUP_DEFS.find(d => d.key === chosen)!;
+    const existingPowerup = await getOrCreatePowerup(userId, chosen);
+    await db.update(userPowerupsTable)
+      .set({ quantity: existingPowerup.quantity + 1, updatedAt: new Date() })
+      .where(and(eq(userPowerupsTable.userId, userId), eq(userPowerupsTable.type, chosen)));
+    res.json({ rewardType: "powerup", powerupKey: chosen, powerupName: chosenDef.name, powerupEmoji: chosenDef.emoji });
+  }
 });
 
 export default router;

@@ -1,8 +1,9 @@
 import { useState, useCallback } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useSubmitScore } from "@workspace/api-client-react";
+import { useSubmitScore, customFetch } from "@workspace/api-client-react";
 import { useGetPowerups, useUsePowerup } from "@workspace/api-client-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -49,8 +50,13 @@ function ProgressDots({ step }: { step: Step }) {
   );
 }
 
+type RandomBonusResult =
+  | { rewardType: "points"; points: number }
+  | { rewardType: "powerup"; powerupKey: string; powerupName: string; powerupEmoji: string };
+
 export default function QuizPage() {
   const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
   const submitScoreMut = useSubmitScore();
   const { data: powerupsData, refetch: refetchPowerups } = useGetPowerups();
   const usePowerupMut = useUsePowerup();
@@ -75,10 +81,16 @@ export default function QuizPage() {
   const [doublePointsUsed, setDoublePointsUsed] = useState(false);
   const [hintUsedThisQ, setHintUsedThisQ] = useState(false);
   const [eliminatedOptions, setEliminatedOptions] = useState<Set<number>>(new Set());
+  const [randomBonusActive, setRandomBonusActive] = useState(false);
 
   const hintQty = powerupsData?.inventory.find(p => p.key === "hint_token")?.quantity ?? 0;
   const doubleQty = powerupsData?.inventory.find(p => p.key === "double_points")?.quantity ?? 0;
   const retryQty = powerupsData?.inventory.find(p => p.key === "retry_pass")?.quantity ?? 0;
+  const randomBonusQty = powerupsData?.inventory.find(p => p.key === "random_quiz_bonus")?.quantity ?? 0;
+
+  const useRandomBonusMut = useMutation({
+    mutationFn: () => customFetch<RandomBonusResult>("/api/powerups/use-random-bonus", { method: "POST" }),
+  });
 
   const generateMut = useMutation({
     mutationFn: async (params: { level: string; subject: string; topic: string; difficulty: string; questionCount: number }) => {
@@ -135,6 +147,27 @@ export default function QuizPage() {
         refetchPowerups();
       } catch {
         setDoublePointsActive(false);
+      }
+    }
+
+    if (randomBonusActive && randomBonusQty > 0) {
+      try {
+        const result = await useRandomBonusMut.mutateAsync();
+        refetchPowerups();
+        if (result.rewardType === "points") {
+          toast({
+            title: "🎲 Random Quiz Bonus!",
+            description: `You received ${result.points.toLocaleString()} bonus points!`,
+          });
+        } else {
+          toast({
+            title: "🎲 Random Quiz Bonus!",
+            description: `You received a ${result.powerupEmoji} ${result.powerupName}!`,
+          });
+        }
+        setRandomBonusActive(false);
+      } catch {
+        // bonus failed silently — quiz still runs
       }
     }
 
@@ -395,9 +428,34 @@ export default function QuizPage() {
                 </div>
 
                 {/* Power-up activations */}
-                {(doubleQty > 0 || hintQty > 0) && (
+                {(doubleQty > 0 || hintQty > 0 || randomBonusQty > 0) && (
                   <div className="space-y-2">
                     <p className="text-sm font-bold">Power-ups</p>
+                    {randomBonusQty > 0 && (
+                      <button
+                        onClick={() => setRandomBonusActive(v => !v)}
+                        className={cn(
+                          "w-full flex items-center gap-3 rounded-2xl border p-3.5 text-left transition-all",
+                          randomBonusActive
+                            ? "border-purple-400 bg-purple-500/10 shadow-md shadow-purple-500/10"
+                            : "border-border/60 bg-card hover:border-purple-400/40"
+                        )}
+                      >
+                        <span className="text-2xl">🎲</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold">Random Quiz Bonus</p>
+                          <p className="text-xs text-muted-foreground">
+                            50% pts (300–1000) · 50% random power-up · {randomBonusQty} charge{randomBonusQty !== 1 ? "s" : ""} available
+                          </p>
+                        </div>
+                        <div className={cn(
+                          "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
+                          randomBonusActive ? "border-purple-500 bg-purple-500" : "border-muted-foreground/40"
+                        )}>
+                          {randomBonusActive && <CheckCircle2 className="w-3 h-3 text-white" />}
+                        </div>
+                      </button>
+                    )}
                     {doubleQty > 0 && (
                       <button
                         onClick={() => setDoublePointsActive(v => !v)}
