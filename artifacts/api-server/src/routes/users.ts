@@ -29,6 +29,8 @@ router.get("/users/:userId", async (req, res) => {
       equippedNametag: usersTable.equippedNametag,
       isPublic: usersTable.isPublic,
       createdAt: usersTable.createdAt,
+      country: usersTable.country,
+      gradeIndex: usersTable.gradeIndex,
     })
     .from(usersTable)
     .where(eq(usersTable.id, userId))
@@ -98,6 +100,8 @@ router.get("/users/:userId", async (req, res) => {
     equippedBackground: user.equippedBackground ?? null,
     equippedFrame: user.equippedFrame ?? null,
     equippedNametag: user.equippedNametag ?? null,
+    country: user.country ?? null,
+    gradeIndex: user.gradeIndex ?? null,
     createdAt: user.createdAt.toISOString(),
     achievements: { earned: earned.size, total: ACHIEVEMENTS.length, totalPoints, list: achievements },
     scores: { memory: bestMemory?.score ?? null, bubble: bestBubble?.score ?? null, quiz: bestQuiz?.score ?? null },

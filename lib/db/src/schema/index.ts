@@ -13,3 +13,4 @@ export * from "./leaderboard-rewards";
 export * from "./inbox-messages";
 export * from "./user-powerups";
 export * from "./review-items";
+export * from "./grade-change-requests";

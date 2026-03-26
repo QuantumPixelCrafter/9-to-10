@@ -7,7 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getBgStyle, getFrameGradient, getItemDef } from "@/lib/shop-data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, EyeOff, GraduationCap, UserCheck, UserMinus, UserPlus } from "lucide-react";
+import { ArrowLeft, EyeOff, GraduationCap, UserCheck, UserMinus, UserPlus, Globe2 } from "lucide-react";
+import { getCountry, getGradeName } from "@/lib/countries-grades";
 
 export default function UserProfilePage() {
   const params = useParams<{ userId: string }>();
@@ -120,6 +121,20 @@ export default function UserProfilePage() {
                     <GraduationCap className="w-3 h-3" /> {profile.level}
                   </span>
                 )}
+                {(() => {
+                  const c = (profile as any).country as string | null;
+                  const gi = (profile as any).gradeIndex as number | null;
+                  if (!c) return null;
+                  const countryDef = getCountry(c);
+                  const gradeName = gi != null ? getGradeName(c, gi) : null;
+                  if (!countryDef) return null;
+                  return (
+                    <span className="mt-1 inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-medium px-2 py-0.5 rounded-full">
+                      <span>{countryDef.flag}</span>
+                      {gradeName ? `${gradeName} · ${countryDef.name}` : countryDef.name}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
 

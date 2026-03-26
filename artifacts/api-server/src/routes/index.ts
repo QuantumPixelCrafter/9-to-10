@@ -20,6 +20,7 @@ import developerRouter from "./developer";
 import inboxRouter from "./inbox";
 import powerupsRouter from "./powerups";
 import reviewRouter from "./review";
+import gradeChangeRouter from "./grade-change";
 
 const router: IRouter = Router();
 
@@ -30,6 +31,7 @@ router.use(developerRouter);
 router.use(inboxRouter);
 router.use(powerupsRouter);
 router.use(reviewRouter);
+router.use(gradeChangeRouter);
 router.use(subjectsRouter);
 router.use(notesRouter);
 router.use(quizRouter);

@@ -29,6 +29,9 @@ export interface AuthUser {
   showNameInSearch?: boolean;
   allowProfileView?: boolean;
   isDeveloper?: boolean;
+  country?: string | null;
+  gradeIndex?: number | null;
+  gradeSchoolYear?: number | null;
 }
 
 export interface AuthUserEnvelope {
