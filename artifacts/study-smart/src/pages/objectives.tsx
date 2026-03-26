@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout";
 import { useGetAchievements, useCheckAchievements } from "@workspace/api-client-react";
+import { customFetch } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,19 @@ export default function ObjectivesPage() {
   const { data, isLoading, isError } = useGetAchievements();
   const checkMut = useCheckAchievements();
   const [newlyEarnedKeys, setNewlyEarnedKeys] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    customFetch<{ granted: boolean; quantity?: number }>("/api/powerups/weekly-grant", { method: "POST" })
+      .then((res) => {
+        if (res.granted) {
+          toast({
+            title: "🔄 Weekly Retry Passes granted!",
+            description: "3 Retry Passes have been added to your inventory. Check your inbox!",
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     checkMut.mutate(undefined, {

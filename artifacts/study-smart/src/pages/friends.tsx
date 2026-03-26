@@ -4,18 +4,25 @@ import { useAuth } from "@workspace/replit-auth-web";
 import {
   useGetFriends, useSearchUsers, useSendFriendRequest, useAcceptFriendRequest,
   useDeclineFriendRequest, useRemoveFriend, useGetChat, useSendMessage,
+  useGetPowerups, customFetch,
   type FriendEntry, type FriendUser,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, UserPlus, MessageCircle, Check, X, Trash2,
-  ArrowLeft, Send, User, Zap, ChevronRight, Users
+  ArrowLeft, Send, User, Zap, ChevronRight, Users, Gift, X as XIcon
 } from "lucide-react";
 import { getItemDef } from "@/lib/shop-data";
+
+const GIFTABLE_POWERUPS = [
+  { key: "streak_freeze", name: "Streak Freeze", emoji: "🧊", price: 2000, cooldownDays: 4 },
+  { key: "double_points", name: "Double Points Boost", emoji: "⚡", price: 1500, cooldownDays: 3 },
+  { key: "hint_token", name: "Hint Token", emoji: "💡", price: 500, cooldownDays: 1 },
+];
 
 function Avatar({ user, size = "md" }: { user: { profileImageUrl?: string | null; displayName: string }; size?: "sm" | "md" | "lg" }) {
   const dim = size === "sm" ? "w-9 h-9 text-xs" : size === "md" ? "w-11 h-11 text-sm" : "w-14 h-14 text-base";
@@ -37,8 +44,95 @@ function LevelBadge({ gameLevel }: { gameLevel: number }) {
   );
 }
 
+function GiftModal({
+  friend,
+  onClose,
+  onGift,
+  isGifting,
+}: {
+  friend: { id: string; displayName: string; profileImageUrl?: string | null };
+  onClose: () => void;
+  onGift: (type: string) => void;
+  isGifting: boolean;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const { data: powerupsData } = useGetPowerups();
+  const balance = powerupsData?.balance ?? 0;
+  const selectedDef = GIFTABLE_POWERUPS.find(p => p.key === selected);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div
+        className="relative bg-card border border-border rounded-3xl p-6 w-full max-w-sm space-y-5 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Avatar user={friend} size="sm" />
+            <div>
+              <p className="font-bold text-sm">Gift to {friend.displayName}</p>
+              <p className="text-xs text-muted-foreground">Your balance: <span className="font-semibold text-amber-500">{balance.toLocaleString()} pts</span></p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+            <XIcon className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {GIFTABLE_POWERUPS.map(p => {
+            const canAfford = balance >= p.price;
+            const isSel = selected === p.key;
+            return (
+              <button
+                key={p.key}
+                onClick={() => canAfford && setSelected(isSel ? null : p.key)}
+                disabled={!canAfford}
+                className={cn(
+                  "w-full flex items-center gap-3 p-3 rounded-2xl border transition-all text-left",
+                  isSel
+                    ? "bg-emerald-500/10 border-emerald-500/30"
+                    : canAfford
+                    ? "bg-muted/40 border-border hover:bg-muted/80"
+                    : "opacity-40 cursor-not-allowed bg-muted/20 border-border/40"
+                )}
+              >
+                <span className="text-2xl">{p.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">{p.name}</p>
+                  <p className="text-xs text-muted-foreground">{p.cooldownDays}-day cooldown after gifting</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-bold text-amber-500">{p.price.toLocaleString()} pts</p>
+                  {!canAfford && <p className="text-[10px] text-destructive font-medium">Not enough</p>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {selectedDef && (
+          <div className="p-3 rounded-xl bg-muted/60 text-xs text-muted-foreground">
+            After gifting, you won't be able to send another gift for <span className="font-semibold text-foreground">{selectedDef.cooldownDays} day{selectedDef.cooldownDays !== 1 ? "s" : ""}</span>.
+          </div>
+        )}
+
+        <Button
+          className="w-full rounded-2xl gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+          disabled={!selected || isGifting}
+          onClick={() => selected && onGift(selected)}
+        >
+          <Gift className="w-4 h-4" />
+          {isGifting ? "Sending gift…" : selected ? `Send ${GIFTABLE_POWERUPS.find(p => p.key === selected)?.emoji} ${GIFTABLE_POWERUPS.find(p => p.key === selected)?.name}` : "Select a power-up"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function FriendListItem({
-  entry, selected, onSelect, onAccept, onDecline, onRemove, myId, onViewProfile,
+  entry, selected, onSelect, onAccept, onDecline, onRemove, myId, onViewProfile, onGift,
 }: {
   entry: FriendEntry;
   selected: boolean;
@@ -48,6 +142,7 @@ function FriendListItem({
   onRemove: () => void;
   myId: string;
   onViewProfile: () => void;
+  onGift?: () => void;
 }) {
   const u = entry.user;
   if (!u) return null;
@@ -86,7 +181,12 @@ function FriendListItem({
           </>
         )}
         {entry.status === "accepted" && (
-          <button onClick={onSelect} className="w-7 h-7 rounded-lg bg-muted/60 text-muted-foreground flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors"><MessageCircle className="w-3.5 h-3.5" /></button>
+          <>
+            <button onClick={onSelect} className="w-7 h-7 rounded-lg bg-muted/60 text-muted-foreground flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors"><MessageCircle className="w-3.5 h-3.5" /></button>
+            {onGift && (
+              <button onClick={(e) => { e.stopPropagation(); onGift(); }} className="w-7 h-7 rounded-lg bg-muted/60 text-muted-foreground flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-colors" title="Gift a power-up"><Gift className="w-3.5 h-3.5" /></button>
+            )}
+          </>
         )}
         <button onClick={onViewProfile} className="w-7 h-7 rounded-lg bg-muted/60 text-muted-foreground flex items-center justify-center hover:bg-muted transition-colors"><User className="w-3.5 h-3.5" /></button>
         {!isIncoming && (
@@ -101,9 +201,11 @@ export default function FriendsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const qc = useQueryClient();
   const [searchQ, setSearchQ] = useState("");
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
+  const [giftFriend, setGiftFriend] = useState<{ id: string; displayName: string; profileImageUrl?: string | null } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const { data: friends = [], isLoading: friendsLoading } = useGetFriends();
@@ -113,6 +215,26 @@ export default function FriendsPage() {
   const declineMut = useDeclineFriendRequest();
   const removeMut = useRemoveFriend();
   const sendMsgMut = useSendMessage();
+
+  const giftMut = useMutation({
+    mutationFn: ({ recipientId, type }: { recipientId: string; type: string }) =>
+      customFetch<{ success: boolean; cooldownDays: number; cooldownEndsAt: string }>("/api/powerups/gift", {
+        method: "POST",
+        body: JSON.stringify({ recipientId, type }),
+      }),
+    onSuccess: (res, vars) => {
+      const def = GIFTABLE_POWERUPS.find(p => p.key === vars.type);
+      toast({
+        title: `${def?.emoji} Gift sent!`,
+        description: `You can send another gift in ${res.cooldownDays} day${res.cooldownDays !== 1 ? "s" : ""}.`,
+      });
+      setGiftFriend(null);
+      qc.invalidateQueries({ queryKey: ["powerups"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Couldn't send gift", description: err.message, variant: "destructive" });
+    },
+  });
 
   const selectedEntry = friends.find(f => f.user?.id === selectedFriendId && f.status === "accepted");
   const { data: messages = [] } = useGetChat(selectedFriendId ?? "", !!selectedFriendId && !!selectedEntry);
@@ -248,6 +370,7 @@ export default function FriendsPage() {
                     onDecline={() => {}}
                     onRemove={() => removeMut.mutate(entry.friendshipId, { onSuccess: () => setSelectedFriendId(null) })}
                     onViewProfile={() => entry.user && setLocation(`/users/${entry.user.id}`)}
+                    onGift={() => entry.user && setGiftFriend({ id: entry.user.id, displayName: entry.user.displayName, profileImageUrl: entry.user.profileImageUrl })}
                   />
                 ))}
               </div>
@@ -267,6 +390,12 @@ export default function FriendsPage() {
                   <button onClick={() => setLocation(`/users/${selectedFriendUser.id}`)} className="font-bold text-sm truncate hover:underline hover:text-primary transition-colors text-left">{selectedFriendUser.displayName}</button>
                   <LevelBadge gameLevel={selectedFriendUser.gameLevel} />
                 </div>
+                <button
+                  onClick={() => setGiftFriend({ id: selectedFriendUser.id, displayName: selectedFriendUser.displayName, profileImageUrl: selectedFriendUser.profileImageUrl })}
+                  className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 transition-colors px-2 py-1 rounded-lg hover:bg-emerald-500/10"
+                >
+                  <Gift className="w-3.5 h-3.5" /> Gift
+                </button>
                 <button onClick={() => setLocation(`/users/${selectedFriendUser.id}`)} className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
                   Profile <ChevronRight className="w-3 h-3" />
                 </button>
@@ -326,6 +455,16 @@ export default function FriendsPage() {
           )}
         </div>
       </div>
+
+      {/* Gift modal */}
+      {giftFriend && (
+        <GiftModal
+          friend={giftFriend}
+          onClose={() => setGiftFriend(null)}
+          onGift={(type) => giftMut.mutate({ recipientId: giftFriend.id, type })}
+          isGifting={giftMut.isPending}
+        />
+      )}
     </Layout>
   );
 }

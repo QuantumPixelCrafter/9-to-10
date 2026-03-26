@@ -160,6 +160,119 @@ router.post("/powerups/purchase", async (req, res) => {
   res.json({ success: true, newBalance: balance - def.price });
 });
 
+router.post("/powerups/weekly-grant", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  const userId = req.user.id;
+  const [userRow] = await db.select({ lastRetryPassGrantAt: usersTable.lastRetryPassGrantAt })
+    .from(usersTable).where(eq(usersTable.id, userId));
+  if (isNewWeek(userRow?.lastRetryPassGrantAt ?? null)) {
+    const retryRow = await getOrCreatePowerup(userId, "retry_pass");
+    const newQty = retryRow.quantity + 3;
+    await Promise.all([
+      db.update(userPowerupsTable)
+        .set({ quantity: newQty, updatedAt: new Date() })
+        .where(and(eq(userPowerupsTable.userId, userId), eq(userPowerupsTable.type, "retry_pass"))),
+      db.update(usersTable)
+        .set({ lastRetryPassGrantAt: new Date(), updatedAt: new Date() })
+        .where(eq(usersTable.id, userId)),
+      db.insert(inboxMessagesTable).values({
+        recipientId: userId,
+        senderId: userId,
+        type: "retry_pass_grant",
+        message: "A new week has started! You've received 3 Retry Passes. Use them in the quiz page to redo any quiz and earn points from your second attempt.",
+        status: "none",
+      }),
+    ]);
+    res.json({ granted: true, quantity: newQty });
+  } else {
+    res.json({ granted: false });
+  }
+});
+
+router.post("/powerups/gift", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  const { recipientId, type } = req.body;
+  const senderId = req.user.id;
+
+  if (!recipientId || typeof recipientId !== "string") {
+    res.status(400).json({ error: "recipientId is required." });
+    return;
+  }
+  if (recipientId === senderId) {
+    res.status(400).json({ error: "You cannot gift yourself." });
+    return;
+  }
+
+  const def = POWERUP_DEFS.find(d => d.key === type);
+  if (!def) {
+    res.status(404).json({ error: "Unknown powerup type." });
+    return;
+  }
+  if (!def.purchasable) {
+    res.status(400).json({ error: "This powerup cannot be gifted." });
+    return;
+  }
+
+  const [senderRow] = await db.select({
+    giftCooldownEndsAt: usersTable.giftCooldownEndsAt,
+    pointsSpent: usersTable.pointsSpent,
+    firstName: usersTable.firstName,
+    lastName: usersTable.lastName,
+    username: usersTable.username,
+  }).from(usersTable).where(eq(usersTable.id, senderId));
+
+  if (senderRow?.giftCooldownEndsAt && senderRow.giftCooldownEndsAt > new Date()) {
+    const endsAt = senderRow.giftCooldownEndsAt;
+    const daysLeft = Math.ceil((endsAt.getTime() - Date.now()) / 86400000);
+    res.status(400).json({ error: `You're on a gift cooldown. Try again in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}.` });
+    return;
+  }
+
+  const [recipient] = await db.select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, username: usersTable.username })
+    .from(usersTable).where(eq(usersTable.id, recipientId)).limit(1);
+  if (!recipient) {
+    res.status(404).json({ error: "Recipient not found." });
+    return;
+  }
+
+  const balance = await getUserBalance(senderId);
+  if (balance < def.price) {
+    res.status(400).json({ error: "Insufficient points to send this gift." });
+    return;
+  }
+
+  const cooldownDays = Math.floor(def.price / 500);
+  const cooldownEndsAt = new Date(Date.now() + cooldownDays * 86400000);
+  const senderName = [senderRow?.firstName, senderRow?.lastName].filter(Boolean).join(" ") || senderRow?.username || "Someone";
+
+  const recipientPowerup = await getOrCreatePowerup(recipientId, type);
+
+  await Promise.all([
+    db.update(userPowerupsTable)
+      .set({ quantity: recipientPowerup.quantity + 1, updatedAt: new Date() })
+      .where(and(eq(userPowerupsTable.userId, recipientId), eq(userPowerupsTable.type, type))),
+    db.update(usersTable)
+      .set({ pointsSpent: (senderRow?.pointsSpent ?? 0) + def.price, giftCooldownEndsAt: cooldownEndsAt, updatedAt: new Date() })
+      .where(eq(usersTable.id, senderId)),
+    db.insert(inboxMessagesTable).values({
+      recipientId,
+      senderId,
+      type: "powerup_gift",
+      message: `${senderName} gifted you a ${def.emoji} ${def.name}!`,
+      status: "none",
+    }),
+  ]);
+
+  res.json({ success: true, cooldownDays, cooldownEndsAt: cooldownEndsAt.toISOString() });
+});
+
 router.post("/powerups/use", async (req, res) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Not authenticated" });

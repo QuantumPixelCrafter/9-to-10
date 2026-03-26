@@ -57,160 +57,78 @@ export default function InboxPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["inbox"],
-    queryFn: async () => {
-      const res = await customFetch("/api/inbox");
-      if (!res.ok) throw new Error("Failed to fetch inbox");
-      return res.json() as Promise<{ messages: InboxMessage[] }>;
-    },
+    queryFn: () => customFetch<{ messages: InboxMessage[] }>("/api/inbox"),
     refetchInterval: 30000,
   });
 
+  const inv = () => {
+    queryClient.invalidateQueries({ queryKey: ["inbox"] });
+    queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
+  };
+
   const readAllMutation = useMutation({
-    mutationFn: async () => {
-      const res = await customFetch("/api/inbox/read-all", { method: "PUT" });
-      if (!res.ok) throw new Error("Failed to mark as read");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
-      toast({ title: "All messages marked as read" });
-    },
+    mutationFn: () => customFetch("/api/inbox/read-all", { method: "PUT" }),
+    onSuccess: () => { inv(); toast({ title: "All messages marked as read" }); },
   });
 
   const readOneMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await customFetch(`/api/inbox/${id}/read`, { method: "PUT" });
-      if (!res.ok) throw new Error("Failed to mark as read");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
-    },
+    mutationFn: (id: string) => customFetch(`/api/inbox/${id}/read`, { method: "PUT" }),
+    onSuccess: inv,
   });
 
   const approveMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await customFetch(`/api/inbox/${id}/approve`, { method: "PUT" });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to approve");
-      }
-      return res.json();
-    },
+    mutationFn: (id: string) => customFetch(`/api/inbox/${id}/approve`, { method: "PUT" }),
     onSuccess: () => {
       toast({ title: "Approved!", description: "Developer promotion has been granted." });
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
+      inv();
     },
-    onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const rejectMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await customFetch(`/api/inbox/${id}/reject`, { method: "PUT" });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to reject");
-      }
-      return res.json();
-    },
+    mutationFn: (id: string) => customFetch(`/api/inbox/${id}/reject`, { method: "PUT" }),
     onSuccess: () => {
       toast({ title: "Rejected", description: "The requesting developer has been notified." });
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
+      inv();
     },
-    onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const notifyRejectedMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await customFetch(`/api/inbox/${id}/notify-rejected`, { method: "PUT" });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed");
-      }
-      return res.json();
-    },
+    mutationFn: (id: string) => customFetch(`/api/inbox/${id}/notify-rejected`, { method: "PUT" }),
     onSuccess: () => {
       toast({ title: "User notified", description: "The user has been told their promotion was rejected." });
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
+      inv();
     },
-    onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const acceptFriendMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await customFetch(`/api/inbox/${id}/accept-friend`, { method: "PUT" });
-      if (!res.ok) { const err = await res.json(); throw new Error(err.error ?? "Failed"); }
-      return res.json();
-    },
+    mutationFn: (id: string) => customFetch(`/api/inbox/${id}/accept-friend`, { method: "PUT" }),
     onSuccess: () => {
       toast({ title: "Friend accepted!", description: "You are now friends." });
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
+      inv();
       queryClient.invalidateQueries({ queryKey: ["friends"] });
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const declineFriendMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await customFetch(`/api/inbox/${id}/decline-friend`, { method: "PUT" });
-      if (!res.ok) { const err = await res.json(); throw new Error(err.error ?? "Failed"); }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Request declined" });
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
-    },
+    mutationFn: (id: string) => customFetch(`/api/inbox/${id}/decline-friend`, { method: "PUT" }),
+    onSuccess: () => { toast({ title: "Request declined" }); inv(); },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await customFetch(`/api/inbox/${id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to delete");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
-    },
-    onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    },
+    mutationFn: (id: string) => customFetch(`/api/inbox/${id}`, { method: "DELETE" }),
+    onSuccess: inv,
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const skipNotifyMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await customFetch(`/api/inbox/${id}/skip-notify`, { method: "PUT" });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Dismissed", description: "The user was not notified." });
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["inbox-unread-count"] });
-    },
-    onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    },
+    mutationFn: (id: string) => customFetch(`/api/inbox/${id}/skip-notify`, { method: "PUT" }),
+    onSuccess: () => { toast({ title: "Dismissed", description: "The user was not notified." }); inv(); },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const messages = data?.messages ?? [];
@@ -388,6 +306,14 @@ export default function InboxPage() {
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-semibold">
                         <span>🔄</span>
                         +3 Retry Passes granted
+                      </div>
+                    )}
+
+                    {/* Power-up gift received */}
+                    {msg.type === "powerup_gift" && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-sm font-semibold">
+                        <span>🎁</span>
+                        Power-up received!
                       </div>
                     )}
 
