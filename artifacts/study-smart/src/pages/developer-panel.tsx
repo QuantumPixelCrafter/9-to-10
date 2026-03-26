@@ -46,26 +46,16 @@ export default function DeveloperPanel() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["developer-users"],
-    queryFn: async () => {
-      const res = await customFetch("/api/developer/users");
-      if (!res.ok) throw new Error("Failed to fetch users");
-      return res.json() as Promise<{ users: DevUser[] }>;
-    },
+    queryFn: () => customFetch<{ users: DevUser[] }>("/api/developer/users"),
   });
 
   const giftAllMutation = useMutation({
-    mutationFn: async ({ name, pts }: { name: string; pts: number }) => {
-      const res = await customFetch("/api/developer/gift-all", {
+    mutationFn: ({ name, pts }: { name: string; pts: number }) =>
+      customFetch<{ success: boolean; recipientCount: number }>("/api/developer/gift-all", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ giftName: name, points: pts }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to send gift");
-      }
-      return res.json() as Promise<{ success: boolean; recipientCount: number }>;
-    },
+      }),
     onSuccess: (result) => {
       toast({
         title: "Gift sent!",
@@ -81,18 +71,12 @@ export default function DeveloperPanel() {
   });
 
   const promoteMutation = useMutation({
-    mutationFn: async (targetUserId: string) => {
-      const res = await customFetch("/api/developer/request-promote", {
+    mutationFn: (targetUserId: string) =>
+      customFetch("/api/developer/request-promote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetUserId }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to send request");
-      }
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       toast({
         title: "Request sent!",
