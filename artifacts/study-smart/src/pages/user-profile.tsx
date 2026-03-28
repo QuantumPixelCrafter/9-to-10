@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getBgStyle, getFrameGradient, getItemDef } from "@/lib/shop-data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, EyeOff, GraduationCap, UserCheck, UserMinus, UserPlus, Globe2 } from "lucide-react";
+import { ArrowLeft, EyeOff, GraduationCap, UserCheck, UserMinus, UserPlus, Globe2, Users } from "lucide-react";
 import { getCountry, getGradeName } from "@/lib/countries-grades";
 
 export default function UserProfilePage() {
@@ -135,6 +135,15 @@ export default function UserProfilePage() {
                     </span>
                   );
                 })()}
+              </div>
+            </div>
+
+            {/* Friend count — always shown regardless of privacy */}
+            <div className="mt-4 flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/60 border border-border/50 text-sm">
+                <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="font-semibold text-foreground">{(profile as any).friendCount ?? 0}</span>
+                <span className="text-muted-foreground">{((profile as any).friendCount ?? 0) === 1 ? "friend" : "friends"}</span>
               </div>
             </div>
 

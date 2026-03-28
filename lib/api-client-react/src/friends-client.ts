@@ -62,6 +62,7 @@ export interface PublicUserProfile {
     list: Array<{ key: string; title: string; description: string; icon: string; points: number; earned: boolean }>;
   };
   scores: { memory: number | null; bubble: number | null; quiz: number | null };
+  friendCount: number;
   friendship: { id: number; status: string; iAmRequester: boolean } | null;
 }
 

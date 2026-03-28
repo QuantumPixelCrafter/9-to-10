@@ -71,17 +71,32 @@ router.get("/users/:userId", async (req, res) => {
   const bestBubble = scores.filter(s => s.gameType === "bubble-pop").sort((a, b) => b.score - a.score)[0] ?? null;
   const bestQuiz = scores.filter(s => s.gameType === "quiz").sort((a, b) => b.score - a.score)[0] ?? null;
 
-  // Friendship status with caller
-  const [fs] = await db
-    .select()
-    .from(friendshipsTable)
-    .where(
-      or(
-        and(eq(friendshipsTable.requesterId, req.user.id), eq(friendshipsTable.addresseeId, userId)),
-        and(eq(friendshipsTable.requesterId, userId), eq(friendshipsTable.addresseeId, req.user.id))
+  // Friendship status with caller + total accepted friend count for the profile user
+  const [fs, friendRows] = await Promise.all([
+    db
+      .select()
+      .from(friendshipsTable)
+      .where(
+        or(
+          and(eq(friendshipsTable.requesterId, req.user.id), eq(friendshipsTable.addresseeId, userId)),
+          and(eq(friendshipsTable.requesterId, userId), eq(friendshipsTable.addresseeId, req.user.id))
+        )
       )
-    )
-    .limit(1);
+      .limit(1),
+    db
+      .select({ id: friendshipsTable.id })
+      .from(friendshipsTable)
+      .where(
+        and(
+          eq(friendshipsTable.status, "accepted"),
+          or(
+            eq(friendshipsTable.requesterId, userId),
+            eq(friendshipsTable.addresseeId, userId)
+          )
+        )
+      ),
+  ]);
+  const friendCount = friendRows.length;
 
   const levelInfo = getLevelProgress(user.xp ?? 0);
 
@@ -103,6 +118,7 @@ router.get("/users/:userId", async (req, res) => {
     country: user.country ?? null,
     gradeIndex: user.gradeIndex ?? null,
     createdAt: user.createdAt.toISOString(),
+    friendCount,
     achievements: { earned: earned.size, total: ACHIEVEMENTS.length, totalPoints, list: achievements },
     scores: { memory: bestMemory?.score ?? null, bubble: bestBubble?.score ?? null, quiz: bestQuiz?.score ?? null },
     friendship: fs
