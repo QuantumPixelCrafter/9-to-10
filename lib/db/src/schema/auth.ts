@@ -41,6 +41,7 @@ export const usersTable = pgTable("users", {
   country: varchar("country", { length: 10 }),
   gradeIndex: integer("grade_index"),
   gradeSchoolYear: integer("grade_school_year"),
+  preferredLanguage: varchar("preferred_language", { length: 10 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

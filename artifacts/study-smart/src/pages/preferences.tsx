@@ -7,15 +7,28 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useThemeMode } from "@/lib/theme-context";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Coins, MessageCircle, Settings, Sun, Moon, Monitor, Globe2, EyeOff } from "lucide-react";
+import { AlertTriangle, Coins, MessageCircle, Settings, Sun, Moon, Monitor, Globe2, EyeOff, Languages } from "lucide-react";
+import { useLanguage } from "@/lib/language-context";
+import { LANGUAGES, type LangCode } from "@/lib/languages";
 
 export default function Preferences() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { theme, setTheme } = useThemeMode();
+  const { lang, setLang } = useLanguage();
 
   const { data: balanceData, isLoading } = useGetChatBalance(!!user);
   const updatePrefsMut = useUpdatePreferences();
+
+  const handleLangChange = async (code: LangCode) => {
+    setLang(code);
+    try {
+      await updatePrefsMut.mutateAsync({ preferredLanguage: code });
+      toast({ title: "Language updated" });
+    } catch {
+      toast({ title: "Failed to save language", variant: "destructive" });
+    }
+  };
 
   const [warningEnabled, setWarningEnabled] = useState(false);
   const [thresholdInput, setThresholdInput] = useState("50");
@@ -74,6 +87,40 @@ export default function Preferences() {
           <div>
             <h2 className="text-xl font-bold">Preferences</h2>
             <p className="text-sm text-muted-foreground">Customise your Mind Forge experience</p>
+          </div>
+        </div>
+
+        {/* Language */}
+        <div className="bg-card border border-border/50 rounded-2xl p-6 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-blue-500/10 shrink-0 mt-0.5">
+              <Languages className="w-5 h-5 text-blue-500" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Language</h3>
+              <p className="text-sm text-muted-foreground">Choose your preferred display language.</p>
+            </div>
+          </div>
+          <div className="max-h-52 overflow-y-auto space-y-1 pr-1">
+            {LANGUAGES.map(l => (
+              <button
+                key={l.code}
+                onClick={() => handleLangChange(l.code)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left text-sm transition-all",
+                  lang === l.code
+                    ? "border-blue-500 bg-blue-500/5 font-semibold text-blue-600 dark:text-blue-400"
+                    : "border-transparent hover:bg-muted text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className="text-lg shrink-0">{l.flag}</span>
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span>{l.nativeName}</span>
+                  {l.nativeName !== l.name && <span className="text-[10px] text-muted-foreground">{l.name}</span>}
+                </div>
+                {lang === l.code && <span className="text-blue-500 text-xs font-bold shrink-0">✓</span>}
+              </button>
+            ))}
           </div>
         </div>
 

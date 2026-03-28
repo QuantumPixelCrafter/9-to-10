@@ -12,6 +12,8 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useQuery } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
+import { useLanguage } from "@/lib/language-context";
+import type { Translations } from "@/lib/languages";
 
 interface LayoutProps {
   children: ReactNode;
@@ -19,27 +21,25 @@ interface LayoutProps {
   actions?: ReactNode;
 }
 
-const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: Home, color: "text-blue-500", bg: "bg-blue-500/10" },
-  { href: "/notes", label: "Notes & Subjects", icon: BookOpen, color: "text-primary", bg: "bg-primary/10" },
-  { href: "/timetable", label: "Timetable", icon: Clock, color: "text-secondary", bg: "bg-secondary/10" },
-  { href: "/goals", label: "Goals", icon: Target, color: "text-accent", bg: "bg-accent/10" },
-  { href: "/calendar", label: "Calendar", icon: CalendarIcon, color: "text-purple-500", bg: "bg-purple-500/10" },
-  { href: "/mood", label: "Mood Check-in", icon: Smile, color: "text-pink-500", bg: "bg-pink-500/10" },
-  { href: "/games", label: "Minigames", icon: Gamepad2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-  { href: "/objectives", label: "Objectives", icon: Flag, color: "text-sky-500", bg: "bg-sky-500/10" },
-  { href: "/leaderboard", label: "Leaderboard", icon: Trophy, color: "text-amber-500", bg: "bg-amber-500/10" },
-  { href: "/achievements", label: "Achievements", icon: Medal, color: "text-yellow-500", bg: "bg-yellow-500/10" },
-  { href: "/quiz", label: "AI Quiz", icon: Sparkles, color: "text-amber-500", bg: "bg-amber-500/10" },
-  { href: "/review", label: "Review", icon: ClipboardList, color: "text-orange-500", bg: "bg-orange-500/10" },
-  { href: "/shop", label: "Shop", icon: ShoppingBag, color: "text-rose-500", bg: "bg-rose-500/10" },
-  { href: "/inbox", label: "Inbox", icon: Inbox, color: "text-indigo-500", bg: "bg-indigo-500/10" },
-  { href: "/friends", label: "Friends", icon: Users, color: "text-teal-500", bg: "bg-teal-500/10" },
-];
-
-const DEVELOPER_NAV_ITEMS = [
-  { href: "/developer", label: "Dev Panel", icon: Code2, color: "text-violet-500", bg: "bg-violet-500/10" },
-];
+function buildNavItems(t: Translations["nav"]) {
+  return [
+    { href: "/",             label: t.dashboard,    icon: Home,          color: "text-blue-500",    bg: "bg-blue-500/10"    },
+    { href: "/notes",        label: t.notes,        icon: BookOpen,      color: "text-primary",     bg: "bg-primary/10"     },
+    { href: "/timetable",    label: t.timetable,    icon: Clock,         color: "text-secondary",   bg: "bg-secondary/10"   },
+    { href: "/goals",        label: t.goals,        icon: Target,        color: "text-accent",      bg: "bg-accent/10"      },
+    { href: "/calendar",     label: t.calendar,     icon: CalendarIcon,  color: "text-purple-500",  bg: "bg-purple-500/10"  },
+    { href: "/mood",         label: t.mood,         icon: Smile,         color: "text-pink-500",    bg: "bg-pink-500/10"    },
+    { href: "/games",        label: t.minigames,    icon: Gamepad2,      color: "text-emerald-500", bg: "bg-emerald-500/10" },
+    { href: "/objectives",   label: t.objectives,   icon: Flag,          color: "text-sky-500",     bg: "bg-sky-500/10"     },
+    { href: "/leaderboard",  label: t.leaderboard,  icon: Trophy,        color: "text-amber-500",   bg: "bg-amber-500/10"   },
+    { href: "/achievements", label: t.achievements, icon: Medal,         color: "text-yellow-500",  bg: "bg-yellow-500/10"  },
+    { href: "/quiz",         label: t.quiz,         icon: Sparkles,      color: "text-amber-500",   bg: "bg-amber-500/10"   },
+    { href: "/review",       label: t.review,       icon: ClipboardList, color: "text-orange-500",  bg: "bg-orange-500/10"  },
+    { href: "/shop",         label: t.shop,         icon: ShoppingBag,   color: "text-rose-500",    bg: "bg-rose-500/10"    },
+    { href: "/inbox",        label: t.inbox,        icon: Inbox,         color: "text-indigo-500",  bg: "bg-indigo-500/10"  },
+    { href: "/friends",      label: t.friends,      icon: Users,         color: "text-teal-500",    bg: "bg-teal-500/10"    },
+  ];
+}
 
 function useInboxUnreadCount() {
   const { isAuthenticated } = useAuth();
@@ -72,7 +72,9 @@ function UserAvatar({ size = "sm" }: { size?: "sm" | "md" }) {
   );
 }
 
-function NavItem({ item, isActive }: { item: typeof NAV_ITEMS[0]; isActive: boolean }) {
+type NavItemDef = ReturnType<typeof buildNavItems>[0];
+
+function NavItem({ item, isActive }: { item: NavItemDef; isActive: boolean }) {
   return (
     <div className={`
       flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 group relative overflow-hidden
@@ -98,8 +100,14 @@ export function Layout({ children, title, actions }: LayoutProps) {
   const [location] = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.username || "Student";
   const { data: unreadCount = 0 } = useInboxUnreadCount();
+
+  const NAV_ITEMS = buildNavItems(t.nav);
+  const DEVELOPER_NAV_ITEMS = [
+    { href: "/developer", label: t.nav.devPanel, icon: Code2, color: "text-violet-500", bg: "bg-violet-500/10" },
+  ];
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -176,7 +184,7 @@ export function Layout({ children, title, actions }: LayoutProps) {
             <div className={`flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-pointer transition-all text-xs
               ${location === "/preferences" ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
               <Settings className="w-3.5 h-3.5 shrink-0" />
-              Preferences
+              {t.nav.preferences}
             </div>
           </Link>
         </div>
@@ -271,7 +279,7 @@ export function Layout({ children, title, actions }: LayoutProps) {
                 </Link>
                 <button onClick={logout} className="w-full mt-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-destructive hover:bg-destructive/5 text-sm transition-colors">
                   <LogOut className="w-4 h-4" />
-                  Sign Out
+                  {t.nav.logout}
                 </button>
               </div>
             </SheetContent>
@@ -338,7 +346,7 @@ export function Layout({ children, title, actions }: LayoutProps) {
       {/* Mobile Bottom Navigation */}
       <div className="md:hidden fixed bottom-0 inset-x-0 bg-card border-t border-border/50 pb-safe z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
         <div className="flex items-center justify-around p-2">
-          {[...NAV_ITEMS.slice(0, 4), { href: "/profile", label: "Profile", icon: User, color: "text-slate-500", bg: "bg-slate-500/10" }].map((item) => {
+          {[...NAV_ITEMS.slice(0, 4), { href: "/profile", label: t.nav.profile, icon: User, color: "text-slate-500", bg: "bg-slate-500/10" }].map((item) => {
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
             return (
               <Link key={item.href} href={item.href}>

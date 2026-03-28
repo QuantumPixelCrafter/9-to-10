@@ -6,6 +6,7 @@ import { useAuth, AuthProvider } from "@workspace/replit-auth-web";
 import { Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { ThemeProvider } from "@/lib/theme-context";
+import { LanguageProvider } from "@/lib/language-context";
 
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -105,12 +106,14 @@ function App() {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <TooltipProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <AppRoutes />
-            </WouterRouter>
-            <Toaster />
-          </TooltipProvider>
+          <LanguageProvider>
+            <TooltipProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <AppRoutes />
+              </WouterRouter>
+              <Toaster />
+            </TooltipProvider>
+          </LanguageProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>

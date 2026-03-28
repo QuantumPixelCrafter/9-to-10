@@ -5,22 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2, ChevronLeft, Search, ChevronRight } from "lucide-react";
+import { Sparkles, Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2, ChevronLeft, Search, ChevronRight, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   COUNTRIES, searchCountries, type CountryDef, type Grade, GROUP_LABELS, type GradeGroup,
 } from "@/lib/countries-grades";
+import { LANGUAGES, type LangCode, getDefaultLanguageForCountry } from "@/lib/languages";
+import { useLanguage } from "@/lib/language-context";
 
-type Step = "country" | "grade" | "account";
+type Step = "language" | "country" | "grade" | "account";
+const STEPS: Step[] = ["language", "country", "grade", "account"];
 
-function PasswordStrength({ password }: { password: string }) {
+function PasswordStrength({ password, checks }: { password: string; checks: { length: string; number: string; letter: string } }) {
   if (!password) return null;
-  const checks = [
-    { label: "At least 6 characters", ok: password.length >= 6 },
-    { label: "Contains a number", ok: /\d/.test(password) },
-    { label: "Contains a letter", ok: /[a-zA-Z]/.test(password) },
+  const items = [
+    { label: checks.length, ok: password.length >= 6 },
+    { label: checks.number, ok: /\d/.test(password) },
+    { label: checks.letter, ok: /[a-zA-Z]/.test(password) },
   ];
-  const score = checks.filter((c) => c.ok).length;
+  const score = items.filter((c) => c.ok).length;
   const colors = ["bg-destructive", "bg-orange-400", "bg-amber-400", "bg-emerald-500"];
   return (
     <div className="mt-2 space-y-1.5">
@@ -30,7 +33,7 @@ function PasswordStrength({ password }: { password: string }) {
         ))}
       </div>
       <div className="space-y-0.5">
-        {checks.map((c) => (
+        {items.map((c) => (
           <div key={c.label} className={`flex items-center gap-1.5 text-xs ${c.ok ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
             <CheckCircle2 className={`w-3 h-3 ${c.ok ? "" : "opacity-30"}`} />
             {c.label}
@@ -41,18 +44,13 @@ function PasswordStrength({ password }: { password: string }) {
   );
 }
 
-const STEP_LABELS: Record<Step, string> = {
-  country: "Where do you study?",
-  grade: "What grade are you in?",
-  account: "Create your account",
-};
-const STEPS: Step[] = ["country", "grade", "account"];
-
 export default function SignupPage() {
   const { register, authError, clearAuthError, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
+  const { t, setLang } = useLanguage();
 
-  const [step, setStep] = useState<Step>("country");
+  const [step, setStep] = useState<Step>("language");
+  const [selectedLang, setSelectedLang] = useState<LangCode | null>(null);
   const [country, setCountry] = useState<CountryDef | null>(null);
   const [gradeIndex, setGradeIndex] = useState<number | null>(null);
   const [countrySearch, setCountrySearch] = useState("");
@@ -85,9 +83,20 @@ export default function SignupPage() {
     return acc;
   }, {}) ?? {};
 
+  const handleLangSelect = (code: LangCode) => {
+    setSelectedLang(code);
+    setLang(code);
+    setStep("country");
+  };
+
   const handleCountrySelect = (c: CountryDef) => {
     setCountry(c);
     setGradeIndex(null);
+    if (!selectedLang) {
+      const defaultLang = getDefaultLanguageForCountry(c.code);
+      setSelectedLang(defaultLang);
+      setLang(defaultLang);
+    }
     setStep("grade");
   };
 
@@ -101,11 +110,11 @@ export default function SignupPage() {
     setConfirmError("");
 
     if (password !== confirmPassword) {
-      setConfirmError("Passwords do not match.");
+      setConfirmError(t.signup.passwordsNoMatch);
       return;
     }
     if (password.length < 6) {
-      setConfirmError("Password must be at least 6 characters.");
+      setConfirmError(t.signup.passwordTooShort);
       return;
     }
 
@@ -116,6 +125,7 @@ export default function SignupPage() {
         password,
         country: country?.code,
         gradeIndex: gradeIndex ?? undefined,
+        preferredLanguage: selectedLang ?? undefined,
       });
     } catch {
     } finally {
@@ -124,6 +134,21 @@ export default function SignupPage() {
   };
 
   const stepIdx = STEPS.indexOf(step);
+
+  const stepIcon = step === "language" ? <Globe className="w-6 h-6 text-white" />
+    : step === "country" ? <span className="text-xl">🌍</span>
+    : step === "grade" ? <span className="text-xl">🎓</span>
+    : <UserPlus className="w-6 h-6 text-white" />;
+
+  const stepLabel = step === "language" ? t.signup.language
+    : step === "country" ? t.signup.country
+    : step === "grade" ? t.signup.grade
+    : t.signup.account;
+
+  const stepSub = step === "language" ? t.signup.languageSub
+    : step === "country" ? t.signup.countrySub
+    : step === "grade" ? `${t.signup.grade} — ${country?.name ?? ""}`
+    : t.signup.accountSub;
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-primary/5">
@@ -137,7 +162,7 @@ export default function SignupPage() {
           </div>
         </Link>
         <Link href="/login">
-          <Button variant="outline" className="rounded-full px-5">Log in</Button>
+          <Button variant="outline" className="rounded-full px-5">{t.common.login}</Button>
         </Link>
       </nav>
 
@@ -148,12 +173,12 @@ export default function SignupPage() {
           transition={{ duration: 0.4 }}
           className="w-full max-w-md bg-card border border-border/60 rounded-3xl shadow-2xl shadow-primary/5 p-8"
         >
-          {/* Step dots */}
+          {/* Step progress bars */}
           <div className="flex items-center gap-2 mb-6">
             {STEPS.map((s, i) => (
               <div key={s} className={cn(
                 "h-1.5 rounded-full flex-1 transition-all duration-300",
-                i < stepIdx ? "bg-primary" : i === stepIdx ? "bg-primary" : "bg-muted"
+                i <= stepIdx ? "bg-primary" : "bg-muted"
               )} />
             ))}
           </div>
@@ -161,33 +186,65 @@ export default function SignupPage() {
           {/* Header */}
           <div className="mb-6">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl shadow-primary/20 mb-4">
-              {step === "country" ? <span className="text-xl">🌍</span> : step === "grade" ? <span className="text-xl">🎓</span> : <UserPlus className="w-6 h-6 text-white" />}
+              {stepIcon}
             </div>
-            <h1 className="text-xl font-bold tracking-tight mb-0.5">{STEP_LABELS[step]}</h1>
-            <p className="text-muted-foreground text-sm">
-              {step === "country" && "Search for your country, city, or special administrative region."}
-              {step === "grade" && `Select your current grade in ${country?.name}.`}
-              {step === "account" && "Almost there! Set your username and password."}
-            </p>
+            <h1 className="text-xl font-bold tracking-tight mb-0.5">{stepLabel}</h1>
+            <p className="text-muted-foreground text-sm">{stepSub}</p>
           </div>
 
           <AnimatePresence mode="wait">
-            {/* STEP 1: Country */}
+            {/* STEP 1: Language */}
+            {step === "language" && (
+              <motion.div key="language" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
+                  {LANGUAGES.map(lang => (
+                    <button
+                      key={lang.code}
+                      onClick={() => handleLangSelect(lang.code)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left",
+                        selectedLang === lang.code
+                          ? "border-primary bg-primary/5 font-semibold text-primary"
+                          : "border-transparent hover:bg-primary/5 hover:border-primary/20"
+                      )}
+                    >
+                      <span className="text-xl shrink-0">{lang.flag}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium text-sm">{lang.nativeName}</span>
+                        {lang.nativeName !== lang.name && (
+                          <span className="text-xs text-muted-foreground">{lang.name}</span>
+                        )}
+                      </div>
+                      {selectedLang === lang.code && <CheckCircle2 className="w-4 h-4 text-primary ml-auto shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* STEP 2: Country */}
             {step === "country" && (
               <motion.div key="country" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                <button
+                  onClick={() => setStep("language")}
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  {selectedLang ? LANGUAGES.find(l => l.code === selectedLang)?.nativeName : "Language"}
+                </button>
                 <div className="relative mb-3">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     ref={searchRef}
-                    placeholder="Search country or region…"
+                    placeholder={t.signup.searchCountry}
                     value={countrySearch}
                     onChange={e => setCountrySearch(e.target.value)}
                     className="pl-9 rounded-xl h-11"
                   />
                 </div>
-                <div className="max-h-72 overflow-y-auto space-y-1 pr-1">
+                <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
                   {filteredCountries.length === 0 && (
-                    <p className="text-center text-muted-foreground text-sm py-6">No results found</p>
+                    <p className="text-center text-muted-foreground text-sm py-6">{t.signup.noResults}</p>
                   )}
                   {filteredCountries.map(c => (
                     <button
@@ -204,7 +261,7 @@ export default function SignupPage() {
               </motion.div>
             )}
 
-            {/* STEP 2: Grade */}
+            {/* STEP 3: Grade */}
             {step === "grade" && country && (
               <motion.div key="grade" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <button
@@ -248,13 +305,13 @@ export default function SignupPage() {
                   disabled={gradeIndex === null}
                   onClick={() => setStep("account")}
                 >
-                  {gradeIndex !== null ? `Continue as ${selectedGrade?.name}` : "Select a grade to continue"}
+                  {gradeIndex !== null ? `${t.common.continue} — ${selectedGrade?.name}` : t.signup.selectGrade}
                   <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </motion.div>
             )}
 
-            {/* STEP 3: Account */}
+            {/* STEP 4: Account */}
             {step === "account" && (
               <motion.div key="account" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <button
@@ -267,27 +324,27 @@ export default function SignupPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="username">Username</Label>
+                    <Label htmlFor="username">{t.signup.username}</Label>
                     <Input
                       id="username"
                       type="text"
-                      placeholder="your_username"
+                      placeholder={t.signup.usernamePlaceholder}
                       value={username}
                       onChange={e => { setUsername(e.target.value.replace(/\s/g, "")); clearAuthError(); }}
                       required
                       autoComplete="username"
                       className="rounded-xl h-11"
                     />
-                    <p className="text-xs text-muted-foreground">Letters, numbers, and underscores only. At least 3 characters.</p>
+                    <p className="text-xs text-muted-foreground">{t.signup.usernameHint}</p>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">{t.signup.password}</Label>
                     <div className="relative">
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Create a password"
+                        placeholder={t.signup.passwordPlaceholder}
                         value={password}
                         onChange={e => { setPassword(e.target.value); clearAuthError(); setConfirmError(""); }}
                         required
@@ -299,16 +356,16 @@ export default function SignupPage() {
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
-                    <PasswordStrength password={password} />
+                    <PasswordStrength password={password} checks={t.signup.passwordChecks} />
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="confirm">Confirm password</Label>
+                    <Label htmlFor="confirm">{t.signup.confirmPassword}</Label>
                     <div className="relative">
                       <Input
                         id="confirm"
                         type={showConfirm ? "text" : "password"}
-                        placeholder="Repeat your password"
+                        placeholder={t.signup.confirmPasswordPlaceholder}
                         value={confirmPassword}
                         onChange={e => { setConfirmPassword(e.target.value); setConfirmError(""); }}
                         required
@@ -337,7 +394,7 @@ export default function SignupPage() {
                     className="w-full h-11 rounded-xl text-base font-semibold shadow-lg shadow-primary/20 mt-1"
                     disabled={loading}
                   >
-                    {loading ? "Creating account…" : "Create Account"}
+                    {loading ? t.signup.creating : t.signup.account}
                   </Button>
                 </form>
               </motion.div>
@@ -345,8 +402,8 @@ export default function SignupPage() {
           </AnimatePresence>
 
           <p className="text-center text-sm text-muted-foreground mt-6">
-            Already have an account?{" "}
-            <Link href="/login" className="text-primary font-medium hover:underline">Log in</Link>
+            {t.common.alreadyHaveAccount}{" "}
+            <Link href="/login" className="text-primary font-medium hover:underline">{t.common.logIn}</Link>
           </p>
         </motion.div>
       </div>

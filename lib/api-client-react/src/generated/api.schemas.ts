@@ -32,6 +32,7 @@ export interface AuthUser {
   country?: string | null;
   gradeIndex?: number | null;
   gradeSchoolYear?: number | null;
+  preferredLanguage?: string | null;
 }
 
 export interface AuthUserEnvelope {

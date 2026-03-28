@@ -49,6 +49,7 @@ function buildSessionUser(user: typeof usersTable.$inferSelect) {
     country: user.country ?? null,
     gradeIndex: user.gradeIndex ?? null,
     gradeSchoolYear: user.gradeSchoolYear ?? null,
+    preferredLanguage: user.preferredLanguage ?? null,
   };
 }
 
@@ -57,14 +58,14 @@ const SCHOOL_YEAR_START: Record<string, number> = {
   GB:9, IE:9, US:9, CA:9, AU:2, NZ:2, ZA:1, DE:9, FR:9, ES:9, IT:9,
   NL:9, BE:9, CH:9, AT:9, PL:9, SE:8, NO:8, DK:8, FI:8, RU:9, BR:2,
   PT:9, GR:9, TR:9, SA:9, AE:9, EG:9, NG:9, KE:1, GH:9, MX:9, CO:1,
-  AR:3, CL:3, TH:5, VN:9, PK:4, BD:1, LK:1, IB:9,
+  AR:3, CL:3, TH:5, VN:9, PK:4, BD:1, LK:1,
 };
 const GRADE_COUNT: Record<string, number> = {
   HK:16, MO:16, CN:16, TW:14, SG:15, MY:13, JP:16, KR:16, PH:13, ID:14, IN:16,
   GB:15, IE:14, US:15, CA:14, AU:14, NZ:13, ZA:13, DE:16, FR:15, ES:13, IT:16,
   NL:16, BE:15, CH:16, AT:16, PL:15, SE:14, NO:14, DK:14, FI:14, RU:15, BR:16,
   PT:13, GR:15, TR:15, SA:15, AE:15, EG:15, NG:15, KE:15, GH:15, MX:13, CO:13,
-  AR:13, CL:13, TH:15, VN:16, PK:15, BD:15, LK:15, IB:15,
+  AR:13, CL:13, TH:15, VN:16, PK:15, BD:15, LK:15,
 };
 
 function computeSchoolYear(startMonth: number): number {
@@ -94,7 +95,7 @@ async function autoIncrementGrade(userId: string, country: string, gradeIndex: n
 }
 
 router.post("/auth/register", async (req: Request, res: Response) => {
-  const { username, password, country, gradeIndex } = req.body;
+  const { username, password, country, gradeIndex, preferredLanguage } = req.body;
 
   if (!username || !password) {
     res.status(400).json({ error: "Username and password are required." });
@@ -140,6 +141,7 @@ router.post("/auth/register", async (req: Request, res: Response) => {
       ...(country ? { country } : {}),
       ...(typeof gradeIndex === "number" ? { gradeIndex } : {}),
       ...(gradeSchoolYear !== undefined ? { gradeSchoolYear } : {}),
+      ...(preferredLanguage ? { preferredLanguage } : {}),
     })
     .returning();
 
@@ -199,7 +201,7 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
     return;
   }
 
-  const { level, firstName, lastName, isPublic, showNameOnLeaderboard, showNameInSearch, allowProfileView, chatPointWarningThreshold } = req.body;
+  const { level, firstName, lastName, isPublic, showNameOnLeaderboard, showNameInSearch, allowProfileView, chatPointWarningThreshold, preferredLanguage } = req.body;
   const validLevels = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
 
   if (isPublic !== undefined && typeof isPublic !== "boolean") {
@@ -231,6 +233,9 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
     } else if (typeof chatPointWarningThreshold === "number" && chatPointWarningThreshold >= 0) {
       updates.chatPointWarningThreshold = Math.floor(chatPointWarningThreshold);
     }
+  }
+  if (preferredLanguage !== undefined && typeof preferredLanguage === "string") {
+    updates.preferredLanguage = preferredLanguage || null;
   }
 
   const [updated] = await db

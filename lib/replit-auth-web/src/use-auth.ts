@@ -21,6 +21,7 @@ export interface RegisterData {
   password: string;
   country?: string;
   gradeIndex?: number;
+  preferredLanguage?: string;
 }
 
 export function useAuth(): AuthState {
@@ -79,13 +80,13 @@ export function useAuth(): AuthState {
     setUser(data.user);
   }, []);
 
-  const register = useCallback(async ({ username, password, country, gradeIndex }: RegisterData) => {
+  const register = useCallback(async ({ username, password, country, gradeIndex, preferredLanguage }: RegisterData) => {
     setAuthError(null);
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ username, password, country, gradeIndex }),
+      body: JSON.stringify({ username, password, country, gradeIndex, preferredLanguage }),
     });
     const data = await res.json();
     if (!res.ok) {
