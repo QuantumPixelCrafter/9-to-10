@@ -360,6 +360,12 @@ export default function MathBlitzPage() {
                 <p className="text-muted-foreground text-sm mt-1">Answer as many as you can before time runs out!</p>
               </div>
 
+              {/* Group play notice */}
+              <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-2xl px-4 py-3 mb-2 text-sm text-amber-800 dark:text-amber-300">
+                <span className="text-base shrink-0">⚠️</span>
+                <p>Scores only count towards the leaderboard when you play <span className="font-semibold">within your group</span>. Games played outside your group won't be recorded.</p>
+              </div>
+
               {/* Difficulty cards */}
               <div className="grid grid-cols-1 gap-3">
                 {(["easy", "normal", "hard", "extreme"] as Difficulty[]).map(diff => {
