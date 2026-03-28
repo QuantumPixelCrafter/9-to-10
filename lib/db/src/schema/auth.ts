@@ -43,6 +43,7 @@ export const usersTable = pgTable("users", {
   gradeSchoolYear: integer("grade_school_year"),
   preferredLanguage: varchar("preferred_language", { length: 10 }),
   stripeCustomerId: varchar("stripe_customer_id"),
+  freeMessages: integer("free_messages").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

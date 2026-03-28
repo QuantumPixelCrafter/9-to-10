@@ -60,7 +60,7 @@ artifacts-monorepo/
 17. **Inbox** - Notifications for gifts, chat warnings, grade change results, friend requests, achievements, and promotions
 18. **Power-ups** - Streak Freeze, Double Points Boost, Hint Token, Retry Pass; apply in quiz settings
 19. **Gamification** - Bonus points, XP, streaks, daily check-ins; Random Quiz Bonus
-20. **Developer Panel** - Gift all users, promote users to developer, review grade change requests
+20. **Developer Panel** - Gift all users, gift specific user (points/power-up/free messages), promote users to developer, review grade change requests
 23. **Support Us** - Donation page (`/support`) with Stripe-powered one-time payments; tiers: Supporter $2, Champion $5, Legend $10
 21. **Country & Grade System** - Multi-step signup (country → grade → account); ~50 countries with full grade systems; auto-advance on login each school year; grade change request workflow with developer approval; profile shows country flag + current grade
 22. **Preferences** - Theme (light/dark/system), language, privacy settings, profile visibility

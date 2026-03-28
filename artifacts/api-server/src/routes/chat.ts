@@ -52,12 +52,12 @@ router.get("/chat/balance", async (req, res) => {
   const userId = req.user.id;
 
   const [userRow] = await db
-    .select({ chatPointWarningThreshold: usersTable.chatPointWarningThreshold })
+    .select({ chatPointWarningThreshold: usersTable.chatPointWarningThreshold, freeMessages: usersTable.freeMessages })
     .from(usersTable)
     .where(eq(usersTable.id, userId));
 
   const balance = await getUserBalance(userId);
-  res.json({ balance, threshold: userRow?.chatPointWarningThreshold ?? null, messageCost: MESSAGE_COST });
+  res.json({ balance, threshold: userRow?.chatPointWarningThreshold ?? null, messageCost: MESSAGE_COST, freeMessages: userRow?.freeMessages ?? 0 });
 });
 
 // GET messages with a specific user (must be friends)
@@ -118,27 +118,43 @@ router.post("/chat/:userId", async (req, res) => {
     return;
   }
 
-  // Check sender has enough points
-  const balanceBefore = await getUserBalance(req.user.id);
-  if (balanceBefore < MESSAGE_COST) {
-    res.status(402).json({ error: `Not enough points — sending a message costs ${MESSAGE_COST} pts (you have ${balanceBefore} pts)` });
-    return;
-  }
-
-  // Fetch warning threshold
+  // Fetch warning threshold + free message quota
   const [userRow] = await db
-    .select({ chatPointWarningThreshold: usersTable.chatPointWarningThreshold })
+    .select({ chatPointWarningThreshold: usersTable.chatPointWarningThreshold, freeMessages: usersTable.freeMessages })
     .from(usersTable)
     .where(eq(usersTable.id, req.user.id));
   const threshold = userRow?.chatPointWarningThreshold ?? null;
+  const freeMessages = userRow?.freeMessages ?? 0;
 
-  // Deduct points from sender
-  await db
-    .update(usersTable)
-    .set({ pointsSpent: sql`${usersTable.pointsSpent} + ${MESSAGE_COST}`, updatedAt: new Date() })
-    .where(eq(usersTable.id, req.user.id));
+  // Use a free message quota if available, otherwise deduct points
+  let balanceBefore: number;
+  let balanceAfter: number;
+  let usedFreeMessage = false;
 
-  const balanceAfter = balanceBefore - MESSAGE_COST;
+  if (freeMessages > 0) {
+    usedFreeMessage = true;
+    await db
+      .update(usersTable)
+      .set({ freeMessages: sql`${usersTable.freeMessages} - 1`, updatedAt: new Date() })
+      .where(eq(usersTable.id, req.user.id));
+    balanceBefore = await getUserBalance(req.user.id);
+    balanceAfter = balanceBefore;
+  } else {
+    // Check sender has enough points
+    balanceBefore = await getUserBalance(req.user.id);
+    if (balanceBefore < MESSAGE_COST) {
+      res.status(402).json({ error: `Not enough points — sending a message costs ${MESSAGE_COST} pts (you have ${balanceBefore} pts)` });
+      return;
+    }
+
+    // Deduct points from sender
+    await db
+      .update(usersTable)
+      .set({ pointsSpent: sql`${usersTable.pointsSpent} + ${MESSAGE_COST}`, updatedAt: new Date() })
+      .where(eq(usersTable.id, req.user.id));
+
+    balanceAfter = balanceBefore - MESSAGE_COST;
+  }
 
   // Send inbox warning if balance just crossed below threshold
   if (threshold !== null && balanceBefore > threshold && balanceAfter <= threshold) {
@@ -158,7 +174,7 @@ router.post("/chat/:userId", async (req, res) => {
     .values({ senderId: req.user.id, receiverId: otherId, content: content.trim() })
     .returning();
 
-  res.status(201).json({ ...msg, balanceAfter });
+  res.status(201).json({ ...msg, balanceAfter, usedFreeMessage });
 });
 
 // GET unread message count across all friends
