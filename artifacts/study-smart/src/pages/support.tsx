@@ -29,15 +29,15 @@ interface Product {
 
 
 const SUPPORT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  Supporter: Coffee,
-  Champion: Star,
-  Legend: Trophy,
+  Seed:   Coffee,
+  Sprout: Star,
+  Oak:    Trophy,
 };
 
 const SUPPORT_GRADIENTS: Record<string, string> = {
-  Supporter: "from-amber-500 to-orange-500",
-  Champion: "from-blue-500 to-indigo-500",
-  Legend: "from-purple-500 to-pink-500",
+  Seed:   "from-green-400 to-emerald-500",
+  Sprout: "from-teal-400 to-green-500",
+  Oak:    "from-amber-500 to-orange-500",
 };
 
 function formatAmount(unitAmount: number, currency: string) {

@@ -1,10 +1,45 @@
 import { Router, type IRouter } from 'express';
 import { db } from '@workspace/db';
-import { usersTable, stripeClaimedSessionsTable, inboxMessagesTable } from '@workspace/db/schema';
-import { eq, sql, and } from 'drizzle-orm';
+import { usersTable, stripeClaimedSessionsTable, inboxMessagesTable, userAchievementsTable } from '@workspace/db/schema';
+import { eq, sql, and, count } from 'drizzle-orm';
 import { getUncachableStripeClient, getStripePublishableKey } from '../stripeClient';
 
 const router: IRouter = Router();
+
+// Award donation-based achievements and the Backer nametag on first-ever donation
+async function awardDonationRewards(userId: string, productName: string) {
+  // Map product name → achievement key
+  const PRODUCT_ACHIEVEMENT: Record<string, string> = {
+    'Seed':   'donated_seed',
+    'Sprout': 'donated_sprout',
+    'Oak':    'donated_oak',
+  };
+  const achievementKey = PRODUCT_ACHIEVEMENT[productName];
+  if (achievementKey) {
+    await db.insert(userAchievementsTable)
+      .values({ userId, achievementKey })
+      .onConflictDoNothing();
+  }
+
+  // Grant the Backer nametag on any first donation (if not already owned)
+  const [claimCount] = await db
+    .select({ n: count() })
+    .from(stripeClaimedSessionsTable)
+    .where(eq(stripeClaimedSessionsTable.userId, userId));
+  if ((claimCount?.n ?? 0) <= 1) {
+    // First donation — grant nametag if not already set or owned
+    const [userRow] = await db
+      .select({ equippedNametag: usersTable.equippedNametag })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+    // Only auto-equip if they have nothing equipped (don't override their choice)
+    if (!userRow?.equippedNametag) {
+      await db.update(usersTable)
+        .set({ equippedNametag: 'tag_backer' })
+        .where(eq(usersTable.id, userId));
+    }
+  }
+}
 
 router.get('/stripe/config', async (_req, res) => {
   try {
@@ -186,6 +221,12 @@ router.post('/stripe/claim', async (req: any, res) => {
         .where(eq(usersTable.id, userId));
     }
 
+    // Award donation achievements + backer nametag
+    const lineItem = session.line_items?.data?.[0];
+    const product = lineItem?.price?.product as any;
+    const productName: string = product?.name ?? '';
+    await awardDonationRewards(userId, productName);
+
     res.json({ pointsAwarded: bonusPoints, alreadyClaimed: false });
   } catch (err: any) {
     console.error('Claim error:', err);
@@ -285,6 +326,18 @@ router.post('/stripe/inbox-claim', async (req: any, res) => {
     await db.update(inboxMessagesTable)
       .set({ status: 'accepted', readAt: new Date() })
       .where(eq(inboxMessagesTable.id, inboxMessageId));
+
+    // Retrieve session to get product name for achievement
+    try {
+      const stripe = await getUncachableStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ['line_items.data.price.product'],
+      });
+      const lineItem = session.line_items?.data?.[0];
+      const product = lineItem?.price?.product as any;
+      const productName: string = product?.name ?? '';
+      await awardDonationRewards(userId, productName);
+    } catch {}
 
     res.json({ pointsAwarded: bonusPoints, alreadyClaimed: false });
   } catch (err: any) {

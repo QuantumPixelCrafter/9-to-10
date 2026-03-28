@@ -89,6 +89,11 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { key: "bubbles_50",  title: "Burst Specialist",description: "50 bubbles this month—precision and speed combined.",             requirement: "Pop 50 bubbles this month",                            icon: "⚡", points: 300, category: "games", periodic: "monthly"  },
   { key: "bubbles_100", title: "Bubble Storm",    description: "A hundred bubbles this season—an unstoppable flurry.",            requirement: "Pop 100 bubbles this season",                          icon: "🌪️", points: 600, category: "games", periodic: "seasonal" },
 
+  // ─── Donations ───────────────────────────────────────────────────────────────
+  { key: "donated_seed",   title: "Seed Backer",   description: "You planted the first seed. Every great journey starts with a single step — thank you for yours.", requirement: "Donate $1 via the Store",  icon: "🌱", points: 200,  category: "general" },
+  { key: "donated_sprout", title: "Sprout Backer",  description: "Your support is helping Mind Forge grow. A sprout reaching toward the sun — just like this app.", requirement: "Donate $2 via the Store",  icon: "🌿", points: 400,  category: "general" },
+  { key: "donated_oak",    title: "Oak Backer",     description: "Mighty oaks from little acorns grow. You've made a real difference — the team is truly grateful.", requirement: "Donate $5 via the Store",  icon: "🌳", points: 1000, category: "general" },
+
   // ─── Challenges (repeatable, separate section) ────────────────────────────────
   // Weekly
   { key: "weekly_quiz_5",    title: "Weekly Grinder",       description: "Stay sharp—quiz yourself every week to keep the momentum going.", requirement: "Complete 5 quizzes this week",                    icon: "⚡", points: 200,  category: "challenges", periodic: "weekly"   },

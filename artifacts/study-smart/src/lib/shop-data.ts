@@ -59,6 +59,7 @@ export const SHOP_ITEM_DEFS: ShopItemDef[] = [
   { key: "tag_quizking",   name: "Quiz King",     type: "nametag", emoji: "👑" },
   { key: "tag_legend",     name: "Legend",        type: "nametag", emoji: "⚡" },
   { key: "tag_celestial",  name: "Celestial",     type: "nametag", emoji: "✨" },
+  { key: "tag_backer",     name: "Backer",        type: "nametag", emoji: "🙌" },
   { key: "tag_developer",  name: "Developer",     type: "nametag", emoji: "🛠️" },
 ];
 
