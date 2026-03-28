@@ -104,7 +104,7 @@ router.post("/streaks/record", async (req: any, res) => {
   // Consecutive day (daysSince === 1)
   if (daysSince === 1) {
     const newStreak = streak.currentStreak + 1;
-    const bonus = 10 * (newStreak - 1);
+    const bonus = 5 * (newStreak - 1);
     await db
       .update(userStreaksTable)
       .set({ currentStreak: newStreak, lastQuizDate: today })
@@ -128,7 +128,7 @@ router.post("/streaks/record", async (req: any, res) => {
       freezesAvailable,
       currentStreak: streak.currentStreak,
       streakIfFrozen: streak.currentStreak + 1,
-      streakBonusIfFrozen: 10 * streak.currentStreak,
+      streakBonusIfFrozen: 5 * streak.currentStreak,
     });
   }
 
@@ -169,7 +169,7 @@ router.post("/streaks/freeze-respond", async (req: any, res) => {
     }
     await consumeFreeze(userId);
     const newStreak = streak.currentStreak + 1;
-    const bonus = 10 * streak.currentStreak;
+    const bonus = 5 * streak.currentStreak;
     await db
       .update(userStreaksTable)
       .set({ currentStreak: newStreak, lastQuizDate: today })
