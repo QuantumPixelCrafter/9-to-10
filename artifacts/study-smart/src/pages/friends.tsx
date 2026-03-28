@@ -4,7 +4,7 @@ import { useAuth } from "@workspace/replit-auth-web";
 import {
   useGetFriends, useSearchUsers, useSendFriendRequest, useAcceptFriendRequest,
   useDeclineFriendRequest, useRemoveFriend, useGetChat, useSendMessage, useGetChatBalance,
-  useGetPowerups, customFetch,
+  useGetPowerups, useUnreadChatMessages, customFetch,
   type FriendEntry, type FriendUser,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
@@ -223,7 +223,7 @@ function GiftModal({
 
 // ── FriendListItem ─────────────────────────────────────────────────────────────
 function FriendListItem({
-  entry, selected, onSelect, onAccept, onDecline, onRemove, myId, onViewProfile, onGift, onLockChat, isLocked,
+  entry, selected, onSelect, onAccept, onDecline, onRemove, myId, onViewProfile, onGift, onLockChat, isLocked, unreadCount,
 }: {
   entry: FriendEntry;
   selected: boolean;
@@ -236,6 +236,7 @@ function FriendListItem({
   onGift?: () => void;
   onLockChat?: () => void;
   isLocked?: boolean;
+  unreadCount?: number;
 }) {
   const u = entry.user;
   if (!u) return null;
@@ -264,7 +265,14 @@ function FriendListItem({
       selected ? "bg-primary/10 border-primary/20" : "hover:bg-muted/50 border-transparent"
     )}>
       <div onClick={onSelect} className="flex items-center gap-3 flex-1 min-w-0">
-        <Avatar user={u} size="md" />
+        <div className="relative shrink-0">
+          <Avatar user={u} size="md" />
+          {!!unreadCount && !selected && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm border-2 border-card leading-none">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
@@ -404,14 +412,19 @@ export default function FriendsPage() {
 
   // Open chat — intercept with lock if needed
   const handleOpenChat = (friendId: string) => {
+    const open = () => {
+      setSelectedFriendId(prev => prev === friendId ? null : friendId);
+      // backend marks messages as read on GET /chat/:id; invalidate unread count
+      qc.invalidateQueries({ queryKey: ["chat-unread-messages"] });
+    };
     if (chatLocks[friendId]) {
       setLockModal({
         mode: "unlock-to-open",
         friendId,
-        onSuccess: () => setSelectedFriendId(friendId),
+        onSuccess: () => { setSelectedFriendId(friendId); qc.invalidateQueries({ queryKey: ["chat-unread-messages"] }); },
       });
     } else {
-      setSelectedFriendId(prev => prev === friendId ? null : friendId);
+      open();
     }
   };
 
@@ -469,6 +482,12 @@ export default function FriendsPage() {
     : lockModal.mode === "unlock-to-open" ? "This chat is locked — enter your passcode to open it"
     : "Enter your current passcode to remove the lock"
     : "";
+
+  const { data: unreadData } = useUnreadChatMessages(true);
+  const unreadByFriend: Record<string, number> = {};
+  for (const msg of unreadData?.messages ?? []) {
+    unreadByFriend[msg.senderId] = (unreadByFriend[msg.senderId] ?? 0) + 1;
+  }
 
   const { data: friends = [], isLoading: friendsLoading } = useGetFriends();
   const { data: searchResults = [], isLoading: searching } = useSearchUsers(searchQ);
@@ -664,6 +683,7 @@ export default function FriendsPage() {
                     onGift={() => entry.user && setGiftFriend({ id: entry.user.id, displayName: entry.user.displayName, profileImageUrl: entry.user.profileImageUrl })}
                     onLockChat={() => entry.user && handleLockChat(entry.user.id)}
                     isLocked={!!entry.user && !!chatLocks[entry.user.id]}
+                    unreadCount={entry.user ? (unreadByFriend[entry.user.id] ?? 0) : 0}
                   />
                 ))}
               </div>
