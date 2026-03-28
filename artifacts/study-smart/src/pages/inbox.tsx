@@ -10,6 +10,7 @@ import {
   BellOff,
   Coins,
   Inbox as InboxIcon,
+  Loader2,
   MailOpen,
   ShieldPlus,
   ShieldCheck,
@@ -44,7 +45,7 @@ interface InboxMessage {
   } | null;
 }
 
-const INTERACTIVE_TYPES = ["developer_request", "developer_request_rejected", "friend_request"];
+const INTERACTIVE_TYPES = ["developer_request", "developer_request_rejected", "friend_request", "stripe_claim"];
 
 function getSenderName(sender: InboxMessage["sender"]) {
   if (!sender) return "System";
@@ -131,6 +132,25 @@ export default function InboxPage() {
   const skipNotifyMutation = useMutation({
     mutationFn: (id: string) => customFetch(`/api/inbox/${id}/skip-notify`, { method: "PUT" }),
     onSuccess: () => { toast({ title: "Dismissed", description: "The user was not notified." }); inv(); },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const claimStripeMutation = useMutation({
+    mutationFn: (inboxMessageId: string) =>
+      customFetch<{ pointsAwarded: number; alreadyClaimed?: boolean }>("/api/stripe/inbox-claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inboxMessageId }),
+      }),
+    onSuccess: (data) => {
+      if (data.alreadyClaimed) {
+        toast({ title: "Already claimed", description: "These points were already added to your account." });
+      } else {
+        toast({ title: `+${data.pointsAwarded} pts claimed!`, description: "Points added to your balance." });
+      }
+      inv();
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+    },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
@@ -321,6 +341,35 @@ export default function InboxPage() {
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-sm font-semibold">
                         <span>🎁</span>
                         {t.inbox.powerupReceived}
+                      </div>
+                    )}
+
+                    {/* Stripe donation claim */}
+                    {msg.type === "stripe_claim" && (
+                      <div className="space-y-3">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg text-sm font-semibold">
+                          <Coins className="w-4 h-4" />
+                          {msg.points ?? 200} pts donation reward
+                        </div>
+                        {msg.status === "pending" && (
+                          <Button
+                            size="sm"
+                            className="rounded-xl gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 hover:opacity-90"
+                            onClick={(e) => { e.stopPropagation(); claimStripeMutation.mutate(msg.id); }}
+                            disabled={claimStripeMutation.isPending}
+                          >
+                            {claimStripeMutation.isPending ? (
+                              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Claiming…</>
+                            ) : (
+                              <><Coins className="w-3.5 h-3.5" /> Claim {msg.points ?? 200} pts</>
+                            )}
+                          </Button>
+                        )}
+                        {msg.status === "accepted" && (
+                          <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-sm font-medium">
+                            <Coins className="w-4 h-4" /> Points claimed — enjoy!
+                          </div>
+                        )}
                       </div>
                     )}
 

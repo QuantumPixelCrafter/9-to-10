@@ -65,17 +65,12 @@ export default function Support() {
   useEffect(() => {
     if (isSuccess && sessionId && !claiming && claimedPoints === null) {
       setClaiming(true);
-      customFetch<{ pointsAwarded?: number; alreadyClaimed?: boolean }>("/api/stripe/claim", {
+      customFetch<{ success?: boolean; alreadyClaimed?: boolean; alreadyQueued?: boolean }>("/api/stripe/queue-claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),
       })
-        .then((data) => {
-          setClaimedPoints(data.pointsAwarded ?? 0);
-          if ((data.pointsAwarded ?? 0) > 0) {
-            queryClient.invalidateQueries({ queryKey: ["shop-items"] });
-          }
-        })
+        .then(() => setClaimedPoints(0))
         .catch(() => setClaimedPoints(0))
         .finally(() => setClaiming(false));
     }
@@ -111,7 +106,7 @@ export default function Support() {
 
   const parsedDonation = parseFloat(donationAmount);
   const donationCents = Math.round(parsedDonation * 100);
-  const donationValid = !isNaN(parsedDonation) && donationCents >= 100;
+  const donationValid = !isNaN(parsedDonation) && donationCents >= 50;
 
   return (
     <Layout title="Store">
@@ -131,16 +126,13 @@ export default function Support() {
                 {claiming && (
                   <p className="text-sm opacity-80 flex items-center gap-1.5 mt-0.5">
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Crediting your account…
+                    Preparing your reward…
                   </p>
                 )}
-                {!claiming && claimedPoints !== null && claimedPoints > 0 && (
+                {!claiming && claimedPoints !== null && (
                   <p className="text-sm opacity-80 mt-0.5">
-                    <span className="font-bold">+{claimedPoints.toLocaleString()} pts</span> have been added to your balance. Enjoy!
+                    Check your <span className="font-bold">Inbox</span> to collect your 200 pts reward!
                   </p>
-                )}
-                {!claiming && claimedPoints !== null && claimedPoints === 0 && (
-                  <p className="text-sm opacity-80 mt-0.5">Thank you for your support! It means the world to us.</p>
                 )}
               </div>
             </motion.div>
@@ -234,7 +226,7 @@ export default function Support() {
               </Button>
             </div>
             {donationAmount && !donationValid && (
-              <p className="text-xs text-destructive">Minimum donation is $1.00</p>
+              <p className="text-xs text-destructive">Minimum donation is $0.50</p>
             )}
           </div>
         </motion.section>

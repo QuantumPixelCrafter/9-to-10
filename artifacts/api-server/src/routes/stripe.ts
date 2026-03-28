@@ -1,7 +1,7 @@
 import { Router, type IRouter } from 'express';
 import { db } from '@workspace/db';
-import { usersTable, stripeClaimedSessionsTable } from '@workspace/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { usersTable, stripeClaimedSessionsTable, inboxMessagesTable } from '@workspace/db/schema';
+import { eq, sql, and } from 'drizzle-orm';
 import { getUncachableStripeClient, getStripePublishableKey } from '../stripeClient';
 
 const router: IRouter = Router();
@@ -189,6 +189,106 @@ router.post('/stripe/claim', async (req: any, res) => {
     res.json({ pointsAwarded: bonusPoints, alreadyClaimed: false });
   } catch (err: any) {
     console.error('Claim error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/stripe/queue-claim', async (req: any, res) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
+
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+
+    const [alreadyClaimed] = await db
+      .select()
+      .from(stripeClaimedSessionsTable)
+      .where(eq(stripeClaimedSessionsTable.sessionId, sessionId));
+    if (alreadyClaimed) return res.json({ alreadyClaimed: true });
+
+    const [existingInbox] = await db
+      .select()
+      .from(inboxMessagesTable)
+      .where(and(
+        eq(inboxMessagesTable.recipientId, userId),
+        eq(inboxMessagesTable.type, 'stripe_claim'),
+        eq(inboxMessagesTable.targetUserId, sessionId),
+      ));
+    if (existingInbox) return res.json({ success: true, alreadyQueued: true });
+
+    const stripe = await getUncachableStripeClient();
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (session.payment_status !== 'paid') {
+      return res.status(400).json({ error: 'Payment not completed' });
+    }
+
+    await db.insert(inboxMessagesTable).values({
+      recipientId: userId,
+      senderId: userId,
+      type: 'stripe_claim',
+      status: 'pending',
+      points: 200,
+      message: 'Thank you for your donation! Tap below to collect your reward.',
+      targetUserId: sessionId,
+    });
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error('Queue claim error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/stripe/inbox-claim', async (req: any, res) => {
+  try {
+    const { inboxMessageId } = req.body;
+    if (!inboxMessageId) return res.status(400).json({ error: 'inboxMessageId is required' });
+
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+
+    const [msg] = await db
+      .select()
+      .from(inboxMessagesTable)
+      .where(and(
+        eq(inboxMessagesTable.id, inboxMessageId),
+        eq(inboxMessagesTable.recipientId, userId),
+        eq(inboxMessagesTable.type, 'stripe_claim'),
+      ));
+    if (!msg) return res.status(404).json({ error: 'Message not found' });
+    if (msg.status !== 'pending') return res.json({ alreadyClaimed: true, pointsAwarded: msg.points ?? 0 });
+
+    const sessionId = msg.targetUserId!;
+    const [existing] = await db
+      .select()
+      .from(stripeClaimedSessionsTable)
+      .where(eq(stripeClaimedSessionsTable.sessionId, sessionId));
+
+    if (existing) {
+      await db.update(inboxMessagesTable)
+        .set({ status: 'accepted', readAt: new Date() })
+        .where(eq(inboxMessagesTable.id, inboxMessageId));
+      return res.json({ alreadyClaimed: true, pointsAwarded: existing.pointsAwarded });
+    }
+
+    const bonusPoints = msg.points ?? 200;
+
+    await db.insert(stripeClaimedSessionsTable).values({ sessionId, userId, pointsAwarded: bonusPoints });
+
+    if (bonusPoints > 0) {
+      await db.update(usersTable)
+        .set({ bonusPoints: sql`${usersTable.bonusPoints} + ${bonusPoints}` })
+        .where(eq(usersTable.id, userId));
+    }
+
+    await db.update(inboxMessagesTable)
+      .set({ status: 'accepted', readAt: new Date() })
+      .where(eq(inboxMessagesTable.id, inboxMessageId));
+
+    res.json({ pointsAwarded: bonusPoints, alreadyClaimed: false });
+  } catch (err: any) {
+    console.error('Inbox claim error:', err);
     res.status(500).json({ error: err.message });
   }
 });
