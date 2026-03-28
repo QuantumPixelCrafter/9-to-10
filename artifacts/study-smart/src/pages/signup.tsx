@@ -59,6 +59,7 @@ export default function SignupPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [confirmError, setConfirmError] = useState("");
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -102,6 +103,10 @@ export default function SignupPage() {
     }
     if (password.length < 6) {
       setConfirmError(t.signup.passwordTooShort);
+      return;
+    }
+    if (!disclaimerAccepted) {
+      setConfirmError("You must accept the disclaimer before creating an account.");
       return;
     }
 
@@ -324,6 +329,20 @@ export default function SignupPage() {
                         {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                  </div>
+
+                  {/* Disclaimer checkbox */}
+                  <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-xl px-4 py-3">
+                    <input
+                      id="disclaimer"
+                      type="checkbox"
+                      checked={disclaimerAccepted}
+                      onChange={e => { setDisclaimerAccepted(e.target.checked); setConfirmError(""); }}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-primary cursor-pointer"
+                    />
+                    <label htmlFor="disclaimer" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                      I understand that if this app is hacked or suffers a security breach, any personal information I have stored may be lost or exposed. <span className="font-semibold text-foreground">The app and its developers accept no responsibility</span> for any such loss or exposure of personal data.
+                    </label>
                   </div>
 
                   {(authError || confirmError) && (
