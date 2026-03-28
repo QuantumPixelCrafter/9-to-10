@@ -5,3 +5,4 @@ export * from "./shop-client";
 export * from "./friends-client";
 export { customFetch } from "./custom-fetch";
 export * from "./powerups-client";
+export * from "./math-blitz-client";

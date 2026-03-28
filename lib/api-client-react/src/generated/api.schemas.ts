@@ -103,6 +103,9 @@ export const SubmitScoreBodyGameType = {
   "memory-match": "memory-match",
   "bubble-pop": "bubble-pop",
   quiz: "quiz",
+  "math-blitz-easy": "math-blitz-easy",
+  "math-blitz-normal": "math-blitz-normal",
+  "math-blitz-hard": "math-blitz-hard",
 } as const;
 
 export interface SubmitScoreBody {

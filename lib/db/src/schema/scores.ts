@@ -1,7 +1,7 @@
 import { integer, pgEnum, pgTable, serial, timestamp, varchar } from "drizzle-orm/pg-core";
 import { usersTable } from "./auth";
 
-export const gameTypeEnum = pgEnum("game_type", ["memory-match", "bubble-pop", "quiz"]);
+export const gameTypeEnum = pgEnum("game_type", ["memory-match", "bubble-pop", "quiz", "math-blitz-easy", "math-blitz-normal", "math-blitz-hard"]);
 
 export const scoresTable = pgTable("scores", {
   id: serial("id").primaryKey(),

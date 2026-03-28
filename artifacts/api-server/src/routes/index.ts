@@ -25,6 +25,7 @@ import stripeRouter from "./stripe";
 import storageRouter from "./storage";
 import streaksRouter from "./streaks";
 import spinRouter from "./spin";
+import mathBlitzRouter from "./math-blitz";
 
 const router: IRouter = Router();
 
@@ -54,5 +55,6 @@ router.use(stripeRouter);
 router.use(storageRouter);
 router.use(streaksRouter);
 router.use(spinRouter);
+router.use(mathBlitzRouter);
 
 export default router;
