@@ -78,7 +78,7 @@ artifacts-monorepo/
 - `shop_items` - Cosmetic items (key, name, type, price, rarity, description)
 - `user_shop_items` - User-owned and equipped shop items
 - `friendships` - Friend relationships (requesterId, addresseeId, status)
-- `chat_messages` - Direct messages between friends (senderId, recipientId, content, readAt)
+- `chat_messages` - Direct messages between friends (senderId, recipientId, content, mediaUrl, readAt)
 - `inbox_messages` - System notifications (recipientId, senderId, type, message, status, readAt)
 - `user_powerups` - User power-up inventory (userId, type, count)
 - `review_items` - Wrong answers saved for review (userId, noteId, question, answer, status)
@@ -148,6 +148,13 @@ artifacts-monorepo/
 - `GET /developer/users`
 - `POST /developer/gift-all`
 - `POST /developer/request-promote`
+
+### Object Storage (Media Uploads)
+- `POST /storage/uploads/request-url` — generates a GCS presigned PUT URL for client-direct upload; returns `{ uploadURL, objectPath, contentType }`
+- `GET /storage/objects/*` — serves uploaded files (requires auth); streams from GCS
+
+**Upload flow**: client POSTs to get presigned URL → PUTs file directly to GCS → stores `objectPath` in DB → renders via `/api/storage/objects/<path>`
+**Media type detection**: objectPath stored with `?t=image` or `?t=video` suffix for display routing; query param is ignored by the serve endpoint.
 
 ## Key Implementation Notes
 

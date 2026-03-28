@@ -22,6 +22,7 @@ import powerupsRouter from "./powerups";
 import reviewRouter from "./review";
 import gradeChangeRouter from "./grade-change";
 import stripeRouter from "./stripe";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(chatRouter);
 router.use(usersRouter);
 router.use(curriculumQuizRouter);
 router.use(stripeRouter);
+router.use(storageRouter);
 
 export default router;

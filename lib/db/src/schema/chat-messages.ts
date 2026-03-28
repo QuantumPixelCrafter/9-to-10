@@ -5,7 +5,8 @@ export const chatMessagesTable = pgTable("chat_messages", {
   id: serial("id").primaryKey(),
   senderId: varchar("sender_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   receiverId: varchar("receiver_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-  content: text("content").notNull(),
+  content: text("content").notNull().default(""),
+  mediaUrl: text("media_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   readAt: timestamp("read_at", { withTimezone: true }),
 });

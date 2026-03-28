@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, UserPlus, MessageCircle, Check, X, Trash2,
-  ArrowLeft, Send, User, Zap, ChevronRight, Users, Gift, X as XIcon, AlertTriangle, Coins, Settings
+  ArrowLeft, Send, User, Zap, ChevronRight, Users, Gift, X as XIcon, AlertTriangle, Coins, Settings,
+  Paperclip, FileText, Loader2,
 } from "lucide-react";
 import { getItemDef } from "@/lib/shop-data";
 import { useLanguage } from "@/lib/language-context";
@@ -211,6 +212,14 @@ export default function FriendsPage() {
   const [messageText, setMessageText] = useState("");
   const [giftFriend, setGiftFriend] = useState<{ id: string; displayName: string; profileImageUrl?: string | null } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingMedia, setPendingMedia] = useState<{
+    objectPath: string;
+    preview: string | null;
+    name: string;
+    mediaType: "image" | "video" | "file";
+  } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: friends = [], isLoading: friendsLoading } = useGetFriends();
   const { data: searchResults = [], isLoading: searching } = useSearchUsers(searchQ);
@@ -260,17 +269,45 @@ export default function FriendsPage() {
   };
 
   const handleSendMessage = () => {
-    if (!messageText.trim() || !selectedFriendId) return;
+    if (!messageText.trim() && !pendingMedia) return;
+    if (!selectedFriendId) return;
     const balance = chatBalance?.balance ?? null;
     const cost = chatBalance?.messageCost ?? 10;
     if (balance !== null && balance < cost) {
       toast({ title: "Not enough points", description: `Sending a message costs ${cost} pts. You have ${balance} pts.`, variant: "destructive" });
       return;
     }
-    sendMsgMut.mutate({ userId: selectedFriendId, content: messageText }, {
-      onSuccess: () => setMessageText(""),
+    const mediaUrl = pendingMedia ? `/api/storage${pendingMedia.objectPath}` : undefined;
+    sendMsgMut.mutate({ userId: selectedFriendId, content: messageText, mediaUrl }, {
+      onSuccess: () => { setMessageText(""); setPendingMedia(null); },
       onError: (err: Error) => toast({ title: "Message not sent", description: err.message, variant: "destructive" }),
     });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const { uploadURL, objectPath } = await customFetch<{ uploadURL: string; objectPath: string; contentType: string }>(
+        "/api/storage/uploads/request-url",
+        { method: "POST", body: JSON.stringify({ contentType: file.type || "application/octet-stream" }) }
+      );
+      await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+      });
+      const mediaType: "image" | "video" | "file" = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "file";
+      const preview = mediaType !== "file" ? URL.createObjectURL(file) : null;
+      const typedPath = mediaType !== "file" ? `${objectPath}?t=${mediaType}` : objectPath;
+      setPendingMedia({ objectPath: typedPath, preview, name: file.name, mediaType });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -422,16 +459,52 @@ export default function FriendsPage() {
                 )}
                 {messages.map(msg => {
                   const isMe = msg.senderId === user?.id;
+                  const hasMedia = !!msg.mediaUrl;
+                  const isImage = hasMedia && (msg.mediaUrl!.includes("?t=image") || /\.(jpe?g|png|gif|webp|avif|svg)(\?|$)/i.test(msg.mediaUrl!));
+                  const isVideo = hasMedia && (msg.mediaUrl!.includes("?t=video") || /\.(mp4|webm|ogg|mov)(\?|$)/i.test(msg.mediaUrl!));
                   return (
                     <div key={msg.id} className={cn("flex", isMe ? "justify-end" : "justify-start")}>
                       <div className={cn(
-                        "max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed",
+                        "max-w-[75%] rounded-2xl text-sm leading-relaxed overflow-hidden",
+                        hasMedia && !msg.content ? "p-0" : "px-4 py-2.5",
                         isMe
                           ? "bg-primary text-primary-foreground rounded-br-md"
                           : "bg-muted text-foreground rounded-bl-md"
                       )}>
-                        <p>{msg.content}</p>
-                        <p className={cn("text-[10px] mt-1 opacity-60", isMe ? "text-right" : "text-left")}>
+                        {hasMedia && (
+                          <div className={msg.content ? "mb-2" : ""}>
+                            {isVideo ? (
+                              <video
+                                src={msg.mediaUrl!}
+                                controls
+                                className="max-w-[260px] max-h-[200px] rounded-xl"
+                              />
+                            ) : isImage ? (
+                              <a href={msg.mediaUrl!} target="_blank" rel="noopener noreferrer">
+                                <img
+                                  src={msg.mediaUrl!}
+                                  alt="media"
+                                  className="max-w-[260px] max-h-[200px] rounded-xl object-cover"
+                                />
+                              </a>
+                            ) : (
+                              <a
+                                href={msg.mediaUrl!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={cn(
+                                  "flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-medium underline",
+                                  isMe ? "text-primary-foreground/80" : "text-muted-foreground"
+                                )}
+                              >
+                                <FileText className="w-4 h-4 shrink-0" />
+                                Attachment
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        {msg.content && <p className={hasMedia ? "px-4 pb-2.5" : ""}>{msg.content}</p>}
+                        <p className={cn("text-[10px] mt-1 opacity-60", isMe ? "text-right" : "text-left", hasMedia && !msg.content ? "px-4 pb-2" : "")}>
                           {new Date(msg.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
@@ -457,7 +530,44 @@ export default function FriendsPage() {
 
               {/* Message input */}
               <div className="flex flex-col gap-1 p-3 border-t border-border/40 shrink-0">
+                {/* Pending media preview */}
+                {pendingMedia && (
+                  <div className="flex items-center gap-2 mb-1 px-1">
+                    <div className="relative flex-1 max-w-[200px]">
+                      {pendingMedia.mediaType === "image" && pendingMedia.preview ? (
+                        <img src={pendingMedia.preview} alt="preview" className="h-16 w-auto rounded-xl object-cover border border-border" />
+                      ) : pendingMedia.mediaType === "video" && pendingMedia.preview ? (
+                        <video src={pendingMedia.preview} className="h-16 w-auto rounded-xl border border-border" />
+                      ) : (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted border border-border text-xs font-medium text-muted-foreground">
+                          <FileText className="w-4 h-4 shrink-0" />
+                          <span className="truncate max-w-[120px]">{pendingMedia.name}</span>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => setPendingMedia(null)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow"
+                      >
+                        <XIcon className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading || (chatBalance !== undefined && chatBalance.balance < (chatBalance.messageCost ?? 10))}
+                    className="w-10 h-10 shrink-0 rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition-colors disabled:opacity-40"
+                    title="Attach file"
+                  >
+                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+                  </button>
                   <input
                     value={messageText}
                     onChange={e => setMessageText(e.target.value)}
@@ -467,7 +577,7 @@ export default function FriendsPage() {
                     maxLength={2000}
                     disabled={chatBalance !== undefined && chatBalance.balance < (chatBalance.messageCost ?? 10)}
                   />
-                  <Button size="icon" onClick={handleSendMessage} disabled={!messageText.trim() || sendMsgMut.isPending || (chatBalance !== undefined && chatBalance.balance < (chatBalance.messageCost ?? 10))} className="rounded-xl w-10 h-10 shrink-0">
+                  <Button size="icon" onClick={handleSendMessage} disabled={(!messageText.trim() && !pendingMedia) || isUploading || sendMsgMut.isPending || (chatBalance !== undefined && chatBalance.balance < (chatBalance.messageCost ?? 10))} className="rounded-xl w-10 h-10 shrink-0">
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>

@@ -30,6 +30,7 @@ export interface ChatMessage {
   senderId: string;
   receiverId: string;
   content: string;
+  mediaUrl?: string | null;
   createdAt: string;
   readAt: string | null;
 }
@@ -146,8 +147,8 @@ export function useGetChat(userId: string, enabled: boolean) {
 export function useSendMessage() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, content }: { userId: string; content: string }) =>
-      customFetch<ChatMessage & { balanceAfter?: number }>(`/api/chat/${userId}`, { method: "POST", body: JSON.stringify({ content }) }),
+    mutationFn: ({ userId, content, mediaUrl }: { userId: string; content: string; mediaUrl?: string | null }) =>
+      customFetch<ChatMessage & { balanceAfter?: number }>(`/api/chat/${userId}`, { method: "POST", body: JSON.stringify({ content, mediaUrl }) }),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: getChatQueryKey(vars.userId) });
       qc.invalidateQueries({ queryKey: ["chat-balance"] });

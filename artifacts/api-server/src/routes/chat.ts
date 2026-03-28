@@ -101,13 +101,16 @@ router.get("/chat/:userId", async (req, res) => {
 router.post("/chat/:userId", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const otherId = req.params.userId;
-  const { content } = req.body;
+  const { content, mediaUrl } = req.body;
 
-  if (!content || typeof content !== "string" || content.trim().length === 0) {
-    res.status(400).json({ error: "Message content required" });
+  const hasContent = content && typeof content === "string" && content.trim().length > 0;
+  const hasMedia = mediaUrl && typeof mediaUrl === "string" && mediaUrl.trim().length > 0;
+
+  if (!hasContent && !hasMedia) {
+    res.status(400).json({ error: "Message content or media required" });
     return;
   }
-  if (content.trim().length > 2000) {
+  if (hasContent && content.trim().length > 2000) {
     res.status(400).json({ error: "Message too long (max 2000 chars)" });
     return;
   }
@@ -171,7 +174,12 @@ router.post("/chat/:userId", async (req, res) => {
   // Insert the message
   const [msg] = await db
     .insert(chatMessagesTable)
-    .values({ senderId: req.user.id, receiverId: otherId, content: content.trim() })
+    .values({
+      senderId: req.user.id,
+      receiverId: otherId,
+      content: hasContent ? content.trim() : "",
+      mediaUrl: hasMedia ? mediaUrl.trim() : null,
+    })
     .returning();
 
   res.status(201).json({ ...msg, balanceAfter, usedFreeMessage });
