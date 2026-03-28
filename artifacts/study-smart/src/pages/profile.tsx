@@ -2,16 +2,15 @@ import { useState, useRef } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useGetLeaderboard, useGetAchievements, useUploadProfilePicture, useUpdateName, useChangePassword, useGetShop, useEquipItem, customFetch } from "@workspace/api-client-react";
 import type { ShopItem } from "@workspace/api-client-react";
-import { useMutation } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
-import { motion, AnimatePresence } from "framer-motion";
-import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Globe, Globe2, Palette, Trash2, AlertTriangle, ChevronRight, CheckCircle } from "lucide-react";
+import { motion } from "framer-motion";
+import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Globe, Globe2, Palette, Trash2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { getBgStyle, getFrameGradient, getItemDef } from "@/lib/shop-data";
-import { getCountry, getGradeName, type GradeGroup, GROUP_LABELS } from "@/lib/countries-grades";
+import { getCountry, getGradeName } from "@/lib/countries-grades";
 
 const LEVELS = [
   { code: "P1", label: "P1", group: "Primary" },
@@ -78,23 +77,6 @@ export default function ProfilePage() {
   const updateNameMut = useUpdateName();
   const changePasswordMut = useChangePassword();
   const equipMut = useEquipItem();
-  const gradeChangeMut = useMutation({
-    mutationFn: ({ requestedGradeIndex, reason }: { requestedGradeIndex: number; reason: string }) =>
-      customFetch("/api/grade-change-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestedGradeIndex, reason }),
-      }),
-    onSuccess: () => {
-      toast({ title: "Request submitted!", description: "Your grade change request has been sent for approval." });
-      setShowGradeChange(false);
-      setNewGradeIndex(null);
-      setGradeReason("");
-    },
-    onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    },
-  });
   const [savingLevel, setSavingLevel] = useState(false);
   const [uploadingPic, setUploadingPic] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -110,9 +92,6 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [showGradeChange, setShowGradeChange] = useState(false);
-  const [newGradeIndex, setNewGradeIndex] = useState<number | null>(null);
-  const [gradeReason, setGradeReason] = useState("");
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -614,11 +593,6 @@ export default function ProfilePage() {
           const userGradeIndex = (user as any)?.gradeIndex as number | null | undefined;
           const countryDef = userCountry ? getCountry(userCountry) : null;
           const gradeName = userCountry && userGradeIndex != null ? getGradeName(userCountry, userGradeIndex) : null;
-          const gradesByGroup = countryDef?.grades.reduce<Partial<Record<GradeGroup, { grade: typeof countryDef.grades[0]; index: number }[]>>>((acc, g, i) => {
-            if (!acc[g.group]) acc[g.group] = [];
-            acc[g.group]!.push({ grade: g, index: i });
-            return acc;
-          }, {}) ?? {};
 
           return (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
@@ -642,15 +616,10 @@ export default function ProfilePage() {
                       <p className="text-xs text-muted-foreground">{gradeName}</p>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={() => { setShowGradeChange(true); setNewGradeIndex(null); setGradeReason(""); }}
-                  >
-                    <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                    Change Grade
-                  </Button>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-xl">
+                    <Lock className="w-3 h-3 shrink-0" />
+                    Auto-updates
+                  </span>
                 </div>
               ) : (
                 <div className="text-center py-4">
@@ -661,106 +630,10 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* Grade Change Dialog */}
-              <AnimatePresence>
-                {showGradeChange && countryDef && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-                    onClick={e => { if (e.target === e.currentTarget) setShowGradeChange(false); }}
-                  >
-                    <motion.div
-                      initial={{ scale: 0.95, opacity: 0, y: 10 }}
-                      animate={{ scale: 1, opacity: 1, y: 0 }}
-                      exit={{ scale: 0.95, opacity: 0, y: 10 }}
-                      className="bg-card rounded-3xl border border-border/60 shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <h4 className="font-bold text-base">Request Grade Change</h4>
-                          <p className="text-xs text-muted-foreground mt-0.5">A developer will review your request</p>
-                        </div>
-                        <button onClick={() => setShowGradeChange(false)} className="p-1.5 rounded-xl hover:bg-muted transition-colors">
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-2 p-3 bg-muted/40 rounded-xl mb-4 text-sm">
-                        <span className="text-base">{countryDef.flag}</span>
-                        <span className="font-medium">{countryDef.name}</span>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground mx-1" />
-                        <span className="text-muted-foreground">{gradeName}</span>
-                      </div>
-
-                      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Select your new grade</p>
-                      <div className="space-y-3 max-h-48 overflow-y-auto mb-4 pr-1">
-                        {(["preschool", "primary", "secondary", "university"] as GradeGroup[]).map(group => {
-                          const items = gradesByGroup[group];
-                          if (!items?.length) return null;
-                          return (
-                            <div key={group}>
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 pl-1">{GROUP_LABELS[group]}</p>
-                              <div className="grid grid-cols-1 gap-1">
-                                {items.map(({ grade, index }) => {
-                                  const isCurrent = index === userGradeIndex;
-                                  const isSelected = index === newGradeIndex;
-                                  return (
-                                    <button
-                                      key={grade.code}
-                                      onClick={() => !isCurrent && setNewGradeIndex(index)}
-                                      disabled={isCurrent}
-                                      className={cn(
-                                        "flex items-center justify-between px-3 py-2 rounded-xl border text-left text-sm transition-all",
-                                        isCurrent ? "border-border/30 opacity-40 cursor-not-allowed" :
-                                        isSelected ? "border-primary bg-primary/5 font-semibold text-primary" :
-                                        "border-transparent hover:border-primary/20 hover:bg-primary/3"
-                                      )}
-                                    >
-                                      <span>{grade.name}</span>
-                                      {isCurrent && <span className="text-[10px] text-muted-foreground">Current</span>}
-                                      {isSelected && !isCurrent && <CheckCircle className="w-4 h-4 text-primary shrink-0" />}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      <div className="space-y-1.5 mb-4">
-                        <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Reason (optional)</label>
-                        <textarea
-                          className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground"
-                          rows={3}
-                          placeholder="e.g. I just started a new school year…"
-                          value={gradeReason}
-                          onChange={e => setGradeReason(e.target.value)}
-                          maxLength={500}
-                        />
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setShowGradeChange(false)}>
-                          Cancel
-                        </Button>
-                        <Button
-                          className="flex-1 rounded-xl"
-                          disabled={newGradeIndex === null || gradeChangeMut.isPending}
-                          onClick={() => {
-                            if (newGradeIndex === null) return;
-                            gradeChangeMut.mutate({ requestedGradeIndex: newGradeIndex, reason: gradeReason.trim() });
-                          }}
-                        >
-                          {gradeChangeMut.isPending ? "Submitting…" : "Submit Request"}
-                        </Button>
-                      </div>
-                    </motion.div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <p className="text-xs text-muted-foreground mt-3 flex items-start gap-1.5">
+                <Lock className="w-3 h-3 mt-0.5 shrink-0 text-muted-foreground/70" />
+                Your grade updates automatically at the start of each new school year in your region. Manual changes are not available.
+              </p>
             </motion.div>
           );
         })()}
