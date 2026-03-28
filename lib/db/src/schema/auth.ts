@@ -42,6 +42,7 @@ export const usersTable = pgTable("users", {
   gradeIndex: integer("grade_index"),
   gradeSchoolYear: integer("grade_school_year"),
   preferredLanguage: varchar("preferred_language", { length: 10 }),
+  stripeCustomerId: varchar("stripe_customer_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
