@@ -1,10 +1,4 @@
-export type LangCode =
-  | "en" | "zh-TW" | "zh-CN" | "ja" | "ko"
-  | "fr" | "de" | "es" | "pt" | "it"
-  | "id" | "ms" | "nl" | "sv" | "no"
-  | "da" | "fi" | "ru" | "pl" | "el"
-  | "tr" | "ar" | "th" | "vi" | "hi"
-  | "bn" | "fil" | "si" | "ur";
+export type LangCode = "en";
 
 export interface LanguageDef {
   code: LangCode;
@@ -16,35 +10,7 @@ export interface LanguageDef {
 }
 
 export const LANGUAGES: LanguageDef[] = [
-  { code: "en",    name: "English",                    nativeName: "English",          flag: "🇬🇧", countryCodes: ["AU","BD","CA","GH","IN","ID","IE","KE","MY","NG","NZ","PH","PK","SG","ZA","LK","GB","US"] },
-  { code: "zh-TW", name: "Traditional Chinese",        nativeName: "繁體中文",           flag: "🇭🇰", countryCodes: ["HK","MO","TW"] },
-  { code: "zh-CN", name: "Simplified Chinese",         nativeName: "简体中文",           flag: "🇨🇳", countryCodes: ["CN"] },
-  { code: "ja",    name: "Japanese",                   nativeName: "日本語",             flag: "🇯🇵", countryCodes: ["JP"] },
-  { code: "ko",    name: "Korean",                     nativeName: "한국어",             flag: "🇰🇷", countryCodes: ["KR"] },
-  { code: "fr",    name: "French",                     nativeName: "Français",          flag: "🇫🇷", countryCodes: ["FR","BE","CH"] },
-  { code: "de",    name: "German",                     nativeName: "Deutsch",           flag: "🇩🇪", countryCodes: ["DE","AT","CH","NL"] },
-  { code: "es",    name: "Spanish",                    nativeName: "Español",           flag: "🇪🇸", countryCodes: ["ES","MX","CO","AR","CL"] },
-  { code: "pt",    name: "Portuguese",                 nativeName: "Português",         flag: "🇧🇷", countryCodes: ["BR","PT"] },
-  { code: "it",    name: "Italian",                    nativeName: "Italiano",          flag: "🇮🇹", countryCodes: ["IT"] },
-  { code: "id",    name: "Indonesian",                 nativeName: "Bahasa Indonesia",  flag: "🇮🇩", countryCodes: ["ID"] },
-  { code: "ms",    name: "Malay",                      nativeName: "Bahasa Melayu",     flag: "🇲🇾", countryCodes: ["MY","SG"] },
-  { code: "nl",    name: "Dutch",                      nativeName: "Nederlands",        flag: "🇳🇱", countryCodes: ["NL","BE"] },
-  { code: "sv",    name: "Swedish",                    nativeName: "Svenska",           flag: "🇸🇪", countryCodes: ["SE"] },
-  { code: "no",    name: "Norwegian",                  nativeName: "Norsk",             flag: "🇳🇴", countryCodes: ["NO"] },
-  { code: "da",    name: "Danish",                     nativeName: "Dansk",             flag: "🇩🇰", countryCodes: ["DK"] },
-  { code: "fi",    name: "Finnish",                    nativeName: "Suomi",             flag: "🇫🇮", countryCodes: ["FI"] },
-  { code: "ru",    name: "Russian",                    nativeName: "Русский",           flag: "🇷🇺", countryCodes: ["RU"] },
-  { code: "pl",    name: "Polish",                     nativeName: "Polski",            flag: "🇵🇱", countryCodes: ["PL"] },
-  { code: "el",    name: "Greek",                      nativeName: "Ελληνικά",          flag: "🇬🇷", countryCodes: ["GR"] },
-  { code: "tr",    name: "Turkish",                    nativeName: "Türkçe",            flag: "🇹🇷", countryCodes: ["TR"] },
-  { code: "ar",    name: "Arabic",                     nativeName: "العربية",           flag: "🇸🇦", rtl: true,  countryCodes: ["SA","AE","EG"] },
-  { code: "th",    name: "Thai",                       nativeName: "ภาษาไทย",            flag: "🇹🇭", countryCodes: ["TH"] },
-  { code: "vi",    name: "Vietnamese",                 nativeName: "Tiếng Việt",        flag: "🇻🇳", countryCodes: ["VN"] },
-  { code: "hi",    name: "Hindi",                      nativeName: "हिन्दी",              flag: "🇮🇳", countryCodes: ["IN"] },
-  { code: "bn",    name: "Bengali",                    nativeName: "বাংলা",              flag: "🇧🇩", countryCodes: ["BD"] },
-  { code: "fil",   name: "Filipino",                   nativeName: "Filipino",          flag: "🇵🇭", countryCodes: ["PH"] },
-  { code: "si",    name: "Sinhala",                    nativeName: "සිංහල",              flag: "🇱🇰", countryCodes: ["LK"] },
-  { code: "ur",    name: "Urdu",                       nativeName: "اردو",              flag: "🇵🇰", rtl: true,  countryCodes: ["PK"] },
+  { code: "en", name: "English", nativeName: "English", flag: "🇬🇧", countryCodes: ["AU","BD","CA","GH","IN","ID","IE","KE","MY","NG","NZ","PH","PK","SG","ZA","LK","GB","US"] },
 ];
 
 export function getLanguage(code: string): LanguageDef | undefined {
@@ -8141,12 +8107,7 @@ const ur: Translations = {
 };
 
 export const TRANSLATIONS: Record<LangCode, Translations> = {
-  en, "zh-TW": zhTW, "zh-CN": zhCN, ja, ko,
-  fr, de, es, pt, it,
-  id, ms, nl, sv, no,
-  da, fi, ru, pl, el,
-  tr, ar, th, vi, hi,
-  bn, fil, si, ur,
+  en,
 };
 
 export function getTranslations(code: LangCode): Translations {

@@ -1,6 +1,5 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
-import { type LangCode, type Translations, LANGUAGES, getTranslations } from "./languages";
+import { createContext, useContext, ReactNode } from "react";
+import { type LangCode, type Translations, getTranslations } from "./languages";
 
 interface LanguageContextValue {
   lang: LangCode;
@@ -9,49 +8,18 @@ interface LanguageContextValue {
   setLang: (code: LangCode) => void;
 }
 
+const t = getTranslations("en");
+
 const LanguageContext = createContext<LanguageContextValue>({
   lang: "en",
-  t: getTranslations("en"),
+  t,
   isRTL: false,
   setLang: () => {},
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const [lang, setLangState] = useState<LangCode>(() => {
-    const stored = localStorage.getItem("mind-forge-lang") as LangCode | null;
-    return stored ?? "en";
-  });
-
-  useEffect(() => {
-    const userLang = (user as { preferredLanguage?: string } | null)?.preferredLanguage as LangCode | undefined;
-    if (userLang && LANGUAGES.find(l => l.code === userLang)) {
-      setLangState(userLang);
-      localStorage.setItem("mind-forge-lang", userLang);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    const langDef = LANGUAGES.find(l => l.code === lang);
-    if (langDef?.rtl) {
-      document.documentElement.dir = "rtl";
-      document.documentElement.lang = lang;
-    } else {
-      document.documentElement.dir = "ltr";
-      document.documentElement.lang = lang;
-    }
-  }, [lang]);
-
-  const setLang = (code: LangCode) => {
-    setLangState(code);
-    localStorage.setItem("mind-forge-lang", code);
-  };
-
-  const langDef = LANGUAGES.find(l => l.code === lang);
-  const t = getTranslations(lang);
-
   return (
-    <LanguageContext.Provider value={{ lang, t, isRTL: langDef?.rtl ?? false, setLang }}>
+    <LanguageContext.Provider value={{ lang: "en", t, isRTL: false, setLang: () => {} }}>
       {children}
     </LanguageContext.Provider>
   );

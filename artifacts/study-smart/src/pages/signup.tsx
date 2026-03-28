@@ -5,16 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2, ChevronLeft, Search, ChevronRight, Globe } from "lucide-react";
+import { Sparkles, Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2, ChevronLeft, Search, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   COUNTRIES, searchCountries, type CountryDef, type Grade, GROUP_LABELS, type GradeGroup,
 } from "@/lib/countries-grades";
-import { LANGUAGES, type LangCode, getDefaultLanguageForCountry } from "@/lib/languages";
 import { useLanguage } from "@/lib/language-context";
 
-type Step = "language" | "country" | "grade" | "account";
-const STEPS: Step[] = ["language", "country", "grade", "account"];
+type Step = "country" | "grade" | "account";
+const STEPS: Step[] = ["country", "grade", "account"];
 
 function PasswordStrength({ password, checks }: { password: string; checks: { length: string; number: string; letter: string } }) {
   if (!password) return null;
@@ -47,10 +46,9 @@ function PasswordStrength({ password, checks }: { password: string; checks: { le
 export default function SignupPage() {
   const { register, authError, clearAuthError, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
-  const { t, setLang } = useLanguage();
+  const { t } = useLanguage();
 
-  const [step, setStep] = useState<Step>("language");
-  const [selectedLang, setSelectedLang] = useState<LangCode | null>(null);
+  const [step, setStep] = useState<Step>("country");
   const [country, setCountry] = useState<CountryDef | null>(null);
   const [gradeIndex, setGradeIndex] = useState<number | null>(null);
   const [countrySearch, setCountrySearch] = useState("");
@@ -83,20 +81,9 @@ export default function SignupPage() {
     return acc;
   }, {}) ?? {};
 
-  const handleLangSelect = (code: LangCode) => {
-    setSelectedLang(code);
-    setLang(code);
-    setStep("country");
-  };
-
   const handleCountrySelect = (c: CountryDef) => {
     setCountry(c);
     setGradeIndex(null);
-    if (!selectedLang) {
-      const defaultLang = getDefaultLanguageForCountry(c.code);
-      setSelectedLang(defaultLang);
-      setLang(defaultLang);
-    }
     setStep("grade");
   };
 
@@ -125,7 +112,6 @@ export default function SignupPage() {
         password,
         country: country?.code,
         gradeIndex: gradeIndex ?? undefined,
-        preferredLanguage: selectedLang ?? undefined,
       });
     } catch {
     } finally {
@@ -135,18 +121,15 @@ export default function SignupPage() {
 
   const stepIdx = STEPS.indexOf(step);
 
-  const stepIcon = step === "language" ? <Globe className="w-6 h-6 text-white" />
-    : step === "country" ? <span className="text-xl">🌍</span>
+  const stepIcon = step === "country" ? <span className="text-xl">🌍</span>
     : step === "grade" ? <span className="text-xl">🎓</span>
     : <UserPlus className="w-6 h-6 text-white" />;
 
-  const stepLabel = step === "language" ? t.signup.language
-    : step === "country" ? t.signup.country
+  const stepLabel = step === "country" ? t.signup.country
     : step === "grade" ? t.signup.grade
     : t.signup.account;
 
-  const stepSub = step === "language" ? t.signup.languageSub
-    : step === "country" ? t.signup.countrySub
+  const stepSub = step === "country" ? t.signup.countrySub
     : step === "grade" ? `${t.signup.grade} — ${country?.name ?? ""}`
     : t.signup.accountSub;
 
@@ -193,45 +176,9 @@ export default function SignupPage() {
           </div>
 
           <AnimatePresence mode="wait">
-            {/* STEP 1: Language */}
-            {step === "language" && (
-              <motion.div key="language" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
-                  {LANGUAGES.map(lang => (
-                    <button
-                      key={lang.code}
-                      onClick={() => handleLangSelect(lang.code)}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left",
-                        selectedLang === lang.code
-                          ? "border-primary bg-primary/5 font-semibold text-primary"
-                          : "border-transparent hover:bg-primary/5 hover:border-primary/20"
-                      )}
-                    >
-                      <span className="text-xl shrink-0">{lang.flag}</span>
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-medium text-sm">{lang.nativeName}</span>
-                        {lang.nativeName !== lang.name && (
-                          <span className="text-xs text-muted-foreground">{lang.name}</span>
-                        )}
-                      </div>
-                      {selectedLang === lang.code && <CheckCircle2 className="w-4 h-4 text-primary ml-auto shrink-0" />}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* STEP 2: Country */}
+            {/* STEP 1: Country */}
             {step === "country" && (
               <motion.div key="country" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <button
-                  onClick={() => setStep("language")}
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  {selectedLang ? LANGUAGES.find(l => l.code === selectedLang)?.nativeName : "Language"}
-                </button>
                 <div className="relative mb-3">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
