@@ -23,6 +23,7 @@ import reviewRouter from "./review";
 import gradeChangeRouter from "./grade-change";
 import stripeRouter from "./stripe";
 import storageRouter from "./storage";
+import streaksRouter from "./streaks";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,6 @@ router.use(usersRouter);
 router.use(curriculumQuizRouter);
 router.use(stripeRouter);
 router.use(storageRouter);
+router.use(streaksRouter);
 
 export default router;

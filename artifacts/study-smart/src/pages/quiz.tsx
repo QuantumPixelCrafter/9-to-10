@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useSubmitScore, customFetch } from "@workspace/api-client-react";
 import { useGetPowerups, useUsePowerup } from "@workspace/api-client-react";
@@ -45,6 +45,13 @@ type WrongAnswer = {
   question: string; options: string[];
   correctAnswer: number; userAnswer: number; explanation: string;
 };
+
+type StreakResult =
+  | { isFirstToday: false; currentStreak: number }
+  | { isFirstToday: true; currentStreak: number; streakBonus: number; bonusAwarded: boolean; streakReset?: boolean; requiresFreezeDecision?: never }
+  | { isFirstToday: true; requiresFreezeDecision: true; freezesAvailable: number; currentStreak: number; streakIfFrozen: number; streakBonusIfFrozen: number };
+
+type FreezeResponse = { currentStreak: number; streakBonus: number; bonusAwarded: boolean; freezeUsed: boolean; streakReset?: boolean };
 
 function ProgressDots({ step }: { step: Step }) {
   const steps: Step[] = ["levelGroup", "subject", "topic", "settings", "playing"];
@@ -96,6 +103,12 @@ export default function QuizPage() {
   const [randomBonusActive, setRandomBonusActive] = useState(false);
   const [wrongAnswers, setWrongAnswers] = useState<WrongAnswer[]>([]);
   const [reviewSent, setReviewSent] = useState(false);
+
+  const [streakResult, setStreakResult] = useState<StreakResult | null>(null);
+  const [streakRecorded, setStreakRecorded] = useState(false);
+  const streakRecordingRef = useRef(false);
+  const [freezeLoading, setFreezeLoading] = useState(false);
+  const [postFreezeResult, setPostFreezeResult] = useState<FreezeResponse | null>(null);
 
   const hintQty = powerupsData?.inventory.find(p => p.key === "hint_token")?.quantity ?? 0;
   const doubleQty = powerupsData?.inventory.find(p => p.key === "double_points")?.quantity ?? 0;
@@ -245,6 +258,14 @@ export default function QuizPage() {
     }
   };
 
+  const resetStreakState = () => {
+    setStreakResult(null);
+    setStreakRecorded(false);
+    streakRecordingRef.current = false;
+    setFreezeLoading(false);
+    setPostFreezeResult(null);
+  };
+
   const reset = () => {
     setStep("levelGroup");
     setLevelGroup(null);
@@ -258,6 +279,7 @@ export default function QuizPage() {
     setEliminatedOptions(new Set());
     setWrongAnswers([]);
     setReviewSent(false);
+    resetStreakState();
   };
 
   const retryTopic = () => {
@@ -270,6 +292,7 @@ export default function QuizPage() {
     setEliminatedOptions(new Set());
     setWrongAnswers([]);
     setReviewSent(false);
+    resetStreakState();
   };
 
   const retryWithPass = async () => {
@@ -282,6 +305,34 @@ export default function QuizPage() {
     }
     setWrongAnswers([]);
     setReviewSent(false);
+  };
+
+  // Record streak on first appearance of results screen
+  useEffect(() => {
+    if (step !== "results" || !isAuthenticated || streakRecordingRef.current) return;
+    streakRecordingRef.current = true;
+    customFetch<StreakResult>("/api/streaks/record", { method: "POST" })
+      .then(result => {
+        setStreakResult(result);
+        setStreakRecorded(true);
+      })
+      .catch(() => setStreakRecorded(true));
+  }, [step, isAuthenticated]);
+
+  const respondToFreeze = async (useFreeze: boolean) => {
+    setFreezeLoading(true);
+    try {
+      const result = await customFetch<FreezeResponse>("/api/streaks/freeze-respond", {
+        method: "POST",
+        body: JSON.stringify({ useFreeze }),
+      });
+      setPostFreezeResult(result);
+      refetchPowerups();
+    } catch {
+      // silently fail
+    } finally {
+      setFreezeLoading(false);
+    }
   };
 
   const q = quiz?.questions[currentQ];
@@ -704,6 +755,103 @@ export default function QuizPage() {
                 <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
                   className={cn("h-full rounded-full", pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500")} />
               </div>
+
+              {/* ── Streak panel ─────────────────────────────────────── */}
+              {isAuthenticated && streakRecorded && streakResult && (() => {
+                // Freeze decision pending and not yet resolved
+                if (streakResult.isFirstToday && streakResult.requiresFreezeDecision && !postFreezeResult) {
+                  return (
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      className="rounded-2xl border border-blue-400/30 bg-blue-500/10 p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🧊</span>
+                        <div>
+                          <p className="font-bold text-sm text-blue-600 dark:text-blue-400">You missed yesterday</p>
+                          <p className="text-xs text-muted-foreground">Your {streakResult.currentStreak}-day streak is at risk. Use a Streak Freeze to save it?</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button size="sm" disabled={freezeLoading}
+                          className="rounded-xl bg-blue-500 hover:bg-blue-600 text-white border-0 gap-1.5 text-xs"
+                          onClick={() => respondToFreeze(true)}>
+                          🧊 Use Freeze ({streakResult.freezesAvailable} left)
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={freezeLoading}
+                          className="rounded-xl gap-1.5 text-xs border-muted-foreground/30"
+                          onClick={() => respondToFreeze(false)}>
+                          Let it reset
+                        </Button>
+                      </div>
+                    </motion.div>
+                  );
+                }
+
+                // Freeze was used
+                if (postFreezeResult) {
+                  return postFreezeResult.freezeUsed ? (
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      className="rounded-2xl border border-blue-400/30 bg-blue-500/10 p-4 flex items-center gap-3">
+                      <span className="text-2xl">🧊</span>
+                      <div>
+                        <p className="font-bold text-sm text-blue-600 dark:text-blue-400">Streak Freeze used!</p>
+                        <p className="text-xs text-muted-foreground">
+                          🔥 {postFreezeResult.currentStreak}-day streak continues
+                          {postFreezeResult.bonusAwarded && postFreezeResult.streakBonus > 0
+                            ? ` · +${postFreezeResult.streakBonus} bonus pts` : ""}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      className="rounded-2xl border border-muted bg-muted/30 p-4 flex items-center gap-3">
+                      <span className="text-2xl">🔥</span>
+                      <div>
+                        <p className="font-bold text-sm">Streak reset</p>
+                        <p className="text-xs text-muted-foreground">Starting fresh — Day 1! Keep it going tomorrow.</p>
+                      </div>
+                    </motion.div>
+                  );
+                }
+
+                // Normal streak outcome
+                if (streakResult.isFirstToday && !streakResult.requiresFreezeDecision) {
+                  if (streakResult.streakReset) {
+                    return (
+                      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                        className="rounded-2xl border border-muted bg-muted/30 p-4 flex items-center gap-3">
+                        <span className="text-2xl">🔥</span>
+                        <div>
+                          <p className="font-bold text-sm">Streak reset</p>
+                          <p className="text-xs text-muted-foreground">Starting fresh — Day 1! Keep it going tomorrow.</p>
+                        </div>
+                      </motion.div>
+                    );
+                  }
+                  const streak = streakResult.currentStreak;
+                  return (
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      className={cn("rounded-2xl border p-4 flex items-center gap-3",
+                        streak >= 7 ? "border-amber-400/40 bg-amber-500/10" : "border-orange-400/30 bg-orange-500/10")}>
+                      <span className="text-2xl">{streak >= 30 ? "🌟" : streak >= 14 ? "⚡" : "🔥"}</span>
+                      <div className="flex-1">
+                        <p className={cn("font-bold text-sm", streak >= 7 ? "text-amber-600 dark:text-amber-400" : "text-orange-600 dark:text-orange-400")}>
+                          {streak === 1 ? "Day 1 — keep it up!" : `${streak}-Day Streak!`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {streakResult.bonusAwarded && streakResult.streakBonus > 0
+                            ? `+${streakResult.streakBonus} bonus pts · come back tomorrow to keep it going`
+                            : "Come back tomorrow to start earning streak bonuses"}
+                        </p>
+                      </div>
+                      {streakResult.bonusAwarded && streakResult.streakBonus > 0 && (
+                        <span className="text-sm font-extrabold text-amber-500">+{streakResult.streakBonus}</span>
+                      )}
+                    </motion.div>
+                  );
+                }
+
+                return null;
+              })()}
 
               <div className="space-y-3">
                 {isAuthenticated && !scoreSubmitted && (
