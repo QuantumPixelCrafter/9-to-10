@@ -71,9 +71,12 @@ router.get('/stripe/products', async (_req, res) => {
 
 router.post('/stripe/checkout', async (req: any, res) => {
   try {
-    const { priceId } = req.body;
-    if (!priceId) {
-      return res.status(400).json({ error: 'priceId is required' });
+    const { priceId, amount, description } = req.body;
+    if (!priceId && !amount) {
+      return res.status(400).json({ error: 'priceId or amount is required' });
+    }
+    if (amount !== undefined && (typeof amount !== 'number' || amount < 100)) {
+      return res.status(400).json({ error: 'amount must be at least 100 (cents)' });
     }
 
     const userId = req.user?.id;
@@ -103,11 +106,23 @@ router.post('/stripe/checkout', async (req: any, res) => {
 
     const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
 
+    const lineItems = priceId
+      ? [{ price: priceId, quantity: 1 }]
+      : [{
+          price_data: {
+            currency: 'usd',
+            unit_amount: amount,
+            product_data: { name: description ?? 'Donation' },
+          },
+          quantity: 1,
+        }];
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: lineItems,
       mode: 'payment',
+      metadata: amount ? { bonus_points: '200' } : {},
       success_url: `${baseUrl}/support?success=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/support?canceled=1`,
     });
@@ -149,10 +164,15 @@ router.post('/stripe/claim', async (req: any, res) => {
       return res.status(400).json({ error: 'Payment not completed' });
     }
 
-    const lineItem = session.line_items?.data?.[0];
-    const product = lineItem?.price?.product as any;
-    const bonusPointsStr = product?.metadata?.bonus_points;
-    const bonusPoints = bonusPointsStr ? parseInt(bonusPointsStr, 10) : 0;
+    const sessionBonusStr = (session.metadata as Record<string, string> | null)?.bonus_points;
+    let bonusPoints = sessionBonusStr ? parseInt(sessionBonusStr, 10) : 0;
+
+    if (!bonusPoints) {
+      const lineItem = session.line_items?.data?.[0];
+      const product = lineItem?.price?.product as any;
+      const productBonusStr = product?.metadata?.bonus_points;
+      bonusPoints = productBonusStr ? parseInt(productBonusStr, 10) : 0;
+    }
 
     await db.insert(stripeClaimedSessionsTable).values({
       sessionId,

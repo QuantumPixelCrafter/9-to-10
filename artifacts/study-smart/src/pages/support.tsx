@@ -4,8 +4,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Heart, Coffee, Star, Trophy, Zap, Gem, Rocket,
-  CheckCircle2, XCircle, Loader2, ShoppingBag, Coins, Sparkles,
+  Heart, Coffee, Star, Trophy,
+  CheckCircle2, XCircle, Loader2, ShoppingBag, Coins,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
@@ -27,23 +27,6 @@ interface Product {
   prices: Price[];
 }
 
-const COIN_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  "Starter Pack": Zap,
-  "Value Pack": Gem,
-  "Mega Pack": Rocket,
-};
-
-const COIN_GRADIENTS: Record<string, string> = {
-  "Starter Pack": "from-sky-400 to-blue-500",
-  "Value Pack": "from-violet-500 to-purple-600",
-  "Mega Pack": "from-rose-500 to-pink-600",
-};
-
-const COIN_BG: Record<string, string> = {
-  "Starter Pack": "from-sky-500/10 to-blue-500/5 border-sky-500/20",
-  "Value Pack": "from-violet-500/10 to-purple-500/5 border-violet-500/20",
-  "Mega Pack": "from-rose-500/10 to-pink-500/5 border-rose-500/20",
-};
 
 const SUPPORT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Supporter: Coffee,
@@ -65,9 +48,6 @@ function formatAmount(unitAmount: number, currency: string) {
   }).format(unitAmount / 100);
 }
 
-function formatPoints(pts: number) {
-  return pts >= 1000 ? `${(pts / 1000).toFixed(pts % 1000 === 0 ? 0 : 1)}k` : String(pts);
-}
 
 export default function Support() {
   const [location] = useLocation();
@@ -75,6 +55,7 @@ export default function Support() {
   const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null);
   const [claimedPoints, setClaimedPoints] = useState<number | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const [donationAmount, setDonationAmount] = useState("");
 
   const params = new URLSearchParams(window.location.search);
   const isSuccess = params.get("success") === "1";
@@ -108,16 +89,15 @@ export default function Support() {
     },
   });
 
-  const coinPacks = data?.filter(p => p.metadata?.category === "coins") ?? [];
   const supportTiers = data?.filter(p => p.metadata?.category === "support") ?? [];
 
   const checkoutMutation = useMutation({
-    mutationFn: async (priceId: string) => {
-      setLoadingPriceId(priceId);
+    mutationFn: async (payload: { priceId: string } | { amount: number; description: string }) => {
+      if ("priceId" in payload) setLoadingPriceId(payload.priceId);
       const data = await customFetch<{ url: string }>("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify(payload),
       });
       return data.url;
     },
@@ -128,6 +108,10 @@ export default function Support() {
       setLoadingPriceId(null);
     },
   });
+
+  const parsedDonation = parseFloat(donationAmount);
+  const donationCents = Math.round(parsedDonation * 100);
+  const donationValid = !isNaN(parsedDonation) && donationCents >= 100;
 
   return (
     <Layout title="Store">
@@ -204,84 +188,65 @@ export default function Support() {
           </div>
         )}
 
-        {/* Coin Packs */}
-        {coinPacks.length > 0 && (
-          <motion.section
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 }}
-            className="space-y-4"
-          >
-            <div className="flex items-center gap-2">
-              <Coins className="w-5 h-5 text-amber-500" />
-              <h3 className="font-bold text-lg">Point Packs</h3>
-              <span className="text-xs text-muted-foreground font-normal ml-1">Instantly boost your in-app balance</span>
+        {/* Custom Donation */}
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center gap-2">
+            <Coins className="w-5 h-5 text-amber-500" />
+            <h3 className="font-bold text-lg">Donate</h3>
+            <span className="text-xs text-muted-foreground font-normal ml-1">Enter any amount — earn 200 pts instantly</span>
+          </div>
+          <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-50/60 to-amber-50/20 dark:from-amber-900/10 dark:to-transparent p-5 space-y-4">
+            <p className="text-sm text-muted-foreground">Choose how much you'd like to contribute. Every donation rewards you with <span className="font-semibold text-amber-600 dark:text-amber-400">200 pts</span>.</p>
+            <div className="flex gap-3 items-center">
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold select-none">$</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={donationAmount}
+                  onChange={e => setDonationAmount(e.target.value)}
+                  className={cn(
+                    "w-full pl-7 pr-3 py-2.5 rounded-xl border bg-background text-sm font-semibold",
+                    "focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60",
+                    "border-border transition-colors"
+                  )}
+                />
+              </div>
+              <Button
+                className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 hover:opacity-90 transition-opacity shrink-0 px-6"
+                disabled={!donationValid || checkoutMutation.isPending}
+                onClick={() =>
+                  checkoutMutation.mutate({ amount: donationCents, description: "Mind Forge Donation" })
+                }
+              >
+                {checkoutMutation.isPending && !loadingPriceId ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Pay"
+                )}
+              </Button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {coinPacks.map((product, i) => {
-                const Icon = COIN_ICONS[product.name] ?? Sparkles;
-                const gradient = COIN_GRADIENTS[product.name] ?? "from-primary to-accent";
-                const bg = COIN_BG[product.name] ?? "from-primary/10 to-accent/5 border-primary/20";
-                const price = product.prices[0];
-                const bonusPoints = parseInt(product.metadata?.bonus_points ?? "0", 10);
-                const isLoadingThis = loadingPriceId === price.id;
-
-                return (
-                  <motion.div
-                    key={product.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.12 + i * 0.06 }}
-                    className={cn(
-                      "relative rounded-2xl border bg-gradient-to-b p-5 flex flex-col gap-4",
-                      bg
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-lg`}>
-                        <Icon className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-sm leading-tight">{product.name}</p>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <Coins className="w-3 h-3 text-amber-500 shrink-0" />
-                          <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                            {bonusPoints.toLocaleString()} pts
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed flex-1">{product.description}</p>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xl font-bold">{formatAmount(price.unit_amount, price.currency)}</span>
-                      <Button
-                        size="sm"
-                        className={`bg-gradient-to-r ${gradient} text-white border-0 hover:opacity-90 transition-opacity shrink-0`}
-                        onClick={() => checkoutMutation.mutate(price.id)}
-                        disabled={checkoutMutation.isPending}
-                      >
-                        {isLoadingThis ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          "Buy"
-                        )}
-                      </Button>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </motion.section>
-        )}
+            {donationAmount && !donationValid && (
+              <p className="text-xs text-destructive">Minimum donation is $1.00</p>
+            )}
+          </div>
+        </motion.section>
 
         {/* Divider */}
-        {coinPacks.length > 0 && supportTiers.length > 0 && (
+        {supportTiers.length > 0 && (
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-border/50" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-background px-3 text-xs text-muted-foreground">or</span>
+              <span className="bg-background px-3 text-xs text-muted-foreground">or support us directly</span>
             </div>
           </div>
         )}
@@ -331,7 +296,7 @@ export default function Support() {
                         size="sm"
                         variant="outline"
                         className={`border-0 text-white bg-gradient-to-r ${gradient} hover:opacity-90 transition-opacity`}
-                        onClick={() => checkoutMutation.mutate(price.id)}
+                        onClick={() => checkoutMutation.mutate({ priceId: price.id })}
                         disabled={checkoutMutation.isPending}
                       >
                         {isLoadingThis ? (
