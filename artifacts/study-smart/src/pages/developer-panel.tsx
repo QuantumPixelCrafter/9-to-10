@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import {
-  BadgeCheck, Coins, Gift, Search, Users, ShieldPlus, GraduationCap,
+  BadgeCheck, Coins, Gift, Search, ShieldPlus, GraduationCap,
   Check, X, Clock, CheckCircle2, XCircle, UserRound, Zap, MessageSquare, ChevronDown,
 } from "lucide-react";
 import { getCountry, getGradeName } from "@/lib/countries-grades";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/language-context";
 
 interface DevUser {
   id: string;
@@ -44,32 +45,6 @@ interface GradeChangeRequest {
 type ActiveTab = "gift-all" | "gift-user" | "promote" | "grade-changes";
 type GiftType = "points" | "powerup" | "free_messages";
 
-const POWERUP_OPTIONS = [
-  { key: "streak_freeze",    name: "Streak Freeze",        emoji: "🧊" },
-  { key: "double_points",    name: "Double Points Boost",  emoji: "⚡" },
-  { key: "hint_token",       name: "Hint Token",           emoji: "💡" },
-  { key: "retry_pass",       name: "Retry Pass",           emoji: "🔄" },
-  { key: "random_quiz_bonus",name: "Random Quiz Bonus",    emoji: "🎲" },
-];
-
-const POWERUP_EMOJIS: Record<string, string> = {
-  "Streak Freeze": "🧊",
-  "Double Points Boost": "⚡",
-  "Hint Token": "💡",
-  "Retry Pass": "🔄",
-};
-
-function fuzzyMatch(text: string, query: string): boolean {
-  if (!query.trim()) return false;
-  const t = text.toLowerCase();
-  const q = query.toLowerCase();
-  let qi = 0;
-  for (let i = 0; i < t.length && qi < q.length; i++) {
-    if (t[i] === q[qi]) qi++;
-  }
-  return qi === q.length;
-}
-
 function getDisplayName(u: { firstName: string | null; lastName: string | null; username: string | null; email?: string | null }) {
   return [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || u.email || "Unknown";
 }
@@ -79,6 +54,23 @@ export default function DeveloperPanel() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { t } = useLanguage();
+  const dp = t.devPanel;
+
+  const POWERUP_OPTIONS = [
+    { key: "streak_freeze",    name: dp.powerupStreakFreeze,   emoji: "🧊" },
+    { key: "double_points",    name: dp.powerupDoublePoints,   emoji: "⚡" },
+    { key: "hint_token",       name: dp.powerupHintToken,      emoji: "💡" },
+    { key: "retry_pass",       name: dp.powerupRetryPass,      emoji: "🔄" },
+    { key: "random_quiz_bonus",name: dp.powerupRandomQuizBonus,emoji: "🎲" },
+  ];
+
+  const SUGGEST_NAMES = [
+    { name: dp.powerupStreakFreeze,    emoji: "🧊" },
+    { name: dp.powerupDoublePoints,    emoji: "⚡" },
+    { name: dp.powerupHintToken,       emoji: "💡" },
+    { name: dp.powerupRetryPass,       emoji: "🔄" },
+  ];
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("gift-all");
 
@@ -122,15 +114,18 @@ export default function DeveloperPanel() {
       }),
     onSuccess: (result) => {
       toast({
-        title: "Gift sent!",
-        description: `"${giftName}" — ${points} points delivered to ${result.recipientCount} users.`,
+        title: dp.toastGiftSent,
+        description: dp.toastGiftDeliveredDesc
+          .replace("{name}", giftName)
+          .replace("{pts}", points)
+          .replace("{n}", String(result.recipientCount)),
       });
       setGiftName("");
       setPoints("");
       queryClient.invalidateQueries({ queryKey: ["developer-users"] });
     },
     onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: t.common.error, description: err.message, variant: "destructive" });
     },
   });
 
@@ -142,7 +137,7 @@ export default function DeveloperPanel() {
         body: JSON.stringify(payload),
       }),
     onSuccess: (result) => {
-      toast({ title: "Gift sent!", description: result.message });
+      toast({ title: dp.toastGiftSent, description: result.message });
       setGiftUserSelected(null);
       setGiftUserSearch("");
       setGiftPoints("");
@@ -150,7 +145,7 @@ export default function DeveloperPanel() {
       setGiftFreeMessages("");
     },
     onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: t.common.error, description: err.message, variant: "destructive" });
     },
   });
 
@@ -163,13 +158,13 @@ export default function DeveloperPanel() {
       }),
     onSuccess: () => {
       toast({
-        title: "Request sent!",
-        description: `A promotion request for ${getDisplayName(selectedUser!)} has been sent to zen horizon for approval.`,
+        title: dp.toastRequestSent,
+        description: dp.toastPromoDesc.replace("{name}", getDisplayName(selectedUser!)),
       });
       setSelectedUser(null);
     },
     onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: t.common.error, description: err.message, variant: "destructive" });
     },
   });
 
@@ -181,16 +176,13 @@ export default function DeveloperPanel() {
         body: JSON.stringify({ action }),
       }),
     onSuccess: (_data, { action }) => {
-      toast({ title: action === "approve" ? "Grade change approved ✅" : "Grade change declined ❌" });
+      toast({ title: action === "approve" ? dp.toastGradeApproved : dp.toastGradeDeclined });
       queryClient.invalidateQueries({ queryKey: ["grade-change-requests"] });
     },
     onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: t.common.error, description: err.message, variant: "destructive" });
     },
   });
-
-  const allSuggestions = ["Streak Freeze", "Double Points Boost", "Hint Token", "Retry Pass"];
-  const suggestions = giftName.trim() ? allSuggestions.filter(name => fuzzyMatch(name, giftName)) : [];
 
   const allUsers = data?.users ?? [];
 
@@ -225,11 +217,11 @@ export default function DeveloperPanel() {
     e.preventDefault();
     const pts = parseInt(points, 10);
     if (!giftName.trim()) {
-      toast({ title: "Missing gift name", description: "Please enter a name for this gift.", variant: "destructive" });
+      toast({ title: dp.toastMissingName, description: dp.toastMissingNameDesc, variant: "destructive" });
       return;
     }
     if (!pts || pts <= 0) {
-      toast({ title: "Invalid points", description: "Please enter a positive number.", variant: "destructive" });
+      toast({ title: dp.toastInvalidPoints, description: dp.toastInvalidPointsDesc, variant: "destructive" });
       return;
     }
     giftAllMutation.mutate({ name: giftName.trim(), pts });
@@ -238,27 +230,27 @@ export default function DeveloperPanel() {
   function handleGiftUserSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!giftUserSelected) {
-      toast({ title: "No user selected", description: "Select a user to gift.", variant: "destructive" });
+      toast({ title: dp.toastNoUser, description: dp.toastNoUserDesc, variant: "destructive" });
       return;
     }
     if (giftType === "points") {
       const pts = parseInt(giftPoints, 10);
       if (!pts || pts <= 0) {
-        toast({ title: "Invalid points", variant: "destructive" });
+        toast({ title: dp.toastInvalidPoints, variant: "destructive" });
         return;
       }
       giftUserMutation.mutate({ targetUserId: giftUserSelected.id, giftType: "points", points: pts });
     } else if (giftType === "powerup") {
       const qty = parseInt(giftPowerupQty, 10);
       if (!qty || qty <= 0) {
-        toast({ title: "Invalid quantity", variant: "destructive" });
+        toast({ title: dp.toastInvalidQty, variant: "destructive" });
         return;
       }
       giftUserMutation.mutate({ targetUserId: giftUserSelected.id, giftType: "powerup", powerupKey: giftPowerupKey, powerupQty: qty });
     } else {
       const msgs = parseInt(giftFreeMessages, 10);
       if (!msgs || msgs <= 0) {
-        toast({ title: "Invalid quantity", variant: "destructive" });
+        toast({ title: dp.toastInvalidQty, variant: "destructive" });
         return;
       }
       giftUserMutation.mutate({ targetUserId: giftUserSelected.id, giftType: "free_messages", freeMessages: msgs });
@@ -266,22 +258,24 @@ export default function DeveloperPanel() {
   }
 
   const tabs: { key: ActiveTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { key: "gift-all",      label: "Gift All",    icon: Gift },
-    { key: "gift-user",     label: "Gift User",   icon: UserRound },
-    { key: "promote",       label: "Developer",   icon: ShieldPlus },
-    { key: "grade-changes", label: "Grades",      icon: GraduationCap },
+    { key: "gift-all",      label: dp.tabGiftAll,    icon: Gift },
+    { key: "gift-user",     label: dp.tabGiftUser,   icon: UserRound },
+    { key: "promote",       label: dp.tabDeveloper,  icon: ShieldPlus },
+    { key: "grade-changes", label: dp.tabGrades,     icon: GraduationCap },
   ];
 
+  const selectedPowerup = POWERUP_OPTIONS.find(p => p.key === giftPowerupKey);
+
   return (
-    <Layout title="Developer Panel">
+    <Layout title={dp.title}>
       <div className="space-y-6 pb-8 max-w-2xl">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-violet-500/10">
             <BadgeCheck className="w-6 h-6 text-violet-500" />
           </div>
           <div>
-            <h2 className="text-xl font-bold">Developer Panel</h2>
-            <p className="text-sm text-muted-foreground">Manage users and permissions</p>
+            <h2 className="text-xl font-bold">{dp.title}</h2>
+            <p className="text-sm text-muted-foreground">{dp.subtitle}</p>
           </div>
         </div>
 
@@ -312,25 +306,27 @@ export default function DeveloperPanel() {
         {activeTab === "gift-all" && (
           <div className="bg-card border border-border/50 rounded-2xl p-6 space-y-5">
             <div className="space-y-1">
-              <h3 className="font-semibold">Send a gift to everyone</h3>
+              <h3 className="font-semibold">{dp.giftAllTitle}</h3>
               <p className="text-sm text-muted-foreground">
-                All <span className="font-medium text-foreground">{totalUsers}</span> users will receive the same amount of points and an inbox notification.
+                {dp.giftAllSub.split("{n}").map((part, i) =>
+                  i === 0 ? part : <><span key={i} className="font-medium text-foreground">{totalUsers}</span>{part}</>
+                )}
               </p>
             </div>
 
             <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/15 flex items-start gap-3">
               <Coins className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Each user will see: <span className="font-medium text-foreground italic">"A gift from the development team: [gift name]"</span>
+                {dp.giftAllHint}
               </p>
             </div>
 
             <form onSubmit={handleGiftAllSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Gift name</label>
+                <label className="text-sm font-medium">{dp.giftAllNameLabel}</label>
                 <div className="relative">
                   <Input
-                    placeholder='e.g. "Spring Celebration" or "Weekend Bonus"'
+                    placeholder={dp.giftAllNamePlaceholder}
                     value={giftName}
                     onChange={(e) => { setGiftName(e.target.value); setShowSuggestions(true); }}
                     onFocus={() => setShowSuggestions(true)}
@@ -338,18 +334,18 @@ export default function DeveloperPanel() {
                     className="rounded-xl"
                     required
                   />
-                  {showSuggestions && suggestions.length > 0 && (
+                  {showSuggestions && giftName.trim() && SUGGEST_NAMES.filter(s => s.name.toLowerCase().includes(giftName.toLowerCase())).length > 0 && (
                     <div className="absolute z-10 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-lg overflow-hidden">
-                      {suggestions.map(name => (
+                      {SUGGEST_NAMES.filter(s => s.name.toLowerCase().includes(giftName.toLowerCase())).map(s => (
                         <button
-                          key={name}
+                          key={s.name}
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => { setGiftName(name); setShowSuggestions(false); }}
+                          onClick={() => { setGiftName(s.name); setShowSuggestions(false); }}
                           className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-muted transition-colors text-left"
                         >
-                          <span className="text-base">{POWERUP_EMOJIS[name]}</span>
-                          <span className="font-medium">{name}</span>
+                          <span className="text-base">{s.emoji}</span>
+                          <span className="font-medium">{s.name}</span>
                         </button>
                       ))}
                     </div>
@@ -357,10 +353,10 @@ export default function DeveloperPanel() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Points per user</label>
+                <label className="text-sm font-medium">{dp.giftAllPointsLabel}</label>
                 <Input
                   type="number"
-                  placeholder="e.g. 500"
+                  placeholder={dp.giftAllPointsPlaceholder}
                   min={1}
                   max={100000}
                   value={points}
@@ -372,8 +368,9 @@ export default function DeveloperPanel() {
 
               {giftName.trim() && points && (
                 <div className="p-3 rounded-xl bg-muted/60 text-sm text-muted-foreground">
-                  Preview: <span className="font-medium text-foreground">"A gift from the development team: {giftName.trim()}"</span>
-                  {" "}— <span className="text-amber-600 dark:text-amber-400 font-semibold">+{points} pts</span> to each user
+                  {dp.giftAllPreviewPrefix}{" "}
+                  <span className="font-medium text-foreground italic">"{dp.giftAllHint.split(": ")[1]?.replace("[gift name]", giftName.trim()).split('"')[0] ? `A gift from the development team: ${giftName.trim()}"` : `A gift from the development team: ${giftName.trim()}`}</span>
+                  {" "}— <span className="text-amber-600 dark:text-amber-400 font-semibold">+{points} {dp.pts}</span> {dp.giftAllPerUser}
                 </div>
               )}
 
@@ -384,8 +381,8 @@ export default function DeveloperPanel() {
               >
                 <Gift className="w-4 h-4 mr-2" />
                 {giftAllMutation.isPending
-                  ? "Sending gift..."
-                  : `Gift ${points || "?"} Points to All ${totalUsers} Users`}
+                  ? dp.giftAllSending
+                  : dp.giftAllButton.replace("{pts}", points || "?").replace("{n}", String(totalUsers))}
               </Button>
             </form>
           </div>
@@ -396,19 +393,17 @@ export default function DeveloperPanel() {
           <div className="space-y-4">
             <div className="bg-card border border-border/50 rounded-2xl p-5 space-y-4">
               <div className="space-y-1">
-                <h3 className="font-semibold">Gift a specific user</h3>
-                <p className="text-sm text-muted-foreground">
-                  Send bonus points, a power-up, or free chat message quota to any user.
-                </p>
+                <h3 className="font-semibold">{dp.giftUserTitle}</h3>
+                <p className="text-sm text-muted-foreground">{dp.giftUserSub}</p>
               </div>
 
               {/* User search */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Select user</label>
+                <label className="text-sm font-medium">{dp.giftUserSelectLabel}</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by name or username…"
+                    placeholder={dp.giftUserSearchPlaceholder}
                     className="pl-9 rounded-xl"
                     value={giftUserSearch}
                     onChange={(e) => { setGiftUserSearch(e.target.value); setGiftUserSelected(null); }}
@@ -416,9 +411,9 @@ export default function DeveloperPanel() {
                 </div>
                 <div className="max-h-48 overflow-y-auto space-y-1 rounded-xl border border-border/50 bg-muted/20 p-1">
                   {isLoading ? (
-                    <p className="text-xs text-muted-foreground text-center py-3">Loading users…</p>
+                    <p className="text-xs text-muted-foreground text-center py-3">{dp.giftUserLoading}</p>
                   ) : filteredGift.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-3">No users found</p>
+                    <p className="text-xs text-muted-foreground text-center py-3">{dp.giftUserNoResults}</p>
                   ) : (
                     filteredGift.map((u) => (
                       <div
@@ -453,7 +448,7 @@ export default function DeveloperPanel() {
                 </div>
               </div>
 
-              {/* Gift type */}
+              {/* Gift form */}
               {giftUserSelected && (
                 <form onSubmit={handleGiftUserSubmit} className="space-y-4 pt-2 border-t border-border/40">
                   <div className="flex items-center gap-2 py-1">
@@ -464,17 +459,17 @@ export default function DeveloperPanel() {
                         getDisplayName(giftUserSelected).slice(0, 2).toUpperCase()
                       )}
                     </div>
-                    <p className="text-sm font-medium">Gifting to <span className="text-primary">{getDisplayName(giftUserSelected)}</span></p>
+                    <p className="text-sm font-medium">{dp.giftUserGiftingTo} <span className="text-primary">{getDisplayName(giftUserSelected)}</span></p>
                   </div>
 
                   {/* Type selector */}
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Gift type</label>
+                    <label className="text-sm font-medium">{dp.giftUserTypeLabel}</label>
                     <div className="grid grid-cols-3 gap-2">
                       {[
-                        { key: "points" as GiftType,        label: "Points",        icon: Coins,          color: "text-amber-500",   bg: "bg-amber-500/10 border-amber-500/20" },
-                        { key: "powerup" as GiftType,       label: "Power-up",      icon: Zap,            color: "text-violet-500",  bg: "bg-violet-500/10 border-violet-500/20" },
-                        { key: "free_messages" as GiftType, label: "Free Messages", icon: MessageSquare,  color: "text-teal-500",    bg: "bg-teal-500/10 border-teal-500/20" },
+                        { key: "points" as GiftType,        label: dp.giftUserTypePoints,       icon: Coins,          color: "text-amber-500",   bg: "bg-amber-500/10 border-amber-500/20" },
+                        { key: "powerup" as GiftType,       label: dp.giftUserTypePowerup,       icon: Zap,            color: "text-violet-500",  bg: "bg-violet-500/10 border-violet-500/20" },
+                        { key: "free_messages" as GiftType, label: dp.giftUserTypeFreeMessages,  icon: MessageSquare,  color: "text-teal-500",    bg: "bg-teal-500/10 border-teal-500/20" },
                       ].map(({ key, label, icon: Icon, color, bg }) => (
                         <button
                           key={key}
@@ -494,10 +489,10 @@ export default function DeveloperPanel() {
                   {/* Points input */}
                   {giftType === "points" && (
                     <div className="space-y-1.5">
-                      <label className="text-sm font-medium">Amount (bonus points)</label>
+                      <label className="text-sm font-medium">{dp.giftUserAmountLabel}</label>
                       <Input
                         type="number"
-                        placeholder="e.g. 1000"
+                        placeholder={dp.giftUserAmountPlaceholder}
                         min={1}
                         max={100000}
                         value={giftPoints}
@@ -512,7 +507,7 @@ export default function DeveloperPanel() {
                   {giftType === "powerup" && (
                     <div className="space-y-3">
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium">Power-up type</label>
+                        <label className="text-sm font-medium">{dp.giftUserPowerupTypeLabel}</label>
                         <div className="relative">
                           <select
                             value={giftPowerupKey}
@@ -527,10 +522,10 @@ export default function DeveloperPanel() {
                         </div>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium">Quantity</label>
+                        <label className="text-sm font-medium">{dp.giftUserQtyLabel}</label>
                         <Input
                           type="number"
-                          placeholder="e.g. 3"
+                          placeholder={dp.giftUserQtyPlaceholder}
                           min={1}
                           max={99}
                           value={giftPowerupQty}
@@ -545,10 +540,10 @@ export default function DeveloperPanel() {
                   {/* Free messages input */}
                   {giftType === "free_messages" && (
                     <div className="space-y-1.5">
-                      <label className="text-sm font-medium">Number of free messages</label>
+                      <label className="text-sm font-medium">{dp.giftUserFreeMessagesLabel}</label>
                       <Input
                         type="number"
-                        placeholder="e.g. 50"
+                        placeholder={dp.giftUserFreeMessagesPlaceholder}
                         min={1}
                         max={10000}
                         value={giftFreeMessages}
@@ -556,26 +551,24 @@ export default function DeveloperPanel() {
                         className="rounded-xl"
                         required
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Each free message lets the user send one chat message without spending points.
-                      </p>
+                      <p className="text-xs text-muted-foreground">{dp.giftUserFreeMessagesHint}</p>
                     </div>
                   )}
 
                   {/* Preview */}
                   {giftType === "points" && giftPoints && (
                     <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 text-xs text-muted-foreground">
-                      Will gift <span className="font-semibold text-amber-600 dark:text-amber-400">+{parseInt(giftPoints, 10).toLocaleString()} bonus points</span> to {getDisplayName(giftUserSelected)}
+                      {dp.giftUserPreviewWillGift} <span className="font-semibold text-amber-600 dark:text-amber-400">+{parseInt(giftPoints, 10).toLocaleString()} {dp.giftUserPreviewBonusPoints}</span> {dp.giftUserPreviewTo} {getDisplayName(giftUserSelected)}
                     </div>
                   )}
-                  {giftType === "powerup" && giftPowerupQty && (
+                  {giftType === "powerup" && giftPowerupQty && selectedPowerup && (
                     <div className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/15 text-xs text-muted-foreground">
-                      Will gift <span className="font-semibold text-violet-600 dark:text-violet-400">{giftPowerupQty}x {POWERUP_OPTIONS.find(p => p.key === giftPowerupKey)?.emoji} {POWERUP_OPTIONS.find(p => p.key === giftPowerupKey)?.name}</span> to {getDisplayName(giftUserSelected)}
+                      {dp.giftUserPreviewWillGift} <span className="font-semibold text-violet-600 dark:text-violet-400">{giftPowerupQty}x {selectedPowerup.emoji} {selectedPowerup.name}</span> {dp.giftUserPreviewTo} {getDisplayName(giftUserSelected)}
                     </div>
                   )}
                   {giftType === "free_messages" && giftFreeMessages && (
                     <div className="p-3 rounded-xl bg-teal-500/5 border border-teal-500/15 text-xs text-muted-foreground">
-                      Will grant <span className="font-semibold text-teal-600 dark:text-teal-400">{parseInt(giftFreeMessages, 10).toLocaleString()} free messages</span> to {getDisplayName(giftUserSelected)}
+                      {dp.giftUserPreviewWillGrant} <span className="font-semibold text-teal-600 dark:text-teal-400">{parseInt(giftFreeMessages, 10).toLocaleString()} {dp.giftUserPreviewFreeMessages}</span> {dp.giftUserPreviewTo} {getDisplayName(giftUserSelected)}
                     </div>
                   )}
 
@@ -585,7 +578,7 @@ export default function DeveloperPanel() {
                     disabled={giftUserMutation.isPending}
                   >
                     <Gift className="w-4 h-4 mr-2" />
-                    {giftUserMutation.isPending ? "Sending…" : "Send Gift"}
+                    {giftUserMutation.isPending ? dp.giftUserSending : dp.giftUserSendButton}
                   </Button>
                 </form>
               )}
@@ -593,20 +586,18 @@ export default function DeveloperPanel() {
           </div>
         )}
 
-        {/* Make Developer tab */}
+        {/* Developer tab */}
         {activeTab === "promote" && (
           <div className="bg-card border border-border/50 rounded-2xl p-5 space-y-4">
             <div className="space-y-1">
-              <h3 className="font-semibold">Promote a user to developer</h3>
-              <p className="text-sm text-muted-foreground">
-                A request will be sent to <span className="font-medium">zen horizon</span> for approval.
-              </p>
+              <h3 className="font-semibold">{dp.promoteTitle}</h3>
+              <p className="text-sm text-muted-foreground">{dp.promoteSub}</p>
             </div>
 
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search users..."
+                placeholder={dp.promoteSearchPlaceholder}
                 className="pl-9 rounded-xl"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setSelectedUser(null); }}
@@ -615,9 +606,9 @@ export default function DeveloperPanel() {
 
             <div className="space-y-2 max-h-72 overflow-y-auto">
               {isLoading ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Loading users...</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{dp.promoteLoading}</p>
               ) : filteredPromote.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No users found</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{dp.promoteNoResults}</p>
               ) : (
                 filteredPromote.map((u) => (
                   <div
@@ -644,8 +635,8 @@ export default function DeveloperPanel() {
                         {u.isDeveloper && <BadgeCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
                       </div>
                       <p className="text-xs text-muted-foreground truncate">
-                        @{u.username || "no username"}
-                        {u.isDeveloper && " · Already a developer"}
+                        @{u.username || dp.promoteNoUsername}
+                        {u.isDeveloper && ` · ${dp.promoteAlreadyDev}`}
                       </p>
                     </div>
                     {selectedUser?.id === u.id && (
@@ -659,7 +650,7 @@ export default function DeveloperPanel() {
             {selectedUser && (
               <div className="space-y-3 pt-1 border-t border-border/40">
                 <p className="text-sm text-muted-foreground pt-2">
-                  Request to promote <span className="font-medium text-foreground">{getDisplayName(selectedUser)}</span>?
+                  {dp.promoteConfirm} <span className="font-medium text-foreground">{getDisplayName(selectedUser)}</span>?
                 </p>
                 <Button
                   className="w-full rounded-xl bg-violet-600 hover:bg-violet-700 text-white"
@@ -667,7 +658,7 @@ export default function DeveloperPanel() {
                   disabled={promoteMutation.isPending}
                 >
                   <ShieldPlus className="w-4 h-4 mr-2" />
-                  {promoteMutation.isPending ? "Sending request..." : "Send Promotion Request"}
+                  {promoteMutation.isPending ? dp.promoteSending : dp.promoteButton}
                 </Button>
               </div>
             )}
@@ -678,16 +669,16 @@ export default function DeveloperPanel() {
         {activeTab === "grade-changes" && (
           <div className="space-y-4">
             <div className="bg-card border border-border/50 rounded-2xl p-5">
-              <h3 className="font-semibold mb-1">Grade Change Requests</h3>
-              <p className="text-sm text-muted-foreground">Review and approve or decline student grade change requests.</p>
+              <h3 className="font-semibold mb-1">{dp.gradeTitle}</h3>
+              <p className="text-sm text-muted-foreground">{dp.gradeSub}</p>
             </div>
 
             {gradeLoading ? (
-              <div className="text-center py-10 text-muted-foreground text-sm">Loading requests…</div>
+              <div className="text-center py-10 text-muted-foreground text-sm">{dp.gradeLoading}</div>
             ) : allRequests.length === 0 ? (
               <div className="bg-card border border-border/50 rounded-2xl p-10 text-center">
                 <GraduationCap className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">No grade change requests yet.</p>
+                <p className="text-sm text-muted-foreground">{dp.gradeNoRequests}</p>
               </div>
             ) : (
               <>
@@ -695,7 +686,7 @@ export default function DeveloperPanel() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 px-1">
                       <Clock className="w-4 h-4 text-amber-500" />
-                      <span className="text-sm font-semibold">Pending ({pendingRequests.length})</span>
+                      <span className="text-sm font-semibold">{dp.gradePending} ({pendingRequests.length})</span>
                     </div>
                     {pendingRequests.map(req => {
                       const c = getCountry(req.country);
@@ -737,7 +728,7 @@ export default function DeveloperPanel() {
                               disabled={gradeDecisionMutation.isPending}
                               onClick={() => gradeDecisionMutation.mutate({ id: req.id, action: "approve" })}
                             >
-                              <Check className="w-3.5 h-3.5 mr-1.5" /> Approve
+                              <Check className="w-3.5 h-3.5 mr-1.5" /> {dp.gradeApprove}
                             </Button>
                             <Button
                               size="sm"
@@ -746,7 +737,7 @@ export default function DeveloperPanel() {
                               disabled={gradeDecisionMutation.isPending}
                               onClick={() => gradeDecisionMutation.mutate({ id: req.id, action: "decline" })}
                             >
-                              <X className="w-3.5 h-3.5 mr-1.5" /> Decline
+                              <X className="w-3.5 h-3.5 mr-1.5" /> {dp.gradeDecline}
                             </Button>
                           </div>
                         </div>
@@ -758,7 +749,7 @@ export default function DeveloperPanel() {
                 {decidedRequests.length > 0 && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 px-1">
-                      <span className="text-sm font-semibold text-muted-foreground">History ({decidedRequests.length})</span>
+                      <span className="text-sm font-semibold text-muted-foreground">{dp.gradeHistory} ({decidedRequests.length})</span>
                     </div>
                     {decidedRequests.map(req => {
                       const c = getCountry(req.country);
@@ -777,7 +768,7 @@ export default function DeveloperPanel() {
                               </div>
                             </div>
                             <span className={cn("text-[10px] font-semibold uppercase tracking-wide", approved ? "text-emerald-500" : "text-red-400")}>
-                              {req.status}
+                              {approved ? dp.gradeApprove : dp.gradeDecline}
                             </span>
                           </div>
                         </div>
