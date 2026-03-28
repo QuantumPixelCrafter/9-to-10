@@ -548,42 +548,67 @@ export default function ProfilePage() {
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-primary" />
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <h3 className="font-bold text-base">My Education Level</h3>
               <p className="text-xs text-muted-foreground">Used to tailor AI quizzes and filter leaderboard scores</p>
             </div>
+            {user?.level && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2.5 py-1.5 rounded-xl shrink-0">
+                <Lock className="w-3 h-3" /> Locked
+              </span>
+            )}
           </div>
-          <div className="space-y-4">
-            {LEVEL_GROUPS.map(group => (
-              <div key={group.name}>
-                <p className={cn("text-xs font-bold uppercase tracking-widest mb-2", group.color)}>{group.name}</p>
-                <div className="grid grid-cols-6 gap-2">
-                  {group.levels.map(lvl => {
-                    const isSelected = user?.level === lvl.code;
-                    return (
-                      <button key={lvl.code} onClick={() => handleLevelSelect(lvl.code)} disabled={savingLevel}
-                        className={cn(
-                          "relative py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95",
-                          isSelected ? `${group.selected} shadow-lg` : `${group.bg} ${group.color} hover:opacity-80`
-                        )}
-                      >
-                        {lvl.code}
-                        {isSelected && (
-                          <span className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
+
+          {user?.level ? (
+            /* ── LOCKED: level already set ── */
+            <>
+              <div className="flex items-center justify-between p-4 rounded-2xl bg-primary/5 border border-primary/15 mb-3">
+                <div>
+                  <p className="font-semibold">
+                    {user.level} — {LEVELS.find(l => l.code === user.level)?.group}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Your current education level</p>
                 </div>
+                <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
               </div>
-            ))}
-          </div>
-          {!user?.level && (
-            <p className="text-xs mt-4 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 p-3 rounded-xl border border-amber-200 dark:border-amber-500/20">
-              Set your level so your quiz scores appear on the right leaderboard and the AI generates age-appropriate questions.
-            </p>
+              <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 p-3 rounded-xl border border-border/40">
+                <Lock className="w-3 h-3 mt-0.5 shrink-0 text-muted-foreground/70" />
+                <span>
+                  Your education level is <strong>locked</strong> until the start of the next school year in your country.
+                  It will update automatically — no action needed.
+                </span>
+              </div>
+            </>
+          ) : (
+            /* ── UNLOCKED: first-time setup ── */
+            <>
+              <div className="space-y-4">
+                {LEVEL_GROUPS.map(group => (
+                  <div key={group.name}>
+                    <p className={cn("text-xs font-bold uppercase tracking-widest mb-2", group.color)}>{group.name}</p>
+                    <div className="grid grid-cols-6 gap-2">
+                      {group.levels.map(lvl => {
+                        const isSelected = user?.level === lvl.code;
+                        return (
+                          <button key={lvl.code} onClick={() => handleLevelSelect(lvl.code)} disabled={savingLevel}
+                            className={cn(
+                              "relative py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95",
+                              isSelected ? `${group.selected} shadow-lg` : `${group.bg} ${group.color} hover:opacity-80`
+                            )}
+                          >
+                            {lvl.code}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs mt-4 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 p-3 rounded-xl border border-amber-200 dark:border-amber-500/20">
+                Set your level so your quiz scores appear on the right leaderboard and the AI generates age-appropriate questions.
+                Once set, it can only be changed at the start of a new school year.
+              </p>
+            </>
           )}
         </motion.div>
 

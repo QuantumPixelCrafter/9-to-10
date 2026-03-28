@@ -45,8 +45,10 @@ export interface LevelProgress {
 
 export interface PublicUserProfile {
   id: string;
+  username: string | null;
   displayName: string;
   profileImageUrl: string | null;
+  isPublic: boolean;
   level: string | null;
   gameLevel: number;
   xp: number;
@@ -54,6 +56,8 @@ export interface PublicUserProfile {
   equippedBackground: string | null;
   equippedFrame: string | null;
   equippedNametag: string | null;
+  country: string | null;
+  gradeIndex: number | null;
   createdAt: string;
   achievements: {
     earned: number;
