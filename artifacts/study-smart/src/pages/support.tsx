@@ -4,7 +4,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Heart, Coffee, Star, Trophy,
   CheckCircle2, XCircle, Loader2, ShoppingBag, Coins,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,17 +27,6 @@ interface Product {
 }
 
 
-const SUPPORT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  Seed:   Coffee,
-  Sprout: Star,
-  Oak:    Trophy,
-};
-
-const SUPPORT_GRADIENTS: Record<string, string> = {
-  Seed:   "from-green-400 to-emerald-500",
-  Sprout: "from-teal-400 to-green-500",
-  Oak:    "from-amber-500 to-orange-500",
-};
 
 function formatAmount(unitAmount: number, currency: string) {
   return new Intl.NumberFormat("en-US", {
@@ -83,8 +71,6 @@ export default function Support() {
       return json.data.filter(p => p.prices.length > 0);
     },
   });
-
-  const supportTiers = data?.filter(p => p.metadata?.category === "support") ?? [];
 
   const checkoutMutation = useMutation({
     mutationFn: async (payload: { priceId: string } | { amount: number; description: string }) => {
@@ -231,79 +217,6 @@ export default function Support() {
           </div>
         </motion.section>
 
-        {/* Divider */}
-        {supportTiers.length > 0 && (
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border/50" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-background px-3 text-xs text-muted-foreground">or support us directly</span>
-            </div>
-          </div>
-        )}
-
-        {/* Support Tiers */}
-        {supportTiers.length > 0 && (
-          <motion.section
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="space-y-4"
-          >
-            <div className="flex items-center gap-2">
-              <Heart className="w-5 h-5 text-rose-500" />
-              <h3 className="font-bold text-lg">Support the Team</h3>
-              <span className="text-xs text-muted-foreground font-normal ml-1">Help keep Mind Forge free for everyone</span>
-            </div>
-            <div className="grid gap-3">
-              {supportTiers.map((product, i) => {
-                const Icon = SUPPORT_ICONS[product.name] ?? Heart;
-                const gradient = SUPPORT_GRADIENTS[product.name] ?? "from-rose-500 to-pink-500";
-                const price = product.prices[0];
-                const emoji = product.metadata?.emoji ?? "💙";
-                const isLoadingThis = loadingPriceId === price.id;
-
-                return (
-                  <motion.div
-                    key={product.id}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.24 + i * 0.06 }}
-                    className="rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-4"
-                  >
-                    <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-md`}>
-                      <Icon className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span>{emoji}</span>
-                        <h4 className="font-bold text-sm">{product.name}</h4>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{product.description}</p>
-                    </div>
-                    <div className="shrink-0 text-right space-y-1.5">
-                      <p className="text-lg font-bold">{formatAmount(price.unit_amount, price.currency)}</p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className={`border-0 text-white bg-gradient-to-r ${gradient} hover:opacity-90 transition-opacity`}
-                        onClick={() => checkoutMutation.mutate({ priceId: price.id })}
-                        disabled={checkoutMutation.isPending}
-                      >
-                        {isLoadingThis ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          "Donate"
-                        )}
-                      </Button>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </motion.section>
-        )}
 
         {data && data.length === 0 && !isLoading && (
           <div className="text-center py-10 text-muted-foreground">
