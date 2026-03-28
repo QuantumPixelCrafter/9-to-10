@@ -1,6 +1,6 @@
 import { Router, type IRouter } from 'express';
 import { db } from '@workspace/db';
-import { usersTable } from '@workspace/db/schema';
+import { usersTable, stripeClaimedSessionsTable } from '@workspace/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { getUncachableStripeClient, getStripePublishableKey } from '../stripeClient';
 
@@ -108,13 +108,67 @@ router.post('/stripe/checkout', async (req: any, res) => {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'payment',
-      success_url: `${baseUrl}/support?success=1`,
+      success_url: `${baseUrl}/support?success=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/support?canceled=1`,
     });
 
     res.json({ url: session.url });
   } catch (err: any) {
     console.error('Checkout error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/stripe/claim', async (req: any, res) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ error: 'sessionId is required' });
+    }
+
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const [existing] = await db
+      .select()
+      .from(stripeClaimedSessionsTable)
+      .where(eq(stripeClaimedSessionsTable.sessionId, sessionId));
+
+    if (existing) {
+      return res.json({ alreadyClaimed: true, pointsAwarded: existing.pointsAwarded });
+    }
+
+    const stripe = await getUncachableStripeClient();
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['line_items.data.price.product'],
+    });
+
+    if (session.payment_status !== 'paid') {
+      return res.status(400).json({ error: 'Payment not completed' });
+    }
+
+    const lineItem = session.line_items?.data?.[0];
+    const product = lineItem?.price?.product as any;
+    const bonusPointsStr = product?.metadata?.bonus_points;
+    const bonusPoints = bonusPointsStr ? parseInt(bonusPointsStr, 10) : 0;
+
+    await db.insert(stripeClaimedSessionsTable).values({
+      sessionId,
+      userId,
+      pointsAwarded: bonusPoints,
+    });
+
+    if (bonusPoints > 0) {
+      await db.update(usersTable)
+        .set({ bonusPoints: sql`${usersTable.bonusPoints} + ${bonusPoints}` })
+        .where(eq(usersTable.id, userId));
+    }
+
+    res.json({ pointsAwarded: bonusPoints, alreadyClaimed: false });
+  } catch (err: any) {
+    console.error('Claim error:', err);
     res.status(500).json({ error: err.message });
   }
 });
