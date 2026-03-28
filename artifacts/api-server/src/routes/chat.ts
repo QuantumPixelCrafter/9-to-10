@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, chatMessagesTable, friendshipsTable, usersTable, inboxMessagesTable, userAchievementsTable } from "@workspace/db";
-import { eq, or, and, sql } from "drizzle-orm";
+import { eq, or, and, sql, isNull } from "drizzle-orm";
 import { ACHIEVEMENTS } from "../lib/achievements";
 
 const router: IRouter = Router();
@@ -200,6 +200,34 @@ router.get("/chat/unread/count", async (req, res) => {
 
   const count = unread.filter(m => !m.readAt).length;
   res.json({ count });
+});
+
+// GET unread messages with sender info (for badges + push notifications — does NOT mark as read)
+router.get("/chat/unread/messages", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+
+  const unread = await db
+    .select({
+      id: chatMessagesTable.id,
+      senderId: chatMessagesTable.senderId,
+      content: chatMessagesTable.content,
+      mediaUrl: chatMessagesTable.mediaUrl,
+      createdAt: chatMessagesTable.createdAt,
+      senderUsername: usersTable.username,
+      senderFirstName: usersTable.firstName,
+      senderLastName: usersTable.lastName,
+    })
+    .from(chatMessagesTable)
+    .leftJoin(usersTable, eq(chatMessagesTable.senderId, usersTable.id))
+    .where(
+      and(
+        eq(chatMessagesTable.receiverId, req.user.id),
+        isNull(chatMessagesTable.readAt)
+      )
+    )
+    .orderBy(chatMessagesTable.createdAt);
+
+  res.json({ messages: unread, count: unread.length });
 });
 
 export default router;

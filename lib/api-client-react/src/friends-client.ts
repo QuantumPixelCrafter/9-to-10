@@ -156,6 +156,26 @@ export function useSendMessage() {
   });
 }
 
+export interface UnreadChatMessage {
+  id: number;
+  senderId: string;
+  content: string;
+  mediaUrl: string | null;
+  createdAt: string;
+  senderUsername: string | null;
+  senderFirstName: string | null;
+  senderLastName: string | null;
+}
+
+export function useUnreadChatMessages(enabled: boolean) {
+  return useQuery({
+    queryKey: ["chat-unread-messages"],
+    queryFn: () => customFetch<{ messages: UnreadChatMessage[]; count: number }>("/api/chat/unread/messages"),
+    enabled,
+    refetchInterval: 30000,
+  });
+}
+
 export function useGetChatBalance(enabled: boolean) {
   return useQuery({
     queryKey: ["chat-balance"],

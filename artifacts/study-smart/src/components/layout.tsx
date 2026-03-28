@@ -1,17 +1,17 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Home, BookOpen, Calendar as CalendarIcon, 
   Target, Clock, Smile, Menu, Flag,
   BrainCircuit, Sparkles, ChevronRight, Gamepad2, Trophy, User, LogOut, Medal, ShoppingBag, Users,
-  Inbox, BadgeCheck, Code2, Settings, ClipboardList, Heart
+  Inbox, BadgeCheck, Code2, Settings, ClipboardList, Heart, Bell, X, MessageCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useQuery } from "@tanstack/react-query";
-import { customFetch } from "@workspace/api-client-react";
+import { customFetch, useUnreadChatMessages } from "@workspace/api-client-react";
 import { useLanguage } from "@/lib/language-context";
 import type { Translations } from "@/lib/languages";
 
@@ -104,6 +104,76 @@ export function Layout({ children, title, actions }: LayoutProps) {
   const { t } = useLanguage();
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.username || "Student";
   const { data: unreadCount = 0 } = useInboxUnreadCount();
+  const { data: unreadChatData } = useUnreadChatMessages(isAuthenticated);
+  const chatUnreadCount = unreadChatData?.count ?? 0;
+
+  // --- Push-notification state/refs ---
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+  const notifiedIdsRef = useRef<Set<number>>(new Set());
+  const chatInitializedRef = useRef(false);
+
+  // Ask user about notifications once (after 3 s of login)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "default") return;
+    if (localStorage.getItem("mf_notif_dismissed")) return;
+    const timer = setTimeout(() => setShowNotifPrompt(true), 3000);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated]);
+
+  // Fire browser notifications for newly arrived messages
+  useEffect(() => {
+    if (!unreadChatData || !isAuthenticated) return;
+    if (!chatInitializedRef.current) {
+      // Seed the "seen" set on first load so we don't spam on page load
+      unreadChatData.messages.forEach(m => notifiedIdsRef.current.add(m.id));
+      chatInitializedRef.current = true;
+      return;
+    }
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    for (const msg of unreadChatData.messages) {
+      if (notifiedIdsRef.current.has(msg.id)) continue;
+      notifiedIdsRef.current.add(msg.id);
+      const senderName = msg.senderFirstName || msg.senderUsername || "Someone";
+      const hasMedia = !!msg.mediaUrl;
+      const isImage = !!msg.mediaUrl?.includes("?t=image");
+      const isVideo = !!msg.mediaUrl?.includes("?t=video");
+      const hasText = !!(msg.content?.trim());
+      let body: string;
+      if (!hasMedia) {
+        const snippet = (msg.content ?? "").slice(0, 100);
+        body = `${senderName} sent to you: ${snippet}${(msg.content?.length ?? 0) > 100 ? "…" : ""}`;
+      } else if (isImage && !hasText) {
+        body = `${senderName} sent you an image`;
+      } else if (isVideo && !hasText) {
+        body = `${senderName} sent you a video`;
+      } else if (isImage) {
+        body = `${senderName} sent you an image with a description`;
+      } else if (isVideo) {
+        body = `${senderName} sent you a video with a description`;
+      } else {
+        body = hasText ? `${senderName} sent to you: ${(msg.content ?? "").slice(0, 100)}` : `${senderName} sent you a file`;
+      }
+      try { new Notification("Mind Forge", { body, icon: "/favicon.ico" }); } catch {}
+    }
+  }, [unreadChatData, isAuthenticated]);
+
+  const handleAllowNotifications = async () => {
+    setShowNotifPrompt(false);
+    if (!("Notification" in window)) return;
+    const result = await Notification.requestPermission();
+    if (result === "granted") {
+      // Reset so next poll fires notifications for currently-unread messages
+      notifiedIdsRef.current.clear();
+      chatInitializedRef.current = false;
+    }
+  };
+
+  const handleDismissNotifPrompt = () => {
+    setShowNotifPrompt(false);
+    localStorage.setItem("mf_notif_dismissed", "1");
+  };
 
   const NAV_ITEMS = buildNavItems(t.nav);
   const DEVELOPER_NAV_ITEMS = [
@@ -132,14 +202,20 @@ export function Layout({ children, title, actions }: LayoutProps) {
           <nav className="space-y-1.5">
             {NAV_ITEMS.map((item) => {
               const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
-              const showBadge = item.href === "/inbox" && unreadCount > 0;
+              const showInboxBadge = item.href === "/inbox" && unreadCount > 0;
+              const showChatBadge = item.href === "/friends" && chatUnreadCount > 0;
               return (
                 <Link key={item.href} href={item.href}>
                   <div className="relative">
                     <NavItem item={item} isActive={isActive} />
-                    {showBadge && (
+                    {showInboxBadge && (
                       <span className="absolute top-1.5 right-2 z-20 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-indigo-500 text-white text-[10px] font-bold">
                         {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                    {showChatBadge && (
+                      <span className="absolute top-1.5 right-2 z-20 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                        {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
                       </span>
                     )}
                   </div>
@@ -214,7 +290,8 @@ export function Layout({ children, title, actions }: LayoutProps) {
               <div className="p-4 flex-1 overflow-y-auto">
                 <nav className="space-y-2">
                   {NAV_ITEMS.map((item) => {
-                    const showBadge = item.href === "/inbox" && unreadCount > 0;
+                    const showInboxBadge = item.href === "/inbox" && unreadCount > 0;
+                    const showChatBadge = item.href === "/friends" && chatUnreadCount > 0;
                     return (
                       <Link key={item.href} href={item.href}>
                         <SheetTrigger asChild>
@@ -227,9 +304,14 @@ export function Layout({ children, title, actions }: LayoutProps) {
                             </div>
                             <span>{item.label}</span>
                             <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
-                            {showBadge && (
+                            {showInboxBadge && (
                               <span className="absolute top-2 right-8 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-indigo-500 text-white text-[10px] font-bold">
                                 {unreadCount > 99 ? "99+" : unreadCount}
+                              </span>
+                            )}
+                            {showChatBadge && (
+                              <span className="absolute top-2 right-8 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                                {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
                               </span>
                             )}
                           </div>
@@ -310,6 +392,17 @@ export function Layout({ children, title, actions }: LayoutProps) {
         </div>
         <div className="flex items-center gap-3">
           {actions}
+          {/* Chat (Friends) icon */}
+          <Link href="/friends">
+            <div className="relative cursor-pointer w-9 h-9 rounded-xl flex items-center justify-center hover:bg-muted transition-colors">
+              <MessageCircle className="w-5 h-5 text-muted-foreground" />
+              {chatUnreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-0.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold">
+                  {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+                </span>
+              )}
+            </div>
+          </Link>
           {/* Inbox icon */}
           <Link href="/inbox">
             <div className="relative cursor-pointer w-9 h-9 rounded-xl flex items-center justify-center hover:bg-muted transition-colors">
@@ -343,6 +436,43 @@ export function Layout({ children, title, actions }: LayoutProps) {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Notification permission prompt */}
+      <AnimatePresence>
+        {showNotifPrompt && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.25 }}
+            className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm"
+          >
+            <div className="bg-card border border-border/60 rounded-2xl shadow-2xl p-4 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-teal-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                <Bell className="w-4 h-4 text-teal-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Get message notifications</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Stay in the loop when friends message you.</p>
+                <div className="flex gap-2 mt-3">
+                  <Button size="sm" className="rounded-xl h-8 text-xs px-4" onClick={handleAllowNotifications}>
+                    Allow
+                  </Button>
+                  <Button size="sm" variant="ghost" className="rounded-xl h-8 text-xs" onClick={handleDismissNotifPrompt}>
+                    Not now
+                  </Button>
+                </div>
+              </div>
+              <button
+                onClick={handleDismissNotifPrompt}
+                className="shrink-0 p-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Bottom Navigation */}
       <div className="md:hidden fixed bottom-0 inset-x-0 bg-card border-t border-border/50 pb-safe z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
