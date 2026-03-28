@@ -15,7 +15,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, UserPlus, MessageCircle, Check, X, Trash2,
   ArrowLeft, Send, User, Zap, ChevronRight, Users, Gift, X as XIcon, AlertTriangle, Coins, Settings,
-  Paperclip, FileText, Loader2,
+  Paperclip, FileText, Loader2, MoreVertical, Lock, LockOpen,
 } from "lucide-react";
 import { getItemDef } from "@/lib/shop-data";
 import { useLanguage } from "@/lib/language-context";
@@ -26,6 +26,12 @@ const GIFTABLE_POWERUPS = [
   { key: "hint_token", name: "Hint Token", emoji: "💡", price: 500, cooldownDays: 1 },
 ];
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function loadChatLocks(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem("mf_chat_locks") ?? "{}"); } catch { return {}; }
+}
+
+// ── Avatar ────────────────────────────────────────────────────────────────────
 function Avatar({ user, size = "md" }: { user: { profileImageUrl?: string | null; displayName: string }; size?: "sm" | "md" | "lg" }) {
   const dim = size === "sm" ? "w-9 h-9 text-xs" : size === "md" ? "w-11 h-11 text-sm" : "w-14 h-14 text-base";
   const initials = user.displayName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "?";
@@ -38,6 +44,7 @@ function Avatar({ user, size = "md" }: { user: { profileImageUrl?: string | null
   );
 }
 
+// ── LevelBadge ────────────────────────────────────────────────────────────────
 function LevelBadge({ gameLevel }: { gameLevel: number }) {
   return (
     <span className="inline-flex items-center gap-0.5 bg-violet-500/10 text-violet-600 dark:text-violet-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
@@ -46,11 +53,98 @@ function LevelBadge({ gameLevel }: { gameLevel: number }) {
   );
 }
 
+// ── PinKeypad ─────────────────────────────────────────────────────────────────
+function PinKeypad({
+  title, subtitle, error, onComplete, onCancel,
+}: {
+  title: string;
+  subtitle?: string;
+  error?: string;
+  onComplete: (pin: string) => void;
+  onCancel: () => void;
+}) {
+  const [digits, setDigits] = useState<string[]>([]);
+
+  const addDigit = (d: string) => {
+    setDigits(prev => {
+      if (prev.length >= 6) return prev;
+      const next = [...prev, d];
+      if (next.length === 6) setTimeout(() => onComplete(next.join("")), 80);
+      return next;
+    });
+  };
+
+  const removeDigit = () => setDigits(prev => prev.slice(0, -1));
+
+  useEffect(() => { setDigits([]); }, [error]);
+
+  const KEYS = ["1","2","3","4","5","6","7","8","9","","0","⌫"];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div
+        className="relative bg-card border border-border rounded-3xl p-6 w-full max-w-xs space-y-5 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="text-center space-y-1">
+          <div className="text-4xl mb-1">🔒</div>
+          <h3 className="font-extrabold text-lg">{title}</h3>
+          {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+        </div>
+
+        {/* dots */}
+        <div className="flex justify-center gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className={cn(
+              "w-3.5 h-3.5 rounded-full border-2 transition-all duration-150",
+              i < digits.length
+                ? "bg-primary border-primary scale-110"
+                : "bg-transparent border-muted-foreground/30"
+            )} />
+          ))}
+        </div>
+
+        {error && (
+          <p className="text-center text-sm text-destructive font-semibold animate-pulse">{error}</p>
+        )}
+
+        {/* Numpad */}
+        <div className="grid grid-cols-3 gap-2.5">
+          {KEYS.map((key, idx) => {
+            if (key === "") return <div key={idx} />;
+            const isBackspace = key === "⌫";
+            return (
+              <button
+                key={key}
+                onClick={() => isBackspace ? removeDigit() : addDigit(key)}
+                className={cn(
+                  "h-14 rounded-2xl font-bold text-xl transition-all active:scale-95 select-none",
+                  isBackspace
+                    ? "bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    : "bg-muted/60 hover:bg-primary/10 hover:text-primary active:bg-primary/20"
+                )}
+              >
+                {key}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={onCancel}
+          className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── GiftModal ─────────────────────────────────────────────────────────────────
 function GiftModal({
-  friend,
-  onClose,
-  onGift,
-  isGifting,
+  friend, onClose, onGift, isGifting,
 }: {
   friend: { id: string; displayName: string; profileImageUrl?: string | null };
   onClose: () => void;
@@ -66,10 +160,7 @@ function GiftModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div
-        className="relative bg-card border border-border rounded-3xl p-6 w-full max-w-sm space-y-5 shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
+      <div className="relative bg-card border border-border rounded-3xl p-6 w-full max-w-sm space-y-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar user={friend} size="sm" />
@@ -88,19 +179,13 @@ function GiftModal({
             const canAfford = balance >= p.price;
             const isSel = selected === p.key;
             return (
-              <button
-                key={p.key}
-                onClick={() => canAfford && setSelected(isSel ? null : p.key)}
-                disabled={!canAfford}
+              <button key={p.key} onClick={() => canAfford && setSelected(isSel ? null : p.key)} disabled={!canAfford}
                 className={cn(
                   "w-full flex items-center gap-3 p-3 rounded-2xl border transition-all text-left",
-                  isSel
-                    ? "bg-emerald-500/10 border-emerald-500/30"
-                    : canAfford
-                    ? "bg-muted/40 border-border hover:bg-muted/80"
+                  isSel ? "bg-emerald-500/10 border-emerald-500/30"
+                    : canAfford ? "bg-muted/40 border-border hover:bg-muted/80"
                     : "opacity-40 cursor-not-allowed bg-muted/20 border-border/40"
-                )}
-              >
+                )}>
                 <span className="text-2xl">{p.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">{p.name}</p>
@@ -127,15 +212,18 @@ function GiftModal({
           onClick={() => selected && onGift(selected)}
         >
           <Gift className="w-4 h-4" />
-          {isGifting ? t.friends.gifting : selected ? `${t.friends.sendGift} ${GIFTABLE_POWERUPS.find(p => p.key === selected)?.emoji} ${GIFTABLE_POWERUPS.find(p => p.key === selected)?.name}` : t.friends.selectPowerup}
+          {isGifting ? t.friends.gifting : selected
+            ? `${t.friends.sendGift} ${GIFTABLE_POWERUPS.find(p => p.key === selected)?.emoji} ${GIFTABLE_POWERUPS.find(p => p.key === selected)?.name}`
+            : t.friends.selectPowerup}
         </Button>
       </div>
     </div>
   );
 }
 
+// ── FriendListItem ─────────────────────────────────────────────────────────────
 function FriendListItem({
-  entry, selected, onSelect, onAccept, onDecline, onRemove, myId, onViewProfile, onGift,
+  entry, selected, onSelect, onAccept, onDecline, onRemove, myId, onViewProfile, onGift, onLockChat, isLocked,
 }: {
   entry: FriendEntry;
   selected: boolean;
@@ -146,6 +234,8 @@ function FriendListItem({
   myId: string;
   onViewProfile: () => void;
   onGift?: () => void;
+  onLockChat?: () => void;
+  isLocked?: boolean;
 }) {
   const u = entry.user;
   if (!u) return null;
@@ -154,6 +244,19 @@ function FriendListItem({
   const isPending = entry.status === "pending";
   const isIncoming = isPending && !entry.iAmRequester;
   const isOutgoing = isPending && entry.iAmRequester;
+  const isAccepted = entry.status === "accepted";
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
 
   return (
     <div className={cn(
@@ -169,6 +272,7 @@ function FriendListItem({
               className="font-semibold text-sm truncate hover:underline hover:text-primary transition-colors text-left"
             >{u.displayName}</button>
             {nametag && <span className="text-sm">{nametag.emoji}</span>}
+            {isLocked && <Lock className="w-3 h-3 text-amber-500 shrink-0" />}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             <LevelBadge gameLevel={u.gameLevel} />
@@ -177,6 +281,7 @@ function FriendListItem({
           </div>
         </div>
       </div>
+
       <div className="flex items-center gap-1 shrink-0">
         {isIncoming && (
           <>
@@ -184,23 +289,82 @@ function FriendListItem({
             <button onClick={onDecline} className="w-7 h-7 rounded-lg bg-muted text-muted-foreground flex items-center justify-center hover:bg-destructive hover:text-white transition-colors"><X className="w-3.5 h-3.5" /></button>
           </>
         )}
-        {entry.status === "accepted" && (
+        {isAccepted && (
           <>
-            <button onClick={onSelect} className="w-7 h-7 rounded-lg bg-muted/60 text-muted-foreground flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors"><MessageCircle className="w-3.5 h-3.5" /></button>
+            <button onClick={onSelect} className="w-7 h-7 rounded-lg bg-muted/60 text-muted-foreground flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors" title="Open chat">
+              <MessageCircle className="w-3.5 h-3.5" />
+            </button>
             {onGift && (
-              <button onClick={(e) => { e.stopPropagation(); onGift(); }} className="w-7 h-7 rounded-lg bg-muted/60 text-muted-foreground flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-colors" title="Gift a power-up"><Gift className="w-3.5 h-3.5" /></button>
+              <button onClick={(e) => { e.stopPropagation(); onGift(); }} className="w-7 h-7 rounded-lg bg-muted/60 text-muted-foreground flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-colors" title="Gift a power-up">
+                <Gift className="w-3.5 h-3.5" />
+              </button>
             )}
           </>
         )}
-        <button onClick={onViewProfile} className="w-7 h-7 rounded-lg bg-muted/60 text-muted-foreground flex items-center justify-center hover:bg-muted transition-colors"><User className="w-3.5 h-3.5" /></button>
-        {!isIncoming && (
-          <button onClick={onRemove} className="w-7 h-7 rounded-lg bg-muted/60 text-muted-foreground flex items-center justify-center hover:bg-destructive hover:text-white transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-        )}
+
+        {/* 3-dots menu */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
+            className="w-7 h-7 rounded-lg bg-muted/60 text-muted-foreground flex items-center justify-center hover:bg-muted transition-colors"
+          >
+            <MoreVertical className="w-3.5 h-3.5" />
+          </button>
+
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 z-30 w-44 bg-card border border-border rounded-2xl shadow-xl overflow-hidden py-1">
+              {/* Profile */}
+              <button
+                onClick={() => { setMenuOpen(false); onViewProfile(); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/60 transition-colors text-left"
+              >
+                <User className="w-3.5 h-3.5 text-muted-foreground" />
+                Profile
+              </button>
+
+              {/* Lock Chat — only for accepted friends */}
+              {isAccepted && onLockChat && (
+                <button
+                  onClick={() => { setMenuOpen(false); onLockChat(); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/60 transition-colors text-left"
+                >
+                  {isLocked
+                    ? <LockOpen className="w-3.5 h-3.5 text-amber-500" />
+                    : <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+                  }
+                  {isLocked ? "Unlock Chat" : "Lock Chat"}
+                </button>
+              )}
+
+              {/* Divider */}
+              {!isIncoming && <div className="border-t border-border/50 my-1" />}
+
+              {/* Delete Friend */}
+              {!isIncoming && (
+                <button
+                  onClick={() => { setMenuOpen(false); onRemove(); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-destructive/10 text-destructive transition-colors text-left"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {isAccepted ? "Delete Friend" : "Cancel Request"}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
+// ── LockModal state type ──────────────────────────────────────────────────────
+type LockModal =
+  | { mode: "setup-1"; friendId: string; error?: string }
+  | { mode: "setup-2"; friendId: string; firstPin: string; error?: string }
+  | { mode: "unlock-to-open"; friendId: string; onSuccess: () => void; error?: string }
+  | { mode: "unlock-to-remove"; friendId: string; error?: string };
+
+// ── FriendsPage ───────────────────────────────────────────────────────────────
 export default function FriendsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -220,6 +384,91 @@ export default function FriendsPage() {
     mediaType: "image" | "video" | "file";
   } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Lock chat state
+  const [chatLocks, setChatLocks] = useState<Record<string, string>>(loadChatLocks);
+  const [lockModal, setLockModal] = useState<LockModal | null>(null);
+
+  const saveLock = (friendId: string, pin: string) => {
+    const next = { ...chatLocks, [friendId]: pin };
+    setChatLocks(next);
+    localStorage.setItem("mf_chat_locks", JSON.stringify(next));
+  };
+
+  const removeLock = (friendId: string) => {
+    const next = { ...chatLocks };
+    delete next[friendId];
+    setChatLocks(next);
+    localStorage.setItem("mf_chat_locks", JSON.stringify(next));
+  };
+
+  // Open chat — intercept with lock if needed
+  const handleOpenChat = (friendId: string) => {
+    if (chatLocks[friendId]) {
+      setLockModal({
+        mode: "unlock-to-open",
+        friendId,
+        onSuccess: () => setSelectedFriendId(friendId),
+      });
+    } else {
+      setSelectedFriendId(prev => prev === friendId ? null : friendId);
+    }
+  };
+
+  // Lock Chat menu item handler
+  const handleLockChat = (friendId: string) => {
+    if (chatLocks[friendId]) {
+      setLockModal({ mode: "unlock-to-remove", friendId });
+    } else {
+      setLockModal({ mode: "setup-1", friendId });
+    }
+  };
+
+  // PinKeypad submit handler
+  const handlePinSubmit = (pin: string) => {
+    if (!lockModal) return;
+
+    if (lockModal.mode === "setup-1") {
+      setLockModal({ mode: "setup-2", friendId: lockModal.friendId, firstPin: pin });
+    } else if (lockModal.mode === "setup-2") {
+      if (pin === lockModal.firstPin) {
+        saveLock(lockModal.friendId, pin);
+        setLockModal(null);
+        toast({ title: "🔒 Chat locked", description: "Passcode set successfully." });
+      } else {
+        setLockModal({ ...lockModal, error: "Passcodes don't match — try again" });
+      }
+    } else if (lockModal.mode === "unlock-to-open") {
+      if (pin === chatLocks[lockModal.friendId]) {
+        lockModal.onSuccess();
+        setLockModal(null);
+      } else {
+        setLockModal({ ...lockModal, error: "Incorrect passcode" });
+      }
+    } else if (lockModal.mode === "unlock-to-remove") {
+      if (pin === chatLocks[lockModal.friendId]) {
+        removeLock(lockModal.friendId);
+        setLockModal(null);
+        toast({ title: "🔓 Chat unlocked" });
+      } else {
+        setLockModal({ ...lockModal, error: "Incorrect passcode" });
+      }
+    }
+  };
+
+  const lockModalTitle = lockModal
+    ? lockModal.mode === "setup-1" ? "Set a Passcode"
+    : lockModal.mode === "setup-2" ? "Confirm Passcode"
+    : lockModal.mode === "unlock-to-open" ? "Enter Passcode"
+    : "Enter Passcode to Unlock"
+    : "";
+
+  const lockModalSubtitle = lockModal
+    ? lockModal.mode === "setup-1" ? "Enter a 6-digit passcode for this chat"
+    : lockModal.mode === "setup-2" ? "Re-enter the same passcode to confirm"
+    : lockModal.mode === "unlock-to-open" ? "This chat is locked — enter your passcode to open it"
+    : "Enter your current passcode to remove the lock"
+    : "";
 
   const { data: friends = [], isLoading: friendsLoading } = useGetFriends();
   const { data: searchResults = [], isLoading: searching } = useSearchUsers(searchQ);
@@ -293,11 +542,7 @@ export default function FriendsPage() {
         "/api/storage/uploads/request-url",
         { method: "POST", body: JSON.stringify({ contentType: file.type || "application/octet-stream" }) }
       );
-      await fetch(uploadURL, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-      });
+      await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } });
       const mediaType: "image" | "video" | "file" = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "file";
       const preview = mediaType !== "file" ? URL.createObjectURL(file) : null;
       const typedPath = mediaType !== "file" ? `${objectPath}?t=${mediaType}` : objectPath;
@@ -311,10 +556,7 @@ export default function FriendsPage() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
   };
 
   const selectedFriendUser = selectedEntry?.user;
@@ -324,7 +566,7 @@ export default function FriendsPage() {
       <div className="max-w-5xl mx-auto">
         <div className="flex gap-4 h-[calc(100vh-160px)] min-h-[500px]">
 
-          {/* Left panel: list */}
+          {/* Left panel */}
           <div className={cn(
             "flex flex-col gap-3 transition-all",
             selectedFriendId ? "hidden md:flex md:w-72 lg:w-80 shrink-0" : "flex w-full"
@@ -355,9 +597,9 @@ export default function FriendsPage() {
                         <Avatar user={u} size="sm" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1">
-                          <button onClick={() => setLocation(`/users/${u.id}`)} className="font-semibold text-sm truncate hover:underline hover:text-primary transition-colors text-left">{u.displayName}</button>
-                          {nametag && <span>{nametag.emoji}</span>}
-                        </div>
+                            <button onClick={() => setLocation(`/users/${u.id}`)} className="font-semibold text-sm truncate hover:underline hover:text-primary transition-colors text-left">{u.displayName}</button>
+                            {nametag && <span>{nametag.emoji}</span>}
+                          </div>
                           <LevelBadge gameLevel={u.gameLevel} />
                         </div>
                         <div className="flex gap-1">
@@ -413,13 +655,15 @@ export default function FriendsPage() {
                 {acceptedFriends.map(entry => (
                   <FriendListItem key={entry.friendshipId} entry={entry}
                     selected={selectedFriendId === entry.user?.id}
-                    onSelect={() => setSelectedFriendId(prev => prev === entry.user?.id ? null : (entry.user?.id ?? null))}
+                    onSelect={() => entry.user && handleOpenChat(entry.user.id)}
                     myId={user?.id ?? ""}
                     onAccept={() => {}}
                     onDecline={() => {}}
                     onRemove={() => removeMut.mutate(entry.friendshipId, { onSuccess: () => setSelectedFriendId(null) })}
                     onViewProfile={() => entry.user && setLocation(`/users/${entry.user.id}`)}
                     onGift={() => entry.user && setGiftFriend({ id: entry.user.id, displayName: entry.user.displayName, profileImageUrl: entry.user.profileImageUrl })}
+                    onLockChat={() => entry.user && handleLockChat(entry.user.id)}
+                    isLocked={!!entry.user && !!chatLocks[entry.user.id]}
                   />
                 ))}
               </div>
@@ -436,7 +680,10 @@ export default function FriendsPage() {
                 </button>
                 <Avatar user={selectedFriendUser} size="sm" />
                 <div className="flex-1 min-w-0">
-                  <button onClick={() => setLocation(`/users/${selectedFriendUser.id}`)} className="font-bold text-sm truncate hover:underline hover:text-primary transition-colors text-left">{selectedFriendUser.displayName}</button>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => setLocation(`/users/${selectedFriendUser.id}`)} className="font-bold text-sm truncate hover:underline hover:text-primary transition-colors text-left">{selectedFriendUser.displayName}</button>
+                    {chatLocks[selectedFriendUser.id] && <Lock className="w-3 h-3 text-amber-500 shrink-0" />}
+                  </div>
                   <LevelBadge gameLevel={selectedFriendUser.gameLevel} />
                 </div>
                 <button
@@ -467,36 +714,19 @@ export default function FriendsPage() {
                       <div className={cn(
                         "max-w-[75%] rounded-2xl text-sm leading-relaxed overflow-hidden",
                         hasMedia && !msg.content ? "p-0" : "px-4 py-2.5",
-                        isMe
-                          ? "bg-primary text-primary-foreground rounded-br-md"
-                          : "bg-muted text-foreground rounded-bl-md"
+                        isMe ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted text-foreground rounded-bl-md"
                       )}>
                         {hasMedia && (
                           <div className={msg.content ? "mb-2" : ""}>
                             {isVideo ? (
-                              <video
-                                src={msg.mediaUrl!}
-                                controls
-                                className="max-w-[260px] max-h-[200px] rounded-xl"
-                              />
+                              <video src={msg.mediaUrl!} controls className="max-w-[260px] max-h-[200px] rounded-xl" />
                             ) : isImage ? (
                               <a href={msg.mediaUrl!} target="_blank" rel="noopener noreferrer">
-                                <img
-                                  src={msg.mediaUrl!}
-                                  alt="media"
-                                  className="max-w-[260px] max-h-[200px] rounded-xl object-cover"
-                                />
+                                <img src={msg.mediaUrl!} alt="media" className="max-w-[260px] max-h-[200px] rounded-xl object-cover" />
                               </a>
                             ) : (
-                              <a
-                                href={msg.mediaUrl!}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={cn(
-                                  "flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-medium underline",
-                                  isMe ? "text-primary-foreground/80" : "text-muted-foreground"
-                                )}
-                              >
+                              <a href={msg.mediaUrl!} target="_blank" rel="noopener noreferrer"
+                                className={cn("flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-medium underline", isMe ? "text-primary-foreground/80" : "text-muted-foreground")}>
                                 <FileText className="w-4 h-4 shrink-0" />
                                 Attachment
                               </a>
@@ -514,7 +744,7 @@ export default function FriendsPage() {
                 <div ref={chatEndRef} />
               </div>
 
-              {/* Low balance warning banner */}
+              {/* Low balance warning */}
               {chatBalance && chatBalance.threshold !== null && chatBalance.balance <= chatBalance.threshold && (
                 <div className="mx-3 mb-0 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-medium shrink-0">
                   <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
@@ -530,7 +760,6 @@ export default function FriendsPage() {
 
               {/* Message input */}
               <div className="flex flex-col gap-1 p-3 border-t border-border/40 shrink-0">
-                {/* Pending media preview */}
                 {pendingMedia && (
                   <div className="flex items-center gap-2 mb-1 px-1">
                     <div className="relative flex-1 max-w-[200px]">
@@ -544,22 +773,14 @@ export default function FriendsPage() {
                           <span className="truncate max-w-[120px]">{pendingMedia.name}</span>
                         </div>
                       )}
-                      <button
-                        onClick={() => setPendingMedia(null)}
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow"
-                      >
+                      <button onClick={() => setPendingMedia(null)} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow">
                         <XIcon className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
+                  <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading || (chatBalance !== undefined && chatBalance.balance < (chatBalance.messageCost ?? 10))}
@@ -577,7 +798,9 @@ export default function FriendsPage() {
                     maxLength={2000}
                     disabled={chatBalance !== undefined && chatBalance.balance < (chatBalance.messageCost ?? 10)}
                   />
-                  <Button size="icon" onClick={handleSendMessage} disabled={(!messageText.trim() && !pendingMedia) || isUploading || sendMsgMut.isPending || (chatBalance !== undefined && chatBalance.balance < (chatBalance.messageCost ?? 10))} className="rounded-xl w-10 h-10 shrink-0">
+                  <Button size="icon" onClick={handleSendMessage}
+                    disabled={(!messageText.trim() && !pendingMedia) || isUploading || sendMsgMut.isPending || (chatBalance !== undefined && chatBalance.balance < (chatBalance.messageCost ?? 10))}
+                    className="rounded-xl w-10 h-10 shrink-0">
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
@@ -592,7 +815,7 @@ export default function FriendsPage() {
             </div>
           )}
 
-          {/* Right panel placeholder when no chat selected */}
+          {/* Right panel placeholder */}
           {!selectedFriendId && acceptedFriends.length > 0 && (
             <div className="hidden md:flex flex-1 items-center justify-center text-muted-foreground/40 flex-col gap-3">
               <MessageCircle className="w-12 h-12" />
@@ -609,6 +832,18 @@ export default function FriendsPage() {
           onClose={() => setGiftFriend(null)}
           onGift={(type) => giftMut.mutate({ recipientId: giftFriend.id, type })}
           isGifting={giftMut.isPending}
+        />
+      )}
+
+      {/* Lock / unlock keypad */}
+      {lockModal && (
+        <PinKeypad
+          key={`${lockModal.mode}-${lockModal.error ?? ""}`}
+          title={lockModalTitle}
+          subtitle={lockModalSubtitle}
+          error={lockModal.error}
+          onComplete={handlePinSubmit}
+          onCancel={() => setLockModal(null)}
         />
       )}
     </Layout>
