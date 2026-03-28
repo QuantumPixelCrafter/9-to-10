@@ -101,7 +101,7 @@ function NavItem({ item, isActive }: { item: NavItemDef; isActive: boolean }) {
 export function Layout({ children, title, actions }: LayoutProps) {
   const [location] = useLocation();
   const [scrolled, setScrolled] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const { t } = useLanguage();
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.username || "Student";
   const { data: unreadCount = 0 } = useInboxUnreadCount();
