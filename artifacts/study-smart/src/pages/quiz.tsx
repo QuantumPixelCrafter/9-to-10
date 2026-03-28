@@ -31,16 +31,14 @@ type QuizData = {
 const QUESTION_COUNTS = [5, 10, 15] as const;
 type QCount = (typeof QUESTION_COUNTS)[number];
 
-const X_BASE: Record<LevelGroup, number> = {
-  junior_primary: 1, senior_primary: 2.5,
-  junior_secondary: 4, senior_secondary: 5.5, university: 7,
-};
-const DIFF_OFFSET: Record<string, number> = { easy: 0, normal: 0.5, difficult: 1 };
+const LEVEL_ORDER = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","Uni"];
 
-function calcScore(correct: number, levelGroup: LevelGroup, difficulty: string): number {
+function calcScore(correct: number, quizLevel: string, userLevel: string): number {
   if (correct === 0) return 2;
-  const x = X_BASE[levelGroup] + (DIFF_OFFSET[difficulty] ?? 0);
-  return Math.round(2 * correct * x);
+  const quizIdx = LEVEL_ORDER.indexOf(quizLevel);
+  const userIdx = LEVEL_ORDER.indexOf(userLevel);
+  const isLowerThanUserGrade = quizIdx !== -1 && userIdx !== -1 && quizIdx < userIdx;
+  return correct * (isLowerThanUserGrade ? 1 : 3);
 }
 
 type WrongAnswer = {
@@ -288,7 +286,7 @@ export default function QuizPage() {
 
   const q = quiz?.questions[currentQ];
   const failed = score === 0 && (quiz?.questions.length ?? 0) > 0;
-  const rawScore = quiz && levelGroup ? calcScore(score, levelGroup, quiz.difficulty) : 0;
+  const rawScore = quiz ? calcScore(score, quiz.level, user?.level ?? "") : 0;
   const finalScore = failed ? 2 : (doublePointsActive ? rawScore * 2 : rawScore);
   const pct = quiz ? Math.round((score / quiz.questions.length) * 100) : 0;
   const subjects = levelGroup ? getSubjectsForGroup(levelGroup) : [];
