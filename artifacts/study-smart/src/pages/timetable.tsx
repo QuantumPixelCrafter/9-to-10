@@ -16,21 +16,17 @@ import { format, addDays, subDays, isToday, parseISO } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { Schedule } from "@workspace/api-client-react";
+import { useLanguage } from "@/lib/language-context";
 
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const COLORS = ["#F97316", "#3B82F6", "#10B981", "#8B5CF6", "#F43F5E", "#06B6D4", "#F59E0B"];
 
-const EVENT_TYPES = [
-  { value: "class",  label: "Class",  style: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800" },
-  { value: "test",   label: "Test",   style: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800" },
-  { value: "exam",   label: "Exam",   style: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800" },
-  { value: "eca",    label: "ECA",    style: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800" },
-  { value: "others", label: "Others", style: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800" },
+const EVENT_TYPES_BASE = [
+  { value: "class",  style: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800" },
+  { value: "test",   style: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800" },
+  { value: "exam",   style: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800" },
+  { value: "eca",    style: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800" },
+  { value: "others", style: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800" },
 ];
-
-function getEventType(value?: string | null) {
-  return EVENT_TYPES.find(t => t.value === (value ?? "class")) ?? EVENT_TYPES[0];
-}
 
 function parseDateParam(search: string): Date {
   const params = new URLSearchParams(search);
@@ -53,8 +49,23 @@ function isScheduleActiveOnDate(schedule: Schedule, dateStr: string): boolean {
 
 export default function TimetablePage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const search = useSearch();
   const [, setLocation] = useLocation();
+
+  const DAYS = [t.timetable.sun, t.timetable.mon, t.timetable.tue, t.timetable.wed, t.timetable.thu, t.timetable.fri, t.timetable.sat];
+
+  const EVENT_TYPES = [
+    { value: "class",  label: t.timetable.classType,  style: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800" },
+    { value: "test",   label: t.timetable.testType,   style: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800" },
+    { value: "exam",   label: t.timetable.examType,   style: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800" },
+    { value: "eca",    label: t.timetable.ecaType,    style: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800" },
+    { value: "others", label: t.timetable.othersType, style: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800" },
+  ];
+
+  function getEventType(value?: string | null) {
+    return EVENT_TYPES.find(e => e.value === (value ?? "class")) ?? EVENT_TYPES[0];
+  }
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => parseDateParam(search));
 
@@ -159,20 +170,20 @@ export default function TimetablePage() {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [schedules]);
+  }, [schedules, t]);
 
   const isTdy = isToday(selectedDate);
 
   return (
     <Layout
-      title="Daily Timetable"
+      title={t.nav.timetable}
       actions={
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setLocation("/calendar")} className="rounded-xl gap-2 border-border/60">
-            <CalendarDays className="w-4 h-4" /> Calendar
+            <CalendarDays className="w-4 h-4" /> {t.nav.calendar}
           </Button>
           <Button onClick={openAddDialog} className="rounded-xl shadow-lg shadow-primary/20">
-            <Plus className="w-4 h-4 mr-2" /> Add Event
+            <Plus className="w-4 h-4 mr-2" /> {t.timetable.addEvent}
           </Button>
         </div>
       }
@@ -189,7 +200,7 @@ export default function TimetablePage() {
             <div className="flex items-center gap-3">
               <span className="text-xl font-bold">{format(selectedDate, "EEEE")}</span>
               {isTdy && (
-                <span className="text-xs font-semibold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">Today</span>
+                <span className="text-xs font-semibold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">{t.timetable.today}</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -219,12 +230,12 @@ export default function TimetablePage() {
               <BellRing className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-bold text-sm">Study Reminders</p>
-              <p className="text-xs text-primary/80">Get notified when it's time to study.</p>
+              <p className="font-bold text-sm">{t.timetable.studyReminders}</p>
+              <p className="text-xs text-primary/80">{t.timetable.remindersDesc}</p>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={requestNotificationPermission} className="rounded-xl bg-background border-primary/20 hover:bg-primary/5 hover:text-primary whitespace-nowrap">
-            Enable Notifications
+            {t.timetable.enableNotifications}
           </Button>
         </div>
 
@@ -242,10 +253,10 @@ export default function TimetablePage() {
                 <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
                   <CalendarDays className="w-8 h-8 text-muted-foreground/50" />
                 </div>
-                <p className="text-lg font-semibold text-muted-foreground mb-1">Nothing on {DAYS[dayOfWeek]}</p>
-                <p className="text-sm text-muted-foreground/60 mb-6">Free day — add an event or pick another date.</p>
+                <p className="text-lg font-semibold text-muted-foreground mb-1">{t.timetable.noEvents} {DAYS[dayOfWeek]}</p>
+                <p className="text-sm text-muted-foreground/60 mb-6">{t.timetable.freeDay}</p>
                 <Button onClick={openAddDialog} variant="outline" className="rounded-xl gap-2">
-                  <Plus className="w-4 h-4" /> Add event for {DAYS[dayOfWeek]}
+                  <Plus className="w-4 h-4" /> {t.timetable.addEvent} — {DAYS[dayOfWeek]}
                 </Button>
               </div>
             ) : (
@@ -277,7 +288,7 @@ export default function TimetablePage() {
                         {(item.startDate || item.endDate) && (
                           <p className="text-[10px] text-muted-foreground mt-0.5">
                             {item.startDate && item.endDate
-                              ? `${item.startDate} → ${item.endDate}`
+                              ? `${item.startDate} \u2192 ${item.endDate}`
                               : item.startDate
                               ? `From ${item.startDate}`
                               : `Until ${item.endDate}`}
@@ -307,36 +318,36 @@ export default function TimetablePage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl border-0 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="font-display text-xl">Schedule Event</DialogTitle>
+            <DialogTitle className="font-display text-xl">{t.timetable.addEvent}</DialogTitle>
           </DialogHeader>
           <div className="space-y-5 py-4">
             <div>
-              <label className="text-sm font-semibold mb-1 block">Subject / Title</label>
+              <label className="text-sm font-semibold mb-1 block">{t.timetable.subject}</label>
               <Input
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="e.g. Physics 101"
+                placeholder={t.timetable.subjectPlaceholder}
                 className="rounded-xl bg-muted/50 border-transparent focus-visible:bg-background"
               />
             </div>
 
             {/* Event Type Picker */}
             <div>
-              <label className="text-sm font-semibold mb-2 block">Event Type</label>
+              <label className="text-sm font-semibold mb-2 block">{t.timetable.eventType}</label>
               <div className="flex flex-wrap gap-2">
-                {EVENT_TYPES.map((t) => (
+                {EVENT_TYPES.map((et) => (
                   <button
-                    key={t.value}
+                    key={et.value}
                     type="button"
-                    onClick={() => setEventType(t.value)}
+                    onClick={() => setEventType(et.value)}
                     className={cn(
                       "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
-                      eventType === t.value
-                        ? t.style + " ring-2 ring-offset-1 ring-current shadow-sm"
+                      eventType === et.value
+                        ? et.style + " ring-2 ring-offset-1 ring-current shadow-sm"
                         : "bg-muted/40 text-muted-foreground border-transparent hover:border-border"
                     )}
                   >
-                    {t.label}
+                    {et.label}
                   </button>
                 ))}
               </div>
@@ -356,7 +367,7 @@ export default function TimetablePage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-semibold mb-1 block">Color</label>
+                <label className="text-sm font-semibold mb-1 block">{t.timetable.color}</label>
                 <div className="flex gap-1.5 mt-1 flex-wrap">
                   {COLORS.map((c) => (
                     <button
@@ -372,7 +383,7 @@ export default function TimetablePage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-semibold mb-1 block">Start Time</label>
+                <label className="text-sm font-semibold mb-1 block">{t.timetable.startTime}</label>
                 <Input
                   type="time"
                   value={start}
@@ -381,7 +392,7 @@ export default function TimetablePage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-semibold mb-1 block">End Time</label>
+                <label className="text-sm font-semibold mb-1 block">{t.timetable.endTime}</label>
                 <Input
                   type="time"
                   value={end}
@@ -393,10 +404,10 @@ export default function TimetablePage() {
 
             {/* Optional date range */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold block">Active Date Range <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <label className="text-sm font-semibold block">Active Date Range <span className="text-muted-foreground font-normal">({t.timetable.optional})</span></label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">From</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t.timetable.startDate}</label>
                   <Input
                     type="date"
                     value={startDate}
@@ -406,7 +417,7 @@ export default function TimetablePage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Until</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t.timetable.endDate}</label>
                   <Input
                     type="date"
                     value={endDate}
@@ -424,7 +435,7 @@ export default function TimetablePage() {
 
             <div className="flex items-center justify-between bg-muted/30 p-3 rounded-xl border border-border/50">
               <div className="space-y-0.5">
-                <label className="text-sm font-semibold block">Push Notification</label>
+                <label className="text-sm font-semibold block">{t.timetable.notify}</label>
                 <p className="text-xs text-muted-foreground">Alert me when event starts</p>
               </div>
               <Switch checked={notify} onCheckedChange={setNotify} />
@@ -435,7 +446,7 @@ export default function TimetablePage() {
               disabled={createMut.isPending || !subject}
               className="w-full rounded-xl py-6 text-base shadow-lg shadow-primary/20"
             >
-              {createMut.isPending ? "Saving..." : "Add to Timetable"}
+              {createMut.isPending ? "Saving..." : t.timetable.addEvent}
             </Button>
           </div>
         </DialogContent>

@@ -14,6 +14,7 @@ import {
   LEVEL_GROUP_INFO, LEVEL_TO_GROUP, LEVEL_LABELS, LEVEL_GROUP_SECTIONS,
   getSubjectsForGroup, DIFFICULTY_LABELS,
 } from "@/lib/quiz-curriculum";
+import { useLanguage } from "@/lib/language-context";
 
 type Step = "levelGroup" | "subject" | "topic" | "settings" | "loading" | "playing" | "results";
 
@@ -69,6 +70,7 @@ type RandomBonusResult =
 export default function QuizPage() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const { t: tl } = useLanguage();
   const submitScoreMut = useSubmitScore();
   const { data: powerupsData, refetch: refetchPowerups } = useGetPowerups();
   const usePowerupMut = useUsePowerup();
@@ -293,7 +295,7 @@ export default function QuizPage() {
   const groupInfo = levelGroup ? LEVEL_GROUP_INFO[levelGroup] : null;
 
   return (
-    <Layout title="AI Quiz">
+    <Layout title={tl.nav.quiz}>
       <div className="max-w-2xl mx-auto py-4 space-y-4">
         {(step !== "levelGroup") && (
           <ProgressDots step={step} />
@@ -307,8 +309,8 @@ export default function QuizPage() {
                 <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-4">
                   <Sparkles className="w-8 h-8 text-primary" />
                 </div>
-                <h2 className="text-2xl font-bold mb-2">AI-Powered Quiz</h2>
-                <p className="text-muted-foreground max-w-md mx-auto">Select your education level to get started. Our AI will craft quiz questions tailored to your curriculum.</p>
+                <h2 className="text-2xl font-bold mb-2">{tl.quiz.aiPowered}</h2>
+                <p className="text-muted-foreground max-w-md mx-auto">{tl.quiz.aiDesc}</p>
               </div>
 
               <div className="space-y-6">
@@ -356,10 +358,10 @@ export default function QuizPage() {
           {step === "subject" && groupInfo && (
             <motion.div key="subject" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}>
               <button onClick={() => setStep("levelGroup")} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-                <ChevronLeft className="w-4 h-4" /> Back
+                <ChevronLeft className="w-4 h-4" /> {tl.common.back}
               </button>
 
-              <h3 className="text-lg font-bold mb-4">Choose a Subject</h3>
+              <h3 className="text-lg font-bold mb-4">{tl.quiz.chooseSubject}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {subjects.map(s => (
                   <motion.button key={s.id} onClick={() => pickSubject(s)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
@@ -368,7 +370,7 @@ export default function QuizPage() {
                       {s.icon}
                     </div>
                     <p className="font-bold text-sm group-hover:text-primary transition-colors">{s.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{s.topics.length} quiz topics</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{s.topics.length} {tl.quiz.quizTopics}</p>
                   </motion.button>
                 ))}
               </div>
@@ -379,7 +381,7 @@ export default function QuizPage() {
           {step === "topic" && subject && (
             <motion.div key="topic" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}>
               <button onClick={() => setStep("subject")} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-                <ChevronLeft className="w-4 h-4" /> Back to Subjects
+                <ChevronLeft className="w-4 h-4" /> {tl.quiz.backToSubjects}
               </button>
 
               <div className="flex items-center gap-3 mb-5">
@@ -390,7 +392,7 @@ export default function QuizPage() {
                 </div>
               </div>
 
-              <p className="text-sm font-semibold text-muted-foreground mb-3">Choose a topic to quiz on:</p>
+              <p className="text-sm font-semibold text-muted-foreground mb-3">{tl.quiz.chooseTopicLabel}</p>
               <div className="space-y-3">
                 {subject.topics.map((t, i) => (
                   <motion.button key={t.id} onClick={() => pickTopic(t)}
@@ -416,7 +418,7 @@ export default function QuizPage() {
           {step === "settings" && topic && subject && (
             <motion.div key="settings" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}>
               <button onClick={() => setStep("topic")} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-                <ChevronLeft className="w-4 h-4" /> Back to Topics
+                <ChevronLeft className="w-4 h-4" /> {tl.quiz.backToTopics}
               </button>
 
               <div className="bg-gradient-to-r from-primary/10 to-violet-500/10 border border-primary/20 rounded-2xl p-4 mb-5 flex items-center gap-3">
@@ -429,7 +431,7 @@ export default function QuizPage() {
 
               <div className="space-y-5">
                 <div>
-                  <p className="text-sm font-bold mb-3">Difficulty</p>
+                  <p className="text-sm font-bold mb-3">{tl.quiz.difficulty}</p>
                   <div className="grid grid-cols-3 gap-2">
                     {DIFFICULTY_LABELS.map(d => (
                       <button key={d.value} onClick={() => setDifficulty(d.value)}
@@ -448,7 +450,7 @@ export default function QuizPage() {
                 </div>
 
                 <div>
-                  <p className="text-sm font-bold mb-3">Number of Questions</p>
+                  <p className="text-sm font-bold mb-3">{tl.quiz.numQuestions}</p>
                   <div className="flex gap-2">
                     {QUESTION_COUNTS.map(n => (
                       <button key={n} onClick={() => setQuestionCount(n)}
@@ -467,7 +469,7 @@ export default function QuizPage() {
                 {/* Power-up activations */}
                 {(doubleQty > 0 || hintQty > 0 || randomBonusQty > 0) && (
                   <div className="space-y-2">
-                    <p className="text-sm font-bold">Power-ups</p>
+                    <p className="text-sm font-bold">{tl.quiz.powerUps}</p>
                     {randomBonusQty > 0 && (
                       <button
                         onClick={() => setRandomBonusActive(v => !v)}
@@ -480,9 +482,9 @@ export default function QuizPage() {
                       >
                         <span className="text-2xl">🎲</span>
                         <div className="flex-1">
-                          <p className="text-sm font-bold">Random Quiz Bonus</p>
+                          <p className="text-sm font-bold">{tl.quiz.randomBonusTitle}</p>
                           <p className="text-xs text-muted-foreground">
-                            50% pts (300–1000) · 50% random power-up · {randomBonusQty} charge{randomBonusQty !== 1 ? "s" : ""} available
+                            {tl.quiz.randomBonusDesc.replace("{n}", String(randomBonusQty))}
                           </p>
                         </div>
                         <div className={cn(
@@ -505,8 +507,8 @@ export default function QuizPage() {
                       >
                         <span className="text-2xl">⚡</span>
                         <div className="flex-1">
-                          <p className="text-sm font-bold">Double Points Boost</p>
-                          <p className="text-xs text-muted-foreground">All quiz points ×2 · {doubleQty} charge{doubleQty !== 1 ? "s" : ""} available</p>
+                          <p className="text-sm font-bold">{tl.quiz.doublePointsTitle}</p>
+                          <p className="text-xs text-muted-foreground">{tl.quiz.doublePointsDesc.replace("{n}", String(doubleQty))}</p>
                         </div>
                         <div className={cn(
                           "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
@@ -520,8 +522,8 @@ export default function QuizPage() {
                       <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/30 p-3.5">
                         <span className="text-2xl">💡</span>
                         <div className="flex-1">
-                          <p className="text-sm font-bold">Hint Tokens</p>
-                          <p className="text-xs text-muted-foreground">{hintQty} available · Use during quiz to eliminate 2 wrong answers</p>
+                          <p className="text-sm font-bold">{tl.quiz.hintTokensTitle}</p>
+                          <p className="text-xs text-muted-foreground">{tl.quiz.hintTokensDesc.replace("{n}", String(hintQty))}</p>
                         </div>
                       </div>
                     )}
@@ -530,7 +532,7 @@ export default function QuizPage() {
 
                 {generateMut.isError && (
                   <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-sm text-red-600 dark:text-red-400 text-center">
-                    Failed to generate quiz. Please try again.
+                    {tl.quiz.failedGenerate}
                   </div>
                 )}
 
@@ -538,7 +540,7 @@ export default function QuizPage() {
                   "w-full rounded-2xl shadow-xl text-base gap-2",
                   doublePointsActive ? "bg-gradient-to-r from-amber-500 to-orange-500 border-0 shadow-amber-500/20" : "shadow-primary/20"
                 )}>
-                  {doublePointsActive ? <><Zap className="w-5 h-5" /> Generate Quiz (2× Points!)</> : <><Sparkles className="w-5 h-5" /> Generate {questionCount}-Question Quiz</>}
+                  {doublePointsActive ? <><Zap className="w-5 h-5" /> {tl.quiz.generateDouble}</> : <><Sparkles className="w-5 h-5" /> {tl.quiz.generateN.replace("{n}", String(questionCount))}</>}
                 </Button>
               </div>
             </motion.div>
@@ -550,10 +552,10 @@ export default function QuizPage() {
               className="flex flex-col items-center justify-center py-24 gap-5">
               <div className="w-16 h-16 rounded-full border-4 border-primary border-t-transparent animate-spin" />
               <div className="text-center">
-                <p className="font-bold text-lg">AI is crafting your quiz…</p>
-                <p className="text-muted-foreground text-sm mt-1">Generating {questionCount} {difficulty} questions on {topic?.name}</p>
+                <p className="font-bold text-lg">{tl.quiz.aiCrafting}</p>
+                <p className="text-muted-foreground text-sm mt-1">{tl.quiz.generating.replace("{n}", String(questionCount)).replace("{d}", difficulty).replace("{t}", topic?.name ?? "")}</p>
                 {doublePointsActive && (
-                  <p className="text-amber-500 text-sm font-bold mt-2">⚡ Double Points active!</p>
+                  <p className="text-amber-500 text-sm font-bold mt-2">⚡ {tl.quiz.doublePointsActive}</p>
                 )}
               </div>
             </motion.div>
@@ -581,15 +583,15 @@ export default function QuizPage() {
                       disabled={usePowerupMut.isPending}
                       className="flex items-center gap-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-1 rounded-full border border-blue-400/30 transition-all"
                     >
-                      <Lightbulb className="w-3 h-3" /> Hint ×{hintQty}
+                      <Lightbulb className="w-3 h-3" /> {tl.quiz.hint} ×{hintQty}
                     </button>
                   )}
                   {hintUsedThisQ && (
                     <div className="text-[10px] text-muted-foreground font-medium bg-muted px-2 py-0.5 rounded-full">
-                      💡 Hint used
+                      💡 {tl.quiz.hintUsed}
                     </div>
                   )}
-                  <div className="text-sm font-bold text-primary">{score} / {currentQ + (showExp ? 1 : 0)} correct</div>
+                  <div className="text-sm font-bold text-primary">{score} / {currentQ + (showExp ? 1 : 0)} {tl.quiz.correct}</div>
                   <div className="text-xs text-muted-foreground font-medium bg-muted px-2 py-1 rounded-full">
                     {currentQ + 1} / {quiz.questions.length}
                   </div>
@@ -654,11 +656,11 @@ export default function QuizPage() {
                         ? "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-300"
                         : "bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-300"
                     )}>
-                      <p className="font-bold mb-1">{selected === q.correctAnswer ? "✓ Correct!" : "✗ Not quite."}</p>
+                      <p className="font-bold mb-1">{selected === q.correctAnswer ? `✓ ${tl.quiz.correctAnswer}` : `✗ ${tl.quiz.notQuite}`}</p>
                       <p className="text-sm leading-relaxed opacity-90">{q.explanation}</p>
                     </div>
                     <Button className="w-full mt-3 rounded-2xl gap-2" onClick={nextQuestion}>
-                      {currentQ < quiz.questions.length - 1 ? (<>Next Question <ArrowRight className="w-4 h-4" /></>) : (<><Trophy className="w-4 h-4" /> See Results</>)}
+                      {currentQ < quiz.questions.length - 1 ? (<>{tl.quiz.nextQuestion} <ArrowRight className="w-4 h-4" /></>) : (<><Trophy className="w-4 h-4" /> {tl.quiz.seeResults}</>)}
                     </Button>
                   </motion.div>
                 )}
@@ -674,23 +676,23 @@ export default function QuizPage() {
                 <motion.div className="text-6xl mb-4" animate={{ rotate: [0,-10,10,-10,10,0] }} transition={{ duration: 0.6, delay: 0.2 }}>
                   {failed ? "💪" : pct >= 80 ? "🏆" : pct >= 50 ? "🎯" : "📚"}
                 </motion.div>
-                <h2 className="text-2xl font-bold mb-1">{failed ? "Don't give up!" : pct >= 80 ? "Excellent!" : pct >= 50 ? "Good job!" : "Keep studying!"}</h2>
+                <h2 className="text-2xl font-bold mb-1">{failed ? tl.quiz.dontGiveUp : pct >= 80 ? tl.quiz.excellent : pct >= 50 ? tl.quiz.goodJob : tl.quiz.keepStudying}</h2>
                 <p className="text-muted-foreground text-sm">{quiz.topic} · {LEVEL_LABELS[quiz.level] ?? quiz.level}</p>
                 {failed && (
-                  <p className="text-sm text-muted-foreground mt-2 italic">Mistakes are part of learning — try again tomorrow!</p>
+                  <p className="text-sm text-muted-foreground mt-2 italic">{tl.quiz.mistakesMsg}</p>
                 )}
                 {!failed && doublePointsActive && (
                   <div className="inline-flex items-center gap-1.5 mt-2 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs font-bold px-3 py-1 rounded-full border border-amber-400/30">
-                    ⚡ Double Points applied — score doubled!
+                    ⚡ {tl.quiz.doubleApplied}
                   </div>
                 )}
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: "Score", value: finalScore.toLocaleString(), sub: !failed && doublePointsActive ? "pts (2×)" : "pts", highlight: true },
-                  { label: "Correct", value: `${score}/${quiz.questions.length}`, sub: "answers", highlight: false },
-                  { label: "Accuracy", value: `${pct}%`, sub: "correct", highlight: false },
+                  { label: tl.quiz.scoreLabel, value: finalScore.toLocaleString(), sub: !failed && doublePointsActive ? tl.quiz.pts2x : tl.quiz.pts, highlight: true },
+                  { label: tl.quiz.correctLabel, value: `${score}/${quiz.questions.length}`, sub: tl.quiz.answers, highlight: false },
+                  { label: tl.quiz.accuracyLabel, value: `${pct}%`, sub: tl.quiz.correctSub, highlight: false },
                 ].map(({ label, value, sub, highlight }) => (
                   <div key={label} className={cn("rounded-2xl p-4 text-center", highlight ? "bg-primary/10 border border-primary/20" : "bg-muted/40")}>
                     <div className={cn("text-xl font-extrabold", highlight && "text-primary")}>{value}</div>
@@ -717,12 +719,12 @@ export default function QuizPage() {
                     disabled={submitScoreMut.isPending}
                     className="w-full rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 border-0 shadow-lg shadow-amber-500/20 gap-2">
                     <Upload className="w-4 h-4" />
-                    {submitScoreMut.isPending ? "Submitting…" : `Submit ${finalScore.toLocaleString()} pts to Leaderboard`}
+                    {submitScoreMut.isPending ? tl.quiz.submitting : tl.quiz.submitPts.replace("{n}", finalScore.toLocaleString())}
                   </Button>
                 )}
                 {scoreSubmitted && (
                   <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-3 flex items-center justify-center gap-2 text-green-600 dark:text-green-400 font-semibold text-sm">
-                    <CheckCircle2 className="w-4 h-4" /> Score submitted to leaderboard!
+                    <CheckCircle2 className="w-4 h-4" /> {tl.quiz.scoreSubmitted}
                   </div>
                 )}
 
@@ -734,7 +736,7 @@ export default function QuizPage() {
                     onClick={retryWithPass}
                     disabled={usePowerupMut.isPending}
                   >
-                    🔄 Use Retry Pass ({retryQty} left) — redo this quiz
+                    🔄 {tl.quiz.useRetryPass.replace("{n}", String(retryQty))}
                   </Button>
                 )}
 
@@ -753,24 +755,24 @@ export default function QuizPage() {
                       setReviewSent(true);
                     }}
                   >
-                    📋 {reviewLaterMut.isPending ? "Saving…" : `Review Later (${wrongAnswers.length} wrong answer${wrongAnswers.length !== 1 ? "s" : ""})`}
+                    📋 {reviewLaterMut.isPending ? tl.quiz.saving : tl.quiz.reviewLater.replace("{n}", String(wrongAnswers.length))}
                   </Button>
                 )}
                 {reviewSent && (
                   <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-3 flex items-center justify-center gap-2 text-orange-600 dark:text-orange-400 font-semibold text-sm">
-                    <CheckCircle2 className="w-4 h-4" /> Saved to your Review list!
+                    <CheckCircle2 className="w-4 h-4" /> {tl.quiz.savedToReview}
                   </div>
                 )}
 
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={retryTopic}>
-                    <RotateCcw className="w-4 h-4" /> Try Again
+                    <RotateCcw className="w-4 h-4" /> {tl.quiz.tryAgain}
                   </Button>
                   <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => setStep("topic")}>
-                    <BookOpen className="w-4 h-4" /> New Topic
+                    <BookOpen className="w-4 h-4" /> {tl.quiz.newTopic}
                   </Button>
                   <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={reset}>
-                    <Sparkles className="w-4 h-4" /> New Quiz
+                    <Sparkles className="w-4 h-4" /> {tl.quiz.newQuiz}
                   </Button>
                 </div>
               </div>

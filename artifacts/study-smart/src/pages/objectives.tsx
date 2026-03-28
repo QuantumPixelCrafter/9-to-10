@@ -7,11 +7,12 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Star, Lock, CheckCircle2, RefreshCw, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/lib/language-context";
 
 const PERIODIC_META = {
-  weekly:   { label: "Weekly",   emoji: "📅", color: "bg-sky-500/15 text-sky-600 dark:text-sky-400",         dot: "bg-sky-500",    ringColor: "ring-sky-400/30",    gradient: "from-sky-400 to-cyan-500",      border: "border-sky-200 dark:border-sky-900",     headerBg: "from-sky-500 to-cyan-400" },
-  monthly:  { label: "Monthly",  emoji: "🗓️", color: "bg-violet-500/15 text-violet-600 dark:text-violet-400", dot: "bg-violet-500", ringColor: "ring-violet-400/30", gradient: "from-violet-400 to-purple-500",  border: "border-violet-200 dark:border-violet-900", headerBg: "from-violet-500 to-purple-400" },
-  seasonal: { label: "Seasonal", emoji: "🌸", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400",   dot: "bg-amber-500",  ringColor: "ring-amber-400/30",  gradient: "from-amber-400 to-orange-500",  border: "border-amber-200 dark:border-amber-900",  headerBg: "from-amber-500 to-orange-400" },
+  weekly:   { emoji: "📅", color: "bg-sky-500/15 text-sky-600 dark:text-sky-400",         dot: "bg-sky-500",    ringColor: "ring-sky-400/30",    gradient: "from-sky-400 to-cyan-500",      border: "border-sky-200 dark:border-sky-900",     headerBg: "from-sky-500 to-cyan-400" },
+  monthly:  { emoji: "🗓️", color: "bg-violet-500/15 text-violet-600 dark:text-violet-400", dot: "bg-violet-500", ringColor: "ring-violet-400/30", gradient: "from-violet-400 to-purple-500",  border: "border-violet-200 dark:border-violet-900", headerBg: "from-violet-500 to-purple-400" },
+  seasonal: { emoji: "🌸", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400",   dot: "bg-amber-500",  ringColor: "ring-amber-400/30",  gradient: "from-amber-400 to-orange-500",  border: "border-amber-200 dark:border-amber-900",  headerBg: "from-amber-500 to-orange-400" },
 };
 
 function getWeekEnd(): Date {
@@ -54,6 +55,7 @@ const PERIOD_ORDER: Array<"weekly" | "monthly" | "seasonal"> = ["weekly", "month
 
 export default function ObjectivesPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { data, isLoading, isError } = useGetAchievements();
   const checkMut = useCheckAchievements();
   const [newlyEarnedKeys, setNewlyEarnedKeys] = useState<Set<string>>(new Set());
@@ -92,6 +94,12 @@ export default function ObjectivesPage() {
   const earnedObjectives = objectives.filter((a: any) => a.earned).length;
   const pct = totalObjectives > 0 ? Math.round((earnedObjectives / totalObjectives) * 100) : 0;
 
+  const periodLabels: Record<string, string> = {
+    weekly: t.objectives.weekly,
+    monthly: t.objectives.monthly,
+    seasonal: t.objectives.seasonal,
+  };
+
   return (
     <Layout title="Objectives">
       <div className="space-y-5 pb-12">
@@ -104,11 +112,11 @@ export default function ObjectivesPage() {
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-white/70 text-sm font-medium">Periodic Objectives</p>
+              <p className="text-white/70 text-sm font-medium">{t.objectives.periodicObjectives}</p>
               <p className="text-4xl font-black tracking-tight">
                 {earnedObjectives} <span className="text-xl font-bold text-white/70">/ {totalObjectives}</span>
               </p>
-              <p className="text-white/60 text-xs mt-1">Reset weekly, monthly & seasonally</p>
+              <p className="text-white/60 text-xs mt-1">{t.objectives.resetNote}</p>
             </div>
             <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-3xl shadow-inner">
               🎯
@@ -116,7 +124,7 @@ export default function ObjectivesPage() {
           </div>
           <div className="space-y-1">
             <div className="flex justify-between text-sm font-medium">
-              <span className="text-white/80">Current progress</span>
+              <span className="text-white/80">{t.objectives.currentProgress}</span>
               <span className="text-white/80">{pct}%</span>
             </div>
             <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
@@ -130,8 +138,8 @@ export default function ObjectivesPage() {
           </div>
           <div className="mt-4 flex items-center justify-between">
             <div className="flex gap-4 text-xs text-white/70">
-              <span>✅ <span className="font-bold text-white">{earnedObjectives}</span> done</span>
-              <span>⏳ <span className="font-bold text-white">{totalObjectives - earnedObjectives}</span> remaining</span>
+              <span>✅ <span className="font-bold text-white">{earnedObjectives}</span> {t.objectives.done}</span>
+              <span>⏳ <span className="font-bold text-white">{totalObjectives - earnedObjectives}</span> {t.objectives.remaining}</span>
             </div>
             <Button
               size="sm"
@@ -143,7 +151,7 @@ export default function ObjectivesPage() {
                     res.newlyEarned.forEach((a: any) => toast({ title: `Objective Complete! ${a.icon} ${a.title}`, description: `+${a.points} pts` }));
                     setTimeout(() => setNewlyEarnedKeys(new Set()), 3000);
                   } else {
-                    toast({ title: "All caught up!", description: "No new objectives completed." });
+                    toast({ title: t.objectives.allCaughtUp, description: t.objectives.noNewObjectives });
                   }
                 },
               })}
@@ -151,7 +159,7 @@ export default function ObjectivesPage() {
               className="bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-xl text-xs gap-1.5"
             >
               <RefreshCw className={cn("w-3 h-3", checkMut.isPending && "animate-spin")} />
-              {checkMut.isPending ? "Checking..." : "Refresh"}
+              {checkMut.isPending ? t.objectives.checking : t.objectives.refresh}
             </Button>
           </div>
         </motion.div>
@@ -162,17 +170,21 @@ export default function ObjectivesPage() {
             const m = PERIODIC_META[period];
             const end = PERIOD_ENDS[period];
             const days = daysUntil(end);
-            const urgency = days === 0 ? "Ends today!" : days === 1 ? "1 day left" : `${days} days left`;
+            const urgency = days === 0
+              ? t.objectives.endsToday
+              : days === 1
+              ? t.objectives.oneDayLeft
+              : t.objectives.daysLeft.replace("{n}", String(days));
             const periodObjs = objectives.filter((a: any) => a.periodic === period);
             const periodEarned = periodObjs.filter((a: any) => a.earned).length;
             return (
               <div key={period} className={cn("rounded-2xl border p-3 space-y-1 ring-1 bg-card border-border", m.ringColor)}>
                 <div className="flex items-center gap-1.5">
                   <span className={cn("w-2 h-2 rounded-full shrink-0", m.dot)} />
-                  <span className={cn("text-[11px] font-bold uppercase tracking-wider", m.color)}>{m.label}</span>
+                  <span className={cn("text-[11px] font-bold uppercase tracking-wider", m.color)}>{periodLabels[period]}</span>
                 </div>
-                <p className="text-xs font-bold text-foreground">{periodEarned}/{periodObjs.length} done</p>
-                <p className="text-[10px] text-muted-foreground">Ends {fmtDate(end)}</p>
+                <p className="text-xs font-bold text-foreground">{periodEarned}/{periodObjs.length} {t.objectives.done}</p>
+                <p className="text-[10px] text-muted-foreground">{t.objectives.ends} {fmtDate(end)}</p>
                 <p className={cn("text-[10px] font-medium", days <= 2 ? "text-red-500 dark:text-red-400" : "text-muted-foreground")}>
                   {urgency}
                 </p>
@@ -197,8 +209,8 @@ export default function ObjectivesPage() {
           </div>
         ) : isError ? (
           <div className="text-center py-12 text-muted-foreground">
-            <p className="text-lg font-semibold mb-1">Couldn't load objectives</p>
-            <p className="text-sm">Make sure you're logged in and try again.</p>
+            <p className="text-lg font-semibold mb-1">{t.objectives.couldntLoad}</p>
+            <p className="text-sm">{t.objectives.loginTryAgain}</p>
           </div>
         ) : (
           <div className="space-y-5">
@@ -219,7 +231,7 @@ export default function ObjectivesPage() {
                   <div className="flex items-center gap-3 mb-2">
                     <div className={cn("flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full shrink-0", m.color)}>
                       <span>{m.emoji}</span>
-                      <span>{m.label}</span>
+                      <span>{periodLabels[period]}</span>
                     </div>
                     <div className="flex-1 h-px bg-border" />
                     <span className="text-xs text-muted-foreground font-semibold shrink-0">
@@ -265,19 +277,19 @@ export default function ObjectivesPage() {
 
                               {isNew && (
                                 <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-primary text-white animate-pulse">
-                                  NEW
+                                  {t.objectives.newBadge}
                                 </span>
                               )}
 
                               {timesEarned > 0 && (
                                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-600 dark:text-green-400">
-                                  {timesEarned}× earned
+                                  {timesEarned}{t.objectives.timesEarned}
                                 </span>
                               )}
 
                               {!a.earned && (
                                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
-                                  LOCKED
+                                  {t.objectives.locked}
                                 </span>
                               )}
                             </div>

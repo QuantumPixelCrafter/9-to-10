@@ -6,25 +6,27 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Star, Lock, CheckCircle2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const CATEGORY_META: Record<string, { label: string; color: string; bg: string; gradient: string; border: string }> = {
-  general:    { label: "General",    color: "text-slate-600 dark:text-slate-300",      bg: "bg-slate-500/10",   gradient: "from-slate-400 to-slate-600",    border: "border-slate-200 dark:border-slate-700" },
-  notes:      { label: "Notes",      color: "text-blue-600 dark:text-blue-400",        bg: "bg-blue-500/10",    gradient: "from-blue-400 to-indigo-500",    border: "border-blue-200 dark:border-blue-900" },
-  goals:      { label: "Goals",      color: "text-emerald-600 dark:text-emerald-400",  bg: "bg-emerald-500/10", gradient: "from-emerald-400 to-teal-500",   border: "border-emerald-200 dark:border-emerald-900" },
-  timetable:  { label: "Timetable",  color: "text-orange-600 dark:text-orange-400",    bg: "bg-orange-500/10",  gradient: "from-orange-400 to-amber-500",   border: "border-orange-200 dark:border-orange-900" },
-  mood:       { label: "Mood",       color: "text-pink-600 dark:text-pink-400",        bg: "bg-pink-500/10",    gradient: "from-pink-400 to-rose-500",      border: "border-pink-200 dark:border-pink-900" },
-  games:      { label: "Games",      color: "text-emerald-600 dark:text-emerald-400",  bg: "bg-emerald-500/10", gradient: "from-green-400 to-emerald-500",  border: "border-emerald-200 dark:border-emerald-900" },
-  quiz:       { label: "Quiz",       color: "text-amber-600 dark:text-amber-400",      bg: "bg-amber-500/10",   gradient: "from-amber-400 to-orange-500",   border: "border-amber-200 dark:border-amber-900" },
-  challenges: { label: "Challenges", color: "text-violet-600 dark:text-violet-400",    bg: "bg-violet-500/10",  gradient: "from-violet-400 to-purple-500",  border: "border-violet-200 dark:border-violet-900" },
-};
+import { useLanguage } from "@/lib/language-context";
 
 const CATEGORIES = ["challenges", "general", "notes", "goals", "timetable", "mood", "games", "quiz"];
 
 export default function AchievementsPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { data, isLoading, isError } = useGetAchievements();
   const checkMut = useCheckAchievements();
   const [newlyEarnedKeys, setNewlyEarnedKeys] = useState<Set<string>>(new Set());
+
+  const CATEGORY_META: Record<string, { label: string; color: string; bg: string; gradient: string; border: string }> = {
+    general:    { label: t.achievements.catGeneral,    color: "text-slate-600 dark:text-slate-300",      bg: "bg-slate-500/10",   gradient: "from-slate-400 to-slate-600",    border: "border-slate-200 dark:border-slate-700" },
+    notes:      { label: t.achievements.catNotes,      color: "text-blue-600 dark:text-blue-400",        bg: "bg-blue-500/10",    gradient: "from-blue-400 to-indigo-500",    border: "border-blue-200 dark:border-blue-900" },
+    goals:      { label: t.achievements.catGoals,      color: "text-emerald-600 dark:text-emerald-400",  bg: "bg-emerald-500/10", gradient: "from-emerald-400 to-teal-500",   border: "border-emerald-200 dark:border-emerald-900" },
+    timetable:  { label: t.achievements.catTimetable,  color: "text-orange-600 dark:text-orange-400",    bg: "bg-orange-500/10",  gradient: "from-orange-400 to-amber-500",   border: "border-orange-200 dark:border-orange-900" },
+    mood:       { label: t.achievements.catMood,       color: "text-pink-600 dark:text-pink-400",        bg: "bg-pink-500/10",    gradient: "from-pink-400 to-rose-500",      border: "border-pink-200 dark:border-pink-900" },
+    games:      { label: t.achievements.catGames,      color: "text-emerald-600 dark:text-emerald-400",  bg: "bg-emerald-500/10", gradient: "from-green-400 to-emerald-500",  border: "border-emerald-200 dark:border-emerald-900" },
+    quiz:       { label: t.achievements.catQuiz,       color: "text-amber-600 dark:text-amber-400",      bg: "bg-amber-500/10",   gradient: "from-amber-400 to-orange-500",   border: "border-amber-200 dark:border-amber-900" },
+    challenges: { label: t.achievements.catChallenges, color: "text-violet-600 dark:text-violet-400",    bg: "bg-violet-500/10",  gradient: "from-violet-400 to-purple-500",  border: "border-violet-200 dark:border-violet-900" },
+  };
 
   useEffect(() => {
     checkMut.mutate(undefined, {
@@ -47,7 +49,7 @@ export default function AchievementsPage() {
   const pct = total > 0 ? Math.round((earned / total) * 100) : 0;
 
   return (
-    <Layout title="Achievements">
+    <Layout title={t.nav.achievements}>
       <div className="space-y-5 pb-12">
 
         {/* Summary Card */}
@@ -58,9 +60,9 @@ export default function AchievementsPage() {
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-white/70 text-sm font-medium">Total Points Earned</p>
+              <p className="text-white/70 text-sm font-medium">{t.achievements.totalPoints}</p>
               <p className="text-4xl font-black tracking-tight">
-                {totalPoints.toLocaleString()} <span className="text-xl font-bold text-white/70">pts</span>
+                {totalPoints.toLocaleString()} <span className="text-xl font-bold text-white/70">{t.achievements.pts}</span>
               </p>
             </div>
             <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-3xl shadow-inner">
@@ -69,7 +71,7 @@ export default function AchievementsPage() {
           </div>
           <div className="space-y-1">
             <div className="flex justify-between text-sm font-medium">
-              <span className="text-white/80">{earned} / {total} achievements</span>
+              <span className="text-white/80">{earned} / {total} {t.achievements.achievements}</span>
               <span className="text-white/80">{pct}%</span>
             </div>
             <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
@@ -83,8 +85,8 @@ export default function AchievementsPage() {
           </div>
           <div className="mt-4 flex items-center justify-between">
             <div className="flex gap-4 text-xs text-white/70">
-              <span>✅ <span className="font-bold text-white">{earned}</span> unlocked</span>
-              <span>🔒 <span className="font-bold text-white">{total - earned}</span> locked</span>
+              <span>✅ <span className="font-bold text-white">{earned}</span> {t.achievements.unlocked}</span>
+              <span>🔒 <span className="font-bold text-white">{total - earned}</span> {t.achievements.locked}</span>
             </div>
             <Button
               size="sm"
@@ -96,7 +98,7 @@ export default function AchievementsPage() {
                     res.newlyEarned.forEach((a: any) => toast({ title: `Achievement Unlocked! ${a.icon} ${a.title}`, description: `+${a.points} pts` }));
                     setTimeout(() => setNewlyEarnedKeys(new Set()), 3000);
                   } else {
-                    toast({ title: "All caught up!", description: "No new achievements this time." });
+                    toast({ title: t.achievements.allCaughtUp, description: t.achievements.noNewAchievements });
                   }
                 },
               })}
@@ -104,7 +106,7 @@ export default function AchievementsPage() {
               className="bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-xl text-xs gap-1.5"
             >
               <RefreshCw className={cn("w-3 h-3", checkMut.isPending && "animate-spin")} />
-              {checkMut.isPending ? "Checking..." : "Check for New"}
+              {checkMut.isPending ? t.achievements.checking : t.achievements.refresh}
             </Button>
           </div>
         </motion.div>
@@ -125,8 +127,8 @@ export default function AchievementsPage() {
           </div>
         ) : isError ? (
           <div className="text-center py-12 text-muted-foreground">
-            <p className="text-lg font-semibold mb-1">Couldn't load achievements</p>
-            <p className="text-sm">Make sure you're logged in and try again.</p>
+            <p className="text-lg font-semibold mb-1">{t.achievements.couldntLoad}</p>
+            <p className="text-sm">{t.achievements.tryAgain}</p>
           </div>
         ) : (
           <div className="space-y-5">

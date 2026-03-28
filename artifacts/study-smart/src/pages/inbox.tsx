@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/lib/language-context";
 
 const APPROVER_ID = "5705e7da-bb0b-47e5-8563-9bdd23b24973";
 
@@ -53,6 +54,7 @@ function getSenderName(sender: InboxMessage["sender"]) {
 export default function InboxPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const isApprover = user?.id === APPROVER_ID;
 
@@ -149,7 +151,7 @@ export default function InboxPage() {
   }
 
   return (
-    <Layout title="Inbox">
+    <Layout title={t.inbox.title}>
       <div className="space-y-6 pb-8 max-w-2xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -157,9 +159,13 @@ export default function InboxPage() {
               <InboxIcon className="w-6 h-6 text-indigo-500" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">Inbox</h2>
+              <h2 className="text-xl font-bold">{t.inbox.title}</h2>
               <p className="text-sm text-muted-foreground">
-                {unreadCount > 0 ? `${unreadCount} unread message${unreadCount > 1 ? "s" : ""}` : "All caught up!"}
+                {unreadCount > 0
+                  ? unreadCount === 1
+                    ? t.inbox.unreadSingle
+                    : t.inbox.unreadPlural.replace("{n}", String(unreadCount))
+                  : t.inbox.allCaughtUp}
               </p>
             </div>
           </div>
@@ -172,7 +178,7 @@ export default function InboxPage() {
               disabled={readAllMutation.isPending}
             >
               <MailOpen className="w-4 h-4" />
-              Mark all as read
+              {t.inbox.markAllRead}
             </Button>
           )}
         </div>
@@ -188,8 +194,8 @@ export default function InboxPage() {
             <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto">
               <InboxIcon className="w-8 h-8 text-muted-foreground/50" />
             </div>
-            <p className="font-medium text-muted-foreground">Your inbox is empty</p>
-            <p className="text-sm text-muted-foreground/70">Points and messages will appear here.</p>
+            <p className="font-medium text-muted-foreground">{t.inbox.empty}</p>
+            <p className="text-sm text-muted-foreground/70">{t.inbox.emptyDesc}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -239,7 +245,7 @@ export default function InboxPage() {
                     {msg.type === "points" && msg.points != null && msg.points > 0 && (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg text-sm font-semibold">
                         <Coins className="w-4 h-4" />
-                        +{msg.points} bonus points
+                        +{msg.points} {t.inbox.bonusPoints}
                       </div>
                     )}
 
@@ -248,7 +254,7 @@ export default function InboxPage() {
                       <div className="space-y-3">
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-lg text-sm font-semibold">
                           <Users className="w-4 h-4" />
-                          Friend request
+                          {t.inbox.friendRequest}
                         </div>
                         {msg.status === "pending" && (
                           <div className="flex gap-2">
@@ -259,7 +265,7 @@ export default function InboxPage() {
                               disabled={acceptFriendMutation.isPending || declineFriendMutation.isPending}
                             >
                               <UserCheck className="w-3.5 h-3.5" />
-                              Accept
+                              {t.inbox.accept}
                             </Button>
                             <Button
                               size="sm"
@@ -269,18 +275,18 @@ export default function InboxPage() {
                               disabled={acceptFriendMutation.isPending || declineFriendMutation.isPending}
                             >
                               <UserX className="w-3.5 h-3.5" />
-                              Decline
+                              {t.inbox.decline}
                             </Button>
                           </div>
                         )}
                         {msg.status === "accepted" && (
                           <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-sm font-medium">
-                            <UserCheck className="w-4 h-4" /> You are now friends
+                            <UserCheck className="w-4 h-4" /> {t.inbox.nowFriends}
                           </div>
                         )}
                         {msg.status === "declined" && (
                           <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
-                            <UserX className="w-4 h-4" /> Declined
+                            <UserX className="w-4 h-4" /> {t.inbox.declined}
                           </div>
                         )}
                       </div>
@@ -290,7 +296,7 @@ export default function InboxPage() {
                     {msg.type === "developer_approved" && (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-semibold">
                         <BadgeCheck className="w-4 h-4" />
-                        Developer access granted
+                        {t.inbox.devAccessGranted}
                       </div>
                     )}
 
@@ -298,7 +304,7 @@ export default function InboxPage() {
                     {msg.type === "developer_rejected" && (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive rounded-lg text-sm font-semibold">
                         <ShieldX className="w-4 h-4" />
-                        Developer promotion not approved
+                        {t.inbox.devNotApproved}
                       </div>
                     )}
 
@@ -306,7 +312,7 @@ export default function InboxPage() {
                     {msg.type === "retry_pass_grant" && (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-semibold">
                         <span>🔄</span>
-                        +3 Retry Passes granted
+                        {t.inbox.retryPassGrant}
                       </div>
                     )}
 
@@ -314,7 +320,7 @@ export default function InboxPage() {
                     {msg.type === "powerup_gift" && (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-sm font-semibold">
                         <span>🎁</span>
-                        Power-up received!
+                        {t.inbox.powerupReceived}
                       </div>
                     )}
 
@@ -322,8 +328,8 @@ export default function InboxPage() {
                     {msg.type === "chat_point_warning" && (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg text-sm font-semibold">
                         <AlertTriangle className="w-4 h-4" />
-                        Low points balance
-                        {msg.points != null && <span className="font-normal ml-0.5">— {msg.points} pts remaining</span>}
+                        {t.inbox.lowPoints}
+                        {msg.points != null && <span className="font-normal ml-0.5">— {msg.points} {t.inbox.ptsRemaining}</span>}
                       </div>
                     )}
 
@@ -332,7 +338,7 @@ export default function InboxPage() {
                       <div className="space-y-3">
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-lg text-sm font-semibold">
                           <ShieldPlus className="w-4 h-4" />
-                          Developer promotion request
+                          {t.inbox.devPromotionReq}
                         </div>
                         {msg.status === "pending" && isApprover && (
                           <div className="flex gap-2">
@@ -343,7 +349,7 @@ export default function InboxPage() {
                               disabled={approveMutation.isPending || rejectMutation.isPending}
                             >
                               <ShieldCheck className="w-3.5 h-3.5" />
-                              Approve
+                              {t.inbox.approve}
                             </Button>
                             <Button
                               size="sm"
@@ -353,18 +359,18 @@ export default function InboxPage() {
                               disabled={approveMutation.isPending || rejectMutation.isPending}
                             >
                               <ShieldX className="w-3.5 h-3.5" />
-                              Reject
+                              {t.inbox.reject}
                             </Button>
                           </div>
                         )}
                         {msg.status === "approved" && (
                           <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-sm font-medium">
-                            <ShieldCheck className="w-4 h-4" /> Approved
+                            <ShieldCheck className="w-4 h-4" /> {t.inbox.approved}
                           </div>
                         )}
                         {msg.status === "rejected" && (
                           <div className="flex items-center gap-1.5 text-destructive text-sm font-medium">
-                            <ShieldX className="w-4 h-4" /> Rejected
+                            <ShieldX className="w-4 h-4" /> {t.inbox.rejected}
                           </div>
                         )}
                       </div>
@@ -375,12 +381,12 @@ export default function InboxPage() {
                       <div className="space-y-3">
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-lg text-sm font-semibold">
                           <ShieldX className="w-4 h-4" />
-                          Promotion rejected
+                          {t.inbox.promotionRejected}
                         </div>
                         {msg.status === "pending_choice" && (
                           <div className="space-y-2">
                             <p className="text-xs text-muted-foreground">
-                              Do you want to notify the user that their promotion was not approved?
+                              {t.inbox.wantToNotify}
                             </p>
                             <div className="flex gap-2">
                               <Button
@@ -390,7 +396,7 @@ export default function InboxPage() {
                                 disabled={notifyRejectedMutation.isPending || skipNotifyMutation.isPending}
                               >
                                 <Bell className="w-3.5 h-3.5" />
-                                Notify the user
+                                {t.inbox.notifyUser}
                               </Button>
                               <Button
                                 size="sm"
@@ -400,19 +406,19 @@ export default function InboxPage() {
                                 disabled={notifyRejectedMutation.isPending || skipNotifyMutation.isPending}
                               >
                                 <BellOff className="w-3.5 h-3.5" />
-                                Don't notify
+                                {t.inbox.dontNotify}
                               </Button>
                             </div>
                           </div>
                         )}
                         {msg.status === "notified" && (
                           <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
-                            <Bell className="w-4 h-4" /> User was notified
+                            <Bell className="w-4 h-4" /> {t.inbox.userNotified}
                           </div>
                         )}
                         {msg.status === "skipped" && (
                           <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
-                            <BellOff className="w-4 h-4" /> User was not notified
+                            <BellOff className="w-4 h-4" /> {t.inbox.userNotNotified}
                           </div>
                         )}
                       </div>

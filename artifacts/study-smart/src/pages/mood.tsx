@@ -8,19 +8,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import type { CreateMoodBodyMood } from "@workspace/api-client-react/src/generated/api.schemas";
 import { Calendar as CalendarIcon, Edit2 } from "lucide-react";
-
-const MOODS: { val: CreateMoodBodyMood, emoji: string, label: string, color: string }[] = [
-  { val: "great", emoji: "😄", label: "Great", color: "text-green-500 bg-green-500/10 border-green-500/20" },
-  { val: "good", emoji: "🙂", label: "Good", color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" },
-  { val: "okay", emoji: "😐", label: "Okay", color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
-  { val: "tired", emoji: "😴", label: "Tired", color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20" },
-  { val: "stressed", emoji: "😰", label: "Stressed", color: "text-red-500 bg-red-500/10 border-red-500/20" },
-];
+import { useLanguage } from "@/lib/language-context";
 
 export default function MoodPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { data: moods = [] } = useMoodsData();
   const createMut = useCreateMoodAction();
+
+  const MOODS: { val: CreateMoodBodyMood, emoji: string, label: string, color: string }[] = [
+    { val: "great", emoji: "😄", label: t.mood.great, color: "text-green-500 bg-green-500/10 border-green-500/20" },
+    { val: "good", emoji: "🙂", label: t.mood.good, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" },
+    { val: "okay", emoji: "😐", label: t.mood.okay, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
+    { val: "tired", emoji: "😴", label: t.mood.tired, color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20" },
+    { val: "stressed", emoji: "😰", label: t.mood.stressed, color: "text-red-500 bg-red-500/10 border-red-500/20" },
+  ];
 
   const [selectedMood, setSelectedMood] = useState<CreateMoodBodyMood | null>(null);
   const [note, setNote] = useState("");
@@ -42,7 +44,7 @@ export default function MoodPage() {
   const sortedMoods = [...moods].sort((a, b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime());
 
   return (
-    <Layout title="Mood Check-in">
+    <Layout title={t.nav.mood}>
       <div className="max-w-3xl mx-auto space-y-12 pb-12">
         
         {/* Check-in Section */}
@@ -50,8 +52,8 @@ export default function MoodPage() {
           <div className="absolute -right-20 -top-20 w-64 h-64 bg-pink-500/5 rounded-full blur-3xl pointer-events-none" />
           
           <div className="text-center space-y-2 mb-10 relative z-10">
-            <h2 className="text-3xl font-display font-bold">How are you feeling today?</h2>
-            <p className="text-muted-foreground">Self-awareness is key to consistent productivity.</p>
+            <h2 className="text-3xl font-display font-bold">{t.mood.howFeeling}</h2>
+            <p className="text-muted-foreground">{t.mood.selfAwareness}</p>
           </div>
 
           {!todayMood ? (
@@ -81,11 +83,11 @@ export default function MoodPage() {
                   >
                     <div>
                       <label className="text-sm font-semibold mb-2 block flex items-center gap-2">
-                        <Edit2 className="w-4 h-4" /> Add a note (optional)
+                        <Edit2 className="w-4 h-4" /> {t.mood.noteOptional}
                       </label>
                       <Textarea 
                         value={note} onChange={e => setNote(e.target.value)}
-                        placeholder="Why do you feel this way? Or journal your thoughts..."
+                        placeholder={t.mood.notePlaceholder}
                         className="rounded-2xl resize-none bg-background focus-visible:ring-primary/20 min-h-[100px]"
                       />
                     </div>
@@ -94,7 +96,7 @@ export default function MoodPage() {
                       disabled={createMut.isPending}
                       className="w-full rounded-xl py-6 text-base font-bold shadow-lg shadow-primary/20"
                     >
-                      {createMut.isPending ? "Saving..." : "Log Journal"}
+                      {createMut.isPending ? t.mood.logging : t.mood.logMood}
                     </Button>
                   </motion.div>
                 )}
@@ -105,9 +107,9 @@ export default function MoodPage() {
               <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="text-5xl filter drop-shadow-md">{MOODS.find(m => m.val === todayMood.mood)?.emoji}</span>
               </div>
-              <h3 className="text-2xl font-bold font-display text-foreground">You're feeling {todayMood.mood} today!</h3>
+              <h3 className="text-2xl font-bold font-display text-foreground">{t.mood.youreFeeling.replace("{mood}", todayMood.mood)}</h3>
               <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-                Thanks for checking in. Tracking your mood helps you understand your study patterns better.
+                {t.mood.thanksCheckin}
               </p>
             </div>
           )}
@@ -117,13 +119,13 @@ export default function MoodPage() {
         <section>
           <div className="flex items-center gap-3 mb-6 px-2">
             <CalendarIcon className="w-6 h-6 text-primary" />
-            <h3 className="text-xl font-display font-bold">Your Mood History</h3>
+            <h3 className="text-xl font-display font-bold">{t.mood.history}</h3>
           </div>
 
           <div className="space-y-4">
             {sortedMoods.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground bg-card rounded-3xl border border-dashed border-border/60">
-                No mood history yet. Check in today to start tracking!
+                {t.mood.noMoods}
               </div>
             ) : (
               sortedMoods.map(mood => {

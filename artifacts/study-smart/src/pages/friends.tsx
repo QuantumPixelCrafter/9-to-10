@@ -17,6 +17,7 @@ import {
   ArrowLeft, Send, User, Zap, ChevronRight, Users, Gift, X as XIcon, AlertTriangle, Coins, Settings
 } from "lucide-react";
 import { getItemDef } from "@/lib/shop-data";
+import { useLanguage } from "@/lib/language-context";
 
 const GIFTABLE_POWERUPS = [
   { key: "streak_freeze", name: "Streak Freeze", emoji: "🧊", price: 2000, cooldownDays: 4 },
@@ -57,6 +58,7 @@ function GiftModal({
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const { data: powerupsData } = useGetPowerups();
+  const { t } = useLanguage();
   const balance = powerupsData?.balance ?? 0;
   const selectedDef = GIFTABLE_POWERUPS.find(p => p.key === selected);
 
@@ -71,8 +73,8 @@ function GiftModal({
           <div className="flex items-center gap-3">
             <Avatar user={friend} size="sm" />
             <div>
-              <p className="font-bold text-sm">Gift to {friend.displayName}</p>
-              <p className="text-xs text-muted-foreground">Your balance: <span className="font-semibold text-amber-500">{balance.toLocaleString()} pts</span></p>
+              <p className="font-bold text-sm">{t.friends.giftTo.replace("{name}", friend.displayName)}</p>
+              <p className="text-xs text-muted-foreground">{t.friends.yourBalance}: <span className="font-semibold text-amber-500">{balance.toLocaleString()} {t.friends.pts}</span></p>
             </div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
@@ -101,11 +103,11 @@ function GiftModal({
                 <span className="text-2xl">{p.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">{p.name}</p>
-                  <p className="text-xs text-muted-foreground">{p.cooldownDays}-day cooldown after gifting</p>
+                  <p className="text-xs text-muted-foreground">{t.friends.cooldownDays.replace("{n}", String(p.cooldownDays))}</p>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-xs font-bold text-amber-500">{p.price.toLocaleString()} pts</p>
-                  {!canAfford && <p className="text-[10px] text-destructive font-medium">Not enough</p>}
+                  {!canAfford && <p className="text-[10px] text-destructive font-medium">{t.friends.notEnough}</p>}
                 </div>
               </button>
             );
@@ -114,7 +116,7 @@ function GiftModal({
 
         {selectedDef && (
           <div className="p-3 rounded-xl bg-muted/60 text-xs text-muted-foreground">
-            After gifting, you won't be able to send another gift for <span className="font-semibold text-foreground">{selectedDef.cooldownDays} day{selectedDef.cooldownDays !== 1 ? "s" : ""}</span>.
+            {t.friends.giftCooldownMsg.replace("{n}", String(selectedDef.cooldownDays))}
           </div>
         )}
 
@@ -124,7 +126,7 @@ function GiftModal({
           onClick={() => selected && onGift(selected)}
         >
           <Gift className="w-4 h-4" />
-          {isGifting ? "Sending gift…" : selected ? `Send ${GIFTABLE_POWERUPS.find(p => p.key === selected)?.emoji} ${GIFTABLE_POWERUPS.find(p => p.key === selected)?.name}` : "Select a power-up"}
+          {isGifting ? t.friends.gifting : selected ? `${t.friends.sendGift} ${GIFTABLE_POWERUPS.find(p => p.key === selected)?.emoji} ${GIFTABLE_POWERUPS.find(p => p.key === selected)?.name}` : t.friends.selectPowerup}
         </Button>
       </div>
     </div>
@@ -146,6 +148,7 @@ function FriendListItem({
 }) {
   const u = entry.user;
   if (!u) return null;
+  const { t } = useLanguage();
   const nametag = getItemDef(u.equippedNametag);
   const isPending = entry.status === "pending";
   const isIncoming = isPending && !entry.iAmRequester;
@@ -168,8 +171,8 @@ function FriendListItem({
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             <LevelBadge gameLevel={u.gameLevel} />
-            {isIncoming && <span className="text-[10px] text-primary font-bold bg-primary/10 px-1.5 py-0.5 rounded-full">Incoming</span>}
-            {isOutgoing && <span className="text-[10px] text-muted-foreground font-medium">Pending…</span>}
+            {isIncoming && <span className="text-[10px] text-primary font-bold bg-primary/10 px-1.5 py-0.5 rounded-full">{t.friends.incoming}</span>}
+            {isOutgoing && <span className="text-[10px] text-muted-foreground font-medium">{t.friends.pendingDots}</span>}
           </div>
         </div>
       </div>
@@ -200,6 +203,7 @@ function FriendListItem({
 export default function FriendsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [searchQ, setSearchQ] = useState("");
@@ -279,7 +283,7 @@ export default function FriendsPage() {
   const selectedFriendUser = selectedEntry?.user;
 
   return (
-    <Layout title="Friends">
+    <Layout title={t.nav.friends}>
       <div className="max-w-5xl mx-auto">
         <div className="flex gap-4 h-[calc(100vh-160px)] min-h-[500px]">
 
@@ -295,7 +299,7 @@ export default function FriendsPage() {
               <input
                 value={searchQ}
                 onChange={e => setSearchQ(e.target.value)}
-                placeholder="Search users by name…"
+                placeholder={t.friends.searchPlaceholder}
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -303,9 +307,9 @@ export default function FriendsPage() {
             {/* Search results */}
             {searchQ.length >= 2 && (
               <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
-                <p className="text-xs font-bold text-muted-foreground px-3 pt-3 pb-1.5 uppercase tracking-wide">Search Results</p>
-                {searching && <div className="px-3 py-4 text-sm text-muted-foreground">Searching…</div>}
-                {!searching && searchResults.length === 0 && <div className="px-3 py-4 text-sm text-muted-foreground">No users found</div>}
+                <p className="text-xs font-bold text-muted-foreground px-3 pt-3 pb-1.5 uppercase tracking-wide">{t.friends.searchResults}</p>
+                {searching && <div className="px-3 py-4 text-sm text-muted-foreground">{t.friends.searching}</div>}
+                {!searching && searchResults.length === 0 && <div className="px-3 py-4 text-sm text-muted-foreground">{t.friends.noUsersFound}</div>}
                 <div className="divide-y divide-border/30">
                   {searchResults.map(u => {
                     const nametag = getItemDef(u.equippedNametag);
@@ -320,14 +324,14 @@ export default function FriendsPage() {
                           <LevelBadge gameLevel={u.gameLevel} />
                         </div>
                         <div className="flex gap-1">
-                          <button onClick={() => setLocation(`/users/${u.id}`)} className="text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted">View</button>
+                          <button onClick={() => setLocation(`/users/${u.id}`)} className="text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted">{t.friends.view}</button>
                           {!u.friendshipStatus ? (
                             <button onClick={() => handleSendRequest(u)} disabled={sendReqMut.isPending} className="flex items-center gap-1 text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-lg hover:bg-primary/90 transition-colors">
-                              <UserPlus className="w-3 h-3" /> Add
+                              <UserPlus className="w-3 h-3" /> {t.friends.add}
                             </button>
                           ) : (
                             <span className="text-[10px] font-bold text-muted-foreground px-2 py-1 rounded-lg bg-muted">
-                              {u.friendshipStatus === "accepted" ? "Friends" : "Pending"}
+                              {u.friendshipStatus === "accepted" ? t.friends.friends : t.friends.pending}
                             </span>
                           )}
                         </div>
@@ -341,7 +345,7 @@ export default function FriendsPage() {
             {/* Pending */}
             {pending.length > 0 && (
               <div className="bg-card border border-amber-500/20 rounded-2xl overflow-hidden">
-                <p className="text-xs font-bold text-amber-600 dark:text-amber-400 px-3 pt-3 pb-1.5 uppercase tracking-wide">Pending ({pending.length})</p>
+                <p className="text-xs font-bold text-amber-600 dark:text-amber-400 px-3 pt-3 pb-1.5 uppercase tracking-wide">{t.friends.pending} ({pending.length})</p>
                 <div className="space-y-0.5 px-2 pb-2">
                   {pending.map(entry => (
                     <FriendListItem key={entry.friendshipId} entry={entry} selected={false}
@@ -359,13 +363,13 @@ export default function FriendsPage() {
             {/* Friends list */}
             <div className="bg-card border border-border/60 rounded-2xl overflow-hidden flex-1 flex flex-col min-h-0">
               <p className="text-xs font-bold text-muted-foreground px-3 pt-3 pb-1.5 uppercase tracking-wide shrink-0">
-                Friends ({acceptedFriends.length})
+                {t.friends.friends} ({acceptedFriends.length})
               </p>
               {friendsLoading && <div className="px-3 py-4 text-sm text-muted-foreground">Loading…</div>}
               {!friendsLoading && acceptedFriends.length === 0 && (
                 <div className="px-4 py-6 text-center">
                   <Users className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No friends yet. Search for users above to add them!</p>
+                  <p className="text-sm text-muted-foreground">{t.friends.noFriends}</p>
                 </div>
               )}
               <div className="space-y-0.5 px-2 pb-2 overflow-y-auto flex-1">
@@ -402,10 +406,10 @@ export default function FriendsPage() {
                   onClick={() => setGiftFriend({ id: selectedFriendUser.id, displayName: selectedFriendUser.displayName, profileImageUrl: selectedFriendUser.profileImageUrl })}
                   className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 transition-colors px-2 py-1 rounded-lg hover:bg-emerald-500/10"
                 >
-                  <Gift className="w-3.5 h-3.5" /> Gift
+                  <Gift className="w-3.5 h-3.5" /> {t.friends.gift}
                 </button>
                 <button onClick={() => setLocation(`/users/${selectedFriendUser.id}`)} className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
-                  Profile <ChevronRight className="w-3 h-3" />
+                  {t.friends.profile} <ChevronRight className="w-3 h-3" />
                 </button>
               </div>
 
@@ -413,7 +417,7 @@ export default function FriendsPage() {
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {messages.length === 0 && (
                   <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                    Start the conversation!
+                    {t.friends.startChat}
                   </div>
                 )}
                 {messages.map(msg => {
@@ -442,8 +446,8 @@ export default function FriendsPage() {
                 <div className="mx-3 mb-0 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-medium shrink-0">
                   <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                   <span>
-                    Low balance — <span className="font-bold">{chatBalance.balance} pts</span> remaining
-                    {chatBalance.balance < chatBalance.messageCost && " (not enough to send)"}
+                    {t.friends.lowBalance} — <span className="font-bold">{chatBalance.balance} {t.friends.pts}</span> {t.friends.remaining}
+                    {chatBalance.balance < chatBalance.messageCost && ` (${t.friends.notEnoughSend})`}
                   </span>
                   <a href="/preferences" className="ml-auto flex items-center gap-1 text-amber-500 hover:text-amber-600 transition-colors shrink-0">
                     <Settings className="w-3 h-3" /> Settings
@@ -458,7 +462,7 @@ export default function FriendsPage() {
                     value={messageText}
                     onChange={e => setMessageText(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Type a message… (Enter to send)"
+                    placeholder={t.friends.messagePlaceholder}
                     className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     maxLength={2000}
                     disabled={chatBalance !== undefined && chatBalance.balance < (chatBalance.messageCost ?? 10)}
@@ -469,9 +473,9 @@ export default function FriendsPage() {
                 </div>
                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60 px-1">
                   <Coins className="w-3 h-3" />
-                  <span>Each message costs {chatBalance?.messageCost ?? 10} pts</span>
+                  <span>{t.friends.msgCosts.replace("{n}", String(chatBalance?.messageCost ?? 10))}</span>
                   {chatBalance !== undefined && (
-                    <span className="ml-auto font-medium text-muted-foreground">{chatBalance.balance} pts remaining</span>
+                    <span className="ml-auto font-medium text-muted-foreground">{chatBalance.balance} {t.friends.pts} {t.friends.remaining}</span>
                   )}
                 </div>
               </div>
@@ -482,7 +486,7 @@ export default function FriendsPage() {
           {!selectedFriendId && acceptedFriends.length > 0 && (
             <div className="hidden md:flex flex-1 items-center justify-center text-muted-foreground/40 flex-col gap-3">
               <MessageCircle className="w-12 h-12" />
-              <p className="text-sm">Select a friend to start chatting</p>
+              <p className="text-sm">{t.friends.selectFriend}</p>
             </div>
           )}
         </div>

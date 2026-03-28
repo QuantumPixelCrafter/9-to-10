@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { getItemDef } from "@/lib/shop-data";
 import type { LevelBoardEntry } from "@workspace/api-client-react";
+import { useLanguage } from "@/lib/language-context";
 
 const ALL_LEVELS = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
 
@@ -24,10 +25,6 @@ const ALL_TABS = [...GAME_TABS, ...EXTRA_TABS] as const;
 type TabKey = (typeof ALL_TABS)[number]["key"];
 type BoardType = "weekly" | "season";
 
-const BOARD_LABELS: Record<BoardType, { label: string; short: string; color: string }> = {
-  weekly: { label: "Weekly Sprint",   short: "Weekly",  color: "from-sky-500 to-cyan-400" },
-  season: { label: "Monthly Season",  short: "Season",  color: "from-fuchsia-500 to-violet-500" },
-};
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="text-xl">🥇</span>;
@@ -78,7 +75,13 @@ export default function LeaderboardPage() {
   const [boardType, setBoardType] = useState<BoardType>("weekly");
   const [showPrizes, setShowPrizes] = useState(false);
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [, setLocation] = useLocation();
+
+  const BOARD_LABELS: Record<BoardType, { label: string; short: string; color: string }> = {
+    weekly: { label: t.leaderboard.weeklyTitle, short: "Weekly",  color: "from-sky-500 to-cyan-400" },
+    season: { label: t.leaderboard.monthlyTitle, short: "Season", color: "from-fuchsia-500 to-violet-500" },
+  };
 
   const [quizLevel, setQuizLevel] = useState<string>("");
   const [quizSubject, setQuizSubject] = useState<string>("");
@@ -162,7 +165,7 @@ export default function LeaderboardPage() {
                 <Trophy className="w-5 h-5" />
                 <h2 className="text-lg font-bold leading-tight">
                   {tab === "level"
-                    ? "Level Rankings"
+                    ? t.leaderboard.levelTitle
                     : `${activeTab.label} · ${BOARD_LABELS[boardType].label}`}
                 </h2>
               </div>
@@ -186,12 +189,12 @@ export default function LeaderboardPage() {
           {countdown && tab !== "level" && (
             <div className="mt-4 flex items-center gap-2 flex-wrap">
               <Clock className="w-3.5 h-3.5 text-white/70 shrink-0" />
-              <span className="text-white/70 text-xs font-medium">Resets in</span>
+              <span className="text-white/70 text-xs font-medium">{t.leaderboard.resetsIn}</span>
               {[
-                { v: countdown.days,    label: "Days" },
-                { v: countdown.hours,   label: "Hours" },
-                { v: countdown.minutes, label: "Min" },
-                { v: countdown.seconds, label: "Sec" },
+                { v: countdown.days,    label: t.leaderboard.days },
+                { v: countdown.hours,   label: t.leaderboard.hours },
+                { v: countdown.minutes, label: t.leaderboard.min },
+                { v: countdown.seconds, label: t.leaderboard.sec },
               ].map(({ v, label }) => (
                 <div key={label} className="flex items-baseline gap-0.5 bg-white/15 rounded-lg px-2.5 py-1">
                   <span className="text-base font-extrabold tabular-nums">{String(v).padStart(2, "0")}</span>
@@ -301,7 +304,7 @@ export default function LeaderboardPage() {
             ) : entries.length === 0 ? (
               <div className="py-20 text-center">
                 <Trophy className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="font-semibold text-lg mb-1">No scores this {boardType === "weekly" ? "week" : "month"} yet</p>
+                <p className="font-semibold text-lg mb-1">{t.leaderboard.noData}</p>
                 <p className="text-muted-foreground text-sm">
                   {tab === "quiz" && !quizLevel
                     ? "Select a level above to filter quiz scores."
@@ -358,7 +361,7 @@ export default function LeaderboardPage() {
                             idx === 0 ? "text-amber-500" : idx === 1 ? "text-slate-400" : idx === 2 ? "text-amber-700" : "text-foreground")}>
                             {entry.score.toLocaleString()}
                           </p>
-                          <p className="text-xs text-muted-foreground">pts</p>
+                          <p className="text-xs text-muted-foreground">{t.leaderboard.points}</p>
                         </div>
                       </motion.div>
                     );

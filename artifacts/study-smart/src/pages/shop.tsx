@@ -8,13 +8,7 @@ import { cn } from "@/lib/utils";
 import { Star, ShoppingBag, Check, Zap, Inbox, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getItemDef } from "@/lib/shop-data";
-
-const TYPE_TABS = [
-  { key: "background", label: "Backgrounds", emoji: "🖼️", desc: "Profile card backdrop" },
-  { key: "frame",      label: "Frames",       emoji: "⭕", desc: "Avatar ring border" },
-  { key: "nametag",    label: "Nametags",     emoji: "🏷️", desc: "Emoji tag next to your name" },
-  { key: "powerups",   label: "Power-ups",    emoji: "⚡", desc: "Consumable boosts for your quiz sessions" },
-] as const;
+import { useLanguage } from "@/lib/language-context";
 
 type TabKey = "background" | "frame" | "nametag" | "powerups";
 
@@ -53,6 +47,7 @@ function PowerupCard({ item, balance, onBuy, isPending }: {
   onBuy: (type: string) => void;
   isPending: boolean;
 }) {
+  const { t } = useLanguage();
   const canAfford = balance >= item.price;
 
   return (
@@ -92,19 +87,19 @@ function PowerupCard({ item, balance, onBuy, isPending }: {
         >
           {!canAfford ? (
             <span className="text-muted-foreground text-xs flex items-center gap-1">
-              Need {(item.price - balance).toLocaleString()} more pts
+              {t.shop.needMorePts.replace("{n}", (item.price - balance).toLocaleString())}
             </span>
           ) : (
             <>
               <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />
-              Buy · {item.price.toLocaleString()} pts
+              {t.shop.buyPts.replace("{n}", item.price.toLocaleString())}
             </>
           )}
         </Button>
       ) : (
         <div className="flex items-center justify-center gap-2 py-2 rounded-xl bg-muted/40 border border-border/30">
           <Inbox className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground font-medium">Collect 3 free per week from your inbox</span>
+          <span className="text-xs text-muted-foreground font-medium">{t.shop.collectFree}</span>
         </div>
       )}
     </motion.div>
@@ -113,12 +108,20 @@ function PowerupCard({ item, balance, onBuy, isPending }: {
 
 export default function ShopPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { data: shop, isLoading: shopLoading } = useGetShop();
   const { data: powerupsData, isLoading: powerupsLoading } = useGetPowerups();
   const purchaseMut = usePurchaseItem();
   const equipMut = useEquipItem();
   const purchasePowerupMut = usePurchasePowerup();
   const [activeTab, setActiveTab] = useState<TabKey>("background");
+
+  const TYPE_TABS = [
+    { key: "background" as const, label: t.shop.backgrounds, emoji: "🖼️", desc: t.shop.backgroundsDesc },
+    { key: "frame" as const,      label: t.shop.frames,       emoji: "⭕", desc: t.shop.framesDesc },
+    { key: "nametag" as const,    label: t.shop.nametags,     emoji: "🏷️", desc: t.shop.nametagsDesc },
+    { key: "powerups" as const,   label: t.shop.powerups,     emoji: "⚡", desc: t.shop.powerupsDesc },
+  ];
 
   const balance = activeTab === "powerups"
     ? (powerupsData?.balance ?? 0)
@@ -153,7 +156,7 @@ export default function ShopPage() {
   };
 
   return (
-    <Layout title="Shop">
+    <Layout title={t.nav.shop}>
       <div className="space-y-6 pb-12">
 
         {/* Balance Header */}
@@ -164,10 +167,10 @@ export default function ShopPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-white/80 text-sm font-medium mb-1">Your Balance</p>
+              <p className="text-white/80 text-sm font-medium mb-1">{t.shop.yourBalance}</p>
               <div className="flex items-baseline gap-2">
                 <p className="text-4xl font-black">{balance.toLocaleString()}</p>
-                <p className="text-lg font-bold text-white/80">pts</p>
+                <p className="text-lg font-bold text-white/80">{t.shop.pts}</p>
               </div>
             </div>
             <div className="text-right">
@@ -176,12 +179,12 @@ export default function ShopPage() {
               </div>
               {activeTab !== "powerups" && (
                 <p className="text-white/70 text-xs">
-                  {(shop?.items ?? []).filter((i: ShopItem) => i.owned).length} / {(shop?.items ?? []).length} owned
+                  {(shop?.items ?? []).filter((i: ShopItem) => i.owned).length} / {(shop?.items ?? []).length} {t.shop.owned}
                 </p>
               )}
               {activeTab === "powerups" && (
                 <p className="text-white/70 text-xs">
-                  {(powerupsData?.inventory ?? []).reduce((s, p) => s + p.quantity, 0)} in stock
+                  {(powerupsData?.inventory ?? []).reduce((s, p) => s + p.quantity, 0)} {t.shop.inStock}
                 </p>
               )}
             </div>
@@ -196,7 +199,7 @@ export default function ShopPage() {
             transition={{ delay: 0.1 }}
             className="bg-card border border-border/50 rounded-2xl p-4"
           >
-            <p className="text-xs font-bold text-muted-foreground mb-3 uppercase tracking-wider">Currently Equipped</p>
+            <p className="text-xs font-bold text-muted-foreground mb-3 uppercase tracking-wider">{t.shop.currentlyEquipped}</p>
             <div className="grid grid-cols-3 gap-3 text-center">
               {(["background", "frame", "nametag"] as const).map(slot => {
                 const key = (shop.equipped as Record<string, string | null>)[slot];
@@ -212,7 +215,7 @@ export default function ShopPage() {
                         <p className="text-[10px] font-medium text-muted-foreground truncate w-full">{item.name}</p>
                       </div>
                     ) : (
-                      <p className="text-[10px] text-muted-foreground/40 italic pt-1">None</p>
+                      <p className="text-[10px] text-muted-foreground/40 italic pt-1">{t.shop.none}</p>
                     )}
                   </div>
                 );
@@ -229,7 +232,7 @@ export default function ShopPage() {
             transition={{ delay: 0.1 }}
             className="bg-card border border-border/50 rounded-2xl p-4"
           >
-            <p className="text-xs font-bold text-muted-foreground mb-3 uppercase tracking-wider">Your Inventory</p>
+            <p className="text-xs font-bold text-muted-foreground mb-3 uppercase tracking-wider">{t.shop.yourInventory}</p>
             <div className="flex flex-wrap gap-2">
               {(powerupsData?.inventory ?? []).filter(p => p.quantity > 0).map(p => (
                 <div key={p.key} className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-full px-3 py-1.5">
@@ -266,7 +269,7 @@ export default function ShopPage() {
           <span className="text-lg">{activeTabMeta.emoji}</span>
           <span>{activeTabMeta.desc}</span>
           {activeTab !== "powerups" && (
-            <span className="ml-auto text-xs font-medium">{items.filter((i: ShopItem) => i.owned).length}/{items.length} owned</span>
+            <span className="ml-auto text-xs font-medium">{items.filter((i: ShopItem) => i.owned).length}/{items.length} {t.shop.owned}</span>
           )}
         </div>
 
@@ -342,12 +345,12 @@ export default function ShopPage() {
                     )}
                     {item.equipped && (
                       <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <Check className="w-3 h-3" /> Equipped
+                        <Check className="w-3 h-3" /> {t.shop.equipped}
                       </div>
                     )}
                     {item.owned && !item.equipped && (
                       <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        Owned
+                        {t.shop.ownedInventory}
                       </div>
                     )}
                   </div>
@@ -357,7 +360,7 @@ export default function ShopPage() {
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-bold text-sm truncate">{item.name}</p>
                       <div className={cn("shrink-0 flex items-center gap-1 font-black text-sm", item.price === 0 ? "text-emerald-500" : "text-amber-500")}>
-                        {item.price === 0 ? "FREE" : (<><Star className="w-3.5 h-3.5 fill-amber-500" />{item.price.toLocaleString()}</>)}
+                        {item.price === 0 ? t.shop.free : (<><Star className="w-3.5 h-3.5 fill-amber-500" />{item.price.toLocaleString()}</>)}
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{item.description}</p>
@@ -372,8 +375,8 @@ export default function ShopPage() {
                       onClick={() => handleEquip(item)}
                       disabled={equipMut.isPending}
                     >
-                      {item.equipped ? "Unequip" : (
-                        <><Zap className="w-3.5 h-3.5 mr-1.5" /> Equip</>
+                      {item.equipped ? t.shop.unequip : (
+                        <><Zap className="w-3.5 h-3.5 mr-1.5" /> {t.shop.equip}</>
                       )}
                     </Button>
                   ) : (
@@ -386,17 +389,17 @@ export default function ShopPage() {
                     >
                       {balance < item.price ? (
                         <span className="text-muted-foreground text-xs">
-                          Need {(item.price - balance).toLocaleString()} more pts
+                          {t.shop.needMorePts.replace("{n}", (item.price - balance).toLocaleString())}
                         </span>
                       ) : item.price === 0 ? (
                         <>
                           <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />
-                          Claim Free
+                          {t.shop.claimFree}
                         </>
                       ) : (
                         <>
                           <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />
-                          Buy · {item.price.toLocaleString()} pts
+                          {t.shop.buyPts.replace("{n}", item.price.toLocaleString())}
                         </>
                       )}
                     </Button>

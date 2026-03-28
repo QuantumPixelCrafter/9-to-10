@@ -8,11 +8,12 @@ import { BookOpen, Target, Clock, Calendar as CalendarIcon, Smile, BrainCircuit,
 import { Button } from "@/components/ui/button";
 import { format, isToday, isFuture } from "date-fns";
 import { motion } from "framer-motion";
+import { useLanguage } from "@/lib/language-context";
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const { t } = useLanguage();
   
-  // Fetch data for dashboard stats
   const { data: notes } = useNotesData();
   const { data: schedules } = useSchedulesData();
   const { data: goals } = useGoalsData();
@@ -27,12 +28,12 @@ export default function Home() {
   };
 
   const featureCards = [
-    { title: "Notes & Subjects", desc: "Organize your study material", icon: BookOpen, href: "/notes", color: "from-blue-500 to-cyan-400", shadow: "shadow-blue-500/25" },
-    { title: "AI Quiz", desc: "Test yourself automatically", icon: BrainCircuit, href: "/notes", color: "from-purple-500 to-pink-500", shadow: "shadow-purple-500/25" },
-    { title: "Timetable", desc: "Manage your weekly classes", icon: Clock, href: "/timetable", color: "from-orange-500 to-amber-400", shadow: "shadow-orange-500/25" },
-    { title: "Goals", desc: "Track your deadlines", icon: Target, href: "/goals", color: "from-green-500 to-emerald-400", shadow: "shadow-green-500/25" },
-    { title: "Calendar", desc: "Monthly view of events", icon: CalendarIcon, href: "/calendar", color: "from-indigo-500 to-blue-500", shadow: "shadow-indigo-500/25" },
-    { title: "Mood Check-in", desc: "Track your daily feelings", icon: Smile, href: "/mood", color: "from-rose-500 to-red-400", shadow: "shadow-rose-500/25" },
+    { title: t.nav.notes, desc: t.home.notesDesc, icon: BookOpen, href: "/notes", color: "from-blue-500 to-cyan-400", shadow: "shadow-blue-500/25" },
+    { title: t.nav.quiz, desc: t.home.quizDesc, icon: BrainCircuit, href: "/notes", color: "from-purple-500 to-pink-500", shadow: "shadow-purple-500/25" },
+    { title: t.nav.timetable, desc: t.home.timetableDesc, icon: Clock, href: "/timetable", color: "from-orange-500 to-amber-400", shadow: "shadow-orange-500/25" },
+    { title: t.nav.goals, desc: t.home.goalsDesc, icon: Target, href: "/goals", color: "from-green-500 to-emerald-400", shadow: "shadow-green-500/25" },
+    { title: t.nav.calendar, desc: t.home.calendarDesc, icon: CalendarIcon, href: "/calendar", color: "from-indigo-500 to-blue-500", shadow: "shadow-indigo-500/25" },
+    { title: t.nav.mood, desc: t.home.moodDesc, icon: Smile, href: "/mood", color: "from-rose-500 to-red-400", shadow: "shadow-rose-500/25" },
   ];
 
   return (
@@ -45,19 +46,19 @@ export default function Home() {
           <div className="relative p-6 md:p-10 flex flex-col md:flex-row items-center gap-8">
             <div className="flex-1 space-y-4 text-center md:text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/80 backdrop-blur border border-border/50 text-sm font-medium text-primary">
-                <Sparkles className="w-4 h-4" /> Welcome back, Student!
+                <Sparkles className="w-4 h-4" /> {t.home.welcomeBack}
               </div>
               <h2 className="text-3xl md:text-5xl font-display font-bold leading-tight">
                 Ready to <span className="text-gradient">Mind Forge</span> today?
               </h2>
               <p className="text-muted-foreground text-lg max-w-xl">
-                You have {todaySchedules.length} classes scheduled for today and {activeGoals.length} active goals to focus on.
+                You have {todaySchedules.length} {t.home.classesScheduled} and {activeGoals.length} {t.home.activeGoalsFocus}.
               </p>
               <Button 
                 onClick={() => setLocation('/timetable')}
                 className="mt-4 rounded-xl px-8 py-6 text-base font-semibold shadow-lg shadow-primary/20 transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/30"
               >
-                View Today's Schedule <ArrowRight className="w-5 h-5 ml-2" />
+                {t.home.viewSchedule} <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </div>
             <div className="w-full max-w-[280px] md:max-w-[350px] aspect-square relative drop-shadow-2xl">
@@ -75,7 +76,7 @@ export default function Home() {
           <div className="bg-card rounded-2xl p-5 border border-border/50 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500"><BookMarked className="w-5 h-5" /></div>
-              <span className="font-semibold text-sm text-muted-foreground">Total Notes</span>
+              <span className="font-semibold text-sm text-muted-foreground">{t.home.totalNotes}</span>
             </div>
             <p className="text-3xl font-display font-bold">{notes?.length || 0}</p>
           </div>
@@ -83,7 +84,7 @@ export default function Home() {
           <div className="bg-card rounded-2xl p-5 border border-border/50 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 rounded-lg bg-orange-500/10 text-orange-500"><Clock className="w-5 h-5" /></div>
-              <span className="font-semibold text-sm text-muted-foreground">Classes Today</span>
+              <span className="font-semibold text-sm text-muted-foreground">{t.home.classesToday}</span>
             </div>
             <p className="text-3xl font-display font-bold">{todaySchedules.length}</p>
           </div>
@@ -91,7 +92,7 @@ export default function Home() {
           <div className="bg-card rounded-2xl p-5 border border-border/50 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 rounded-lg bg-green-500/10 text-green-500"><Target className="w-5 h-5" /></div>
-              <span className="font-semibold text-sm text-muted-foreground">Active Goals</span>
+              <span className="font-semibold text-sm text-muted-foreground">{t.home.activeGoals}</span>
             </div>
             <p className="text-3xl font-display font-bold">{activeGoals.length}</p>
           </div>
@@ -99,7 +100,7 @@ export default function Home() {
           <div className="bg-card rounded-2xl p-5 border border-border/50 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 rounded-lg bg-pink-500/10 text-pink-500"><Smile className="w-5 h-5" /></div>
-              <span className="font-semibold text-sm text-muted-foreground">Today's Mood</span>
+              <span className="font-semibold text-sm text-muted-foreground">{t.home.todayMood}</span>
             </div>
             <p className="text-3xl font-display font-bold">
               {todayMood ? moodEmojis[todayMood.mood] : "—"}
@@ -111,12 +112,12 @@ export default function Home() {
         {/* Features Grid */}
         <section>
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-display font-bold">Explore Features</h3>
+            <h3 className="text-xl font-display font-bold">{t.home.exploreFeatures}</h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {featureCards.map((feat, i) => (
               <motion.div
-                key={feat.title}
+                key={feat.href}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}

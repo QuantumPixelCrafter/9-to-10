@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Trash2, BookOpen } from "lucide-react";
 import { LEVEL_LABELS, DIFFICULTY_LABELS } from "@/lib/quiz-curriculum";
+import { useLanguage } from "@/lib/language-context";
 
 type ReviewItem = {
   id: number;
@@ -27,6 +28,7 @@ function difficultyLabel(d: string) {
 
 export default function ReviewPage() {
   const qc = useQueryClient();
+  const { t } = useLanguage();
   const { data, isLoading } = useQuery({
     queryKey: ["review-items"],
     queryFn: () => customFetch<{ items: ReviewItem[] }>("/api/review"),
@@ -48,15 +50,15 @@ export default function ReviewPage() {
   }, {});
 
   return (
-    <Layout title="Review">
+    <Layout title={t.review.title}>
       <div className="max-w-2xl mx-auto py-4 space-y-4">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 bg-orange-500/10 rounded-2xl flex items-center justify-center">
             <span className="text-xl">📋</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold">Review</h1>
-            <p className="text-sm text-muted-foreground">Revisit your wrong answers from past quizzes</p>
+            <h1 className="text-xl font-bold">{t.review.title}</h1>
+            <p className="text-sm text-muted-foreground">{t.review.subtitle}</p>
           </div>
         </div>
 
@@ -67,9 +69,9 @@ export default function ReviewPage() {
         {!isLoading && items.length === 0 && (
           <div className="text-center py-16 space-y-3">
             <div className="text-5xl">🎉</div>
-            <p className="font-semibold text-lg">Nothing to review!</p>
+            <p className="font-semibold text-lg">{t.review.nothingToReview}</p>
             <p className="text-sm text-muted-foreground">
-              When you miss a quiz question and click "Review Later", it will appear here.
+              {t.review.nothingDesc}
             </p>
           </div>
         )}
@@ -131,7 +133,7 @@ export default function ReviewPage() {
 
                     {item.explanation && (
                       <div className="bg-primary/5 border border-primary/15 rounded-xl px-3 py-2 text-sm text-muted-foreground leading-relaxed">
-                        <span className="font-semibold text-foreground">Explanation: </span>
+                        <span className="font-semibold text-foreground">{t.review.explanation} </span>
                         {item.explanation}
                       </div>
                     )}
@@ -145,7 +147,7 @@ export default function ReviewPage() {
                         onClick={() => deleteMut.mutate(item.id)}
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        Mark as Mastered
+                        {t.review.markMastered}
                       </Button>
                     </div>
                   </motion.div>

@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight, Target, BookOpen, Trash2, CalendarX, Calenda
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import type { Schedule } from "@workspace/api-client-react";
+import { useLanguage } from "@/lib/language-context";
 
 function isScheduleActiveOnDate(schedule: Schedule, dateStr: string): boolean {
   if (schedule.startDate && dateStr < schedule.startDate) return false;
@@ -28,6 +29,7 @@ interface DeleteDialogState {
 export default function CalendarPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { data: schedules = [] } = useSchedulesData();
   const { data: goals = [] } = useGoalsData();
   const deleteMut = useDeleteScheduleAction();
@@ -98,7 +100,7 @@ export default function CalendarPage() {
 
         {/* Days Header */}
         <div className="grid grid-cols-7 gap-2 mb-4">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+          {[t.calendar.sun, t.calendar.mon, t.calendar.tue, t.calendar.wed, t.calendar.thu, t.calendar.fri, t.calendar.sat].map((d) => (
             <div key={d} className="text-center font-bold text-sm text-muted-foreground uppercase tracking-wider">
               {d}
             </div>
@@ -153,7 +155,7 @@ export default function CalendarPage() {
                     </div>
                   ))}
                   {dayGoals.length > 2 && (
-                    <div className="text-[10px] font-bold text-red-500 pl-1">+{dayGoals.length - 2} goals</div>
+                    <div className="text-[10px] font-bold text-red-500 pl-1">+{dayGoals.length - 2} {t.calendar.goals}</div>
                   )}
 
                   {daySchedules.slice(0, 2).map((s) => (
@@ -174,7 +176,7 @@ export default function CalendarPage() {
                     </div>
                   ))}
                   {daySchedules.length > 2 && (
-                    <div className="text-[10px] font-bold pl-1 text-muted-foreground">+{daySchedules.length - 2} more</div>
+                    <div className="text-[10px] font-bold pl-1 text-muted-foreground">+{daySchedules.length - 2} {t.calendar.more}</div>
                   )}
                 </div>
               </motion.div>
@@ -183,7 +185,7 @@ export default function CalendarPage() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Tap any date to view that day's timetable · Hover events to delete
+          {t.calendar.tapToView}
         </p>
       </div>
 
@@ -191,7 +193,7 @@ export default function CalendarPage() {
       <Dialog open={!!deleteDialog} onOpenChange={(open) => { if (!open) setDeleteDialog(null); }}>
         <DialogContent className="sm:max-w-sm rounded-3xl border-0 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="font-display text-lg">Remove Event</DialogTitle>
+            <DialogTitle className="font-display text-lg">{t.calendar.removeEvent}</DialogTitle>
           </DialogHeader>
           {deleteDialog && (
             <div className="space-y-4 py-2">
@@ -205,7 +207,7 @@ export default function CalendarPage() {
                 </p>
               </div>
 
-              <p className="text-sm text-muted-foreground">How would you like to remove this event?</p>
+              <p className="text-sm text-muted-foreground">{t.calendar.howRemove}</p>
 
               <div className="space-y-2">
                 <button
@@ -217,7 +219,7 @@ export default function CalendarPage() {
                     <CalendarX className="w-4 h-4 text-orange-500" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold">Skip this day only</p>
+                    <p className="text-sm font-semibold">{t.calendar.skipDayOnly}</p>
                     <p className="text-xs text-muted-foreground">Remove only the <span className="font-medium">{deleteDialog.dateStr}</span> occurrence. The event still repeats on other weeks.</p>
                   </div>
                 </button>
@@ -231,7 +233,7 @@ export default function CalendarPage() {
                     <CalendarOff className="w-4 h-4 text-destructive" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-destructive">Delete entire series</p>
+                    <p className="text-sm font-semibold text-destructive">{t.calendar.deleteEntireSeries}</p>
                     <p className="text-xs text-muted-foreground">Permanently remove this event from all dates
                       {deleteDialog.schedule.startDate || deleteDialog.schedule.endDate
                         ? ` (${deleteDialog.schedule.startDate ?? "…"} → ${deleteDialog.schedule.endDate ?? "…"})`
@@ -243,7 +245,7 @@ export default function CalendarPage() {
               </div>
 
               <Button variant="ghost" className="w-full rounded-xl" onClick={() => setDeleteDialog(null)}>
-                Cancel
+                {t.common.cancel}
               </Button>
             </div>
           )}

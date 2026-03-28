@@ -8,9 +8,11 @@ import { Plus, Target, CheckCircle2, Circle, Clock, Trash2 } from "lucide-react"
 import { format, differenceInDays, isPast, parseISO } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/lib/language-context";
 
 export default function GoalsPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { data: goals = [] } = useGoalsData();
   const createMut = useCreateGoalAction();
   const updateMut = useUpdateGoalAction();
@@ -56,13 +58,13 @@ export default function GoalsPage() {
   };
 
   const getStatusText = (deadlineStr: string, completed: boolean) => {
-    if (completed) return "Completed";
+    if (completed) return t.goals.completed;
     const date = parseISO(deadlineStr);
-    if (isPast(date)) return "Overdue";
+    if (isPast(date)) return t.goals.overdue;
     const days = differenceInDays(date, new Date());
-    if (days === 0) return "Due Today";
-    if (days === 1) return "Due Tomorrow";
-    return `In ${days} days`;
+    if (days === 0) return t.goals.dueToday;
+    if (days === 1) return t.goals.dueTomorrow;
+    return t.goals.inDays.replace("{n}", String(days));
   };
 
   const sortedGoals = [...goals].sort((a, b) => {
@@ -74,10 +76,10 @@ export default function GoalsPage() {
 
   return (
     <Layout 
-      title="Study Goals"
+      title={t.nav.goals}
       actions={
         <Button onClick={() => setOpen(true)} className="rounded-xl shadow-lg shadow-primary/20">
-          <Plus className="w-4 h-4 mr-2" /> New Goal
+          <Plus className="w-4 h-4 mr-2" /> {t.goals.newGoal}
         </Button>
       }
     >
@@ -92,20 +94,20 @@ export default function GoalsPage() {
                 <Target className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-display font-bold">Your Progress</h2>
-                <p className="text-white/80">Keep crushing those deadlines!</p>
+                <h2 className="text-2xl font-display font-bold">{t.goals.yourProgress}</h2>
+                <p className="text-white/80">{t.goals.keepCrushing}</p>
               </div>
             </div>
             
             <div className="flex gap-8 text-center bg-black/20 backdrop-blur-md rounded-2xl p-4 w-full md:w-auto justify-around md:justify-center">
               <div>
                 <p className="text-3xl font-bold font-display">{goals.filter(g => g.completed).length}</p>
-                <p className="text-xs font-medium text-white/70 uppercase tracking-wider">Done</p>
+                <p className="text-xs font-medium text-white/70 uppercase tracking-wider">{t.goals.doneStat}</p>
               </div>
               <div className="w-px bg-white/20" />
               <div>
                 <p className="text-3xl font-bold font-display">{goals.filter(g => !g.completed).length}</p>
-                <p className="text-xs font-medium text-white/70 uppercase tracking-wider">Pending</p>
+                <p className="text-xs font-medium text-white/70 uppercase tracking-wider">{t.goals.pendingStat}</p>
               </div>
             </div>
           </div>
@@ -172,7 +174,7 @@ export default function GoalsPage() {
           {goals.length === 0 && (
             <div className="text-center py-20 bg-muted/30 rounded-3xl border border-dashed border-border/60">
               <Target className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-              <p className="text-muted-foreground font-medium">No goals set yet. Aim high!</p>
+              <p className="text-muted-foreground font-medium">{t.goals.noGoals}</p>
             </div>
           )}
         </div>
@@ -181,23 +183,23 @@ export default function GoalsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl border-0 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="font-display text-xl">Create New Goal</DialogTitle>
+            <DialogTitle className="font-display text-xl">{t.goals.createNew}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-semibold mb-1 block">Goal Title</label>
-              <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Finish Chapter 4" className="rounded-xl bg-muted/50 border-transparent" />
+              <label className="text-sm font-semibold mb-1 block">{t.goals.goalTitle}</label>
+              <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t.goals.titlePlaceholder} className="rounded-xl bg-muted/50 border-transparent" />
             </div>
             <div>
-              <label className="text-sm font-semibold mb-1 block">Description (Optional)</label>
-              <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Additional details..." className="rounded-xl bg-muted/50 border-transparent" />
+              <label className="text-sm font-semibold mb-1 block">{t.goals.descOptional}</label>
+              <Input value={desc} onChange={e => setDesc(e.target.value)} placeholder={t.goals.descPlaceholder} className="rounded-xl bg-muted/50 border-transparent" />
             </div>
             <div>
-              <label className="text-sm font-semibold mb-1 block">Deadline</label>
+              <label className="text-sm font-semibold mb-1 block">{t.goals.deadline}</label>
               <Input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} className="rounded-xl bg-muted/50 border-transparent" />
             </div>
             <Button onClick={handleSave} disabled={createMut.isPending || !title || !deadline} className="w-full rounded-xl py-6 text-base mt-2 shadow-lg shadow-primary/20">
-              {createMut.isPending ? "Creating..." : "Set Goal"}
+              {createMut.isPending ? t.goals.creating : t.goals.setGoal}
             </Button>
           </div>
         </DialogContent>
