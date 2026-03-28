@@ -46,7 +46,7 @@ const DIFFICULTY_META: Record<Difficulty, {
     textColor: "text-emerald-600 dark:text-emerald-400",
     gradient: "from-emerald-400 to-teal-500",
     time: 60,
-    grades: "K1 – P2",
+    grades: "K1 – P3",
     ops: "+  −  (1–2 digit ± 1 digit)",
     gameType: "math-blitz-easy",
   },
@@ -59,7 +59,7 @@ const DIFFICULTY_META: Record<Difficulty, {
     textColor: "text-sky-600 dark:text-sky-400",
     gradient: "from-sky-400 to-blue-500",
     time: 60,
-    grades: "P3 – P5",
+    grades: "P4 – P6",
     ops: "+  −  ×  ÷  (1–3 digit)",
     gameType: "math-blitz-normal",
   },
@@ -72,7 +72,7 @@ const DIFFICULTY_META: Record<Difficulty, {
     textColor: "text-orange-600 dark:text-orange-400",
     gradient: "from-orange-400 to-red-500",
     time: 40,
-    grades: "P6 – S5",
+    grades: "S1 – S4",
     ops: "+  −  ×  ÷  (3–5 digit)",
     gameType: "math-blitz-hard",
   },
@@ -85,7 +85,7 @@ const DIFFICULTY_META: Record<Difficulty, {
     textColor: "text-red-600 dark:text-red-400",
     gradient: "from-red-500 to-rose-600",
     time: 40,
-    grades: "S6 +",
+    grades: "S5 +",
     ops: "+  −  ×  ÷  (3–6 digit)",
     gameType: "math-blitz-hard",
   },
@@ -94,9 +94,9 @@ const DIFFICULTY_META: Record<Difficulty, {
 // ─── Grade → suggested difficulty ─────────────────────────────────────────────
 function suggestDifficulty(level: string | null | undefined): Difficulty {
   if (!level) return "easy";
-  if (["P1", "P2"].includes(level)) return "easy";
-  if (["P3", "P4", "P5"].includes(level)) return "normal";
-  if (["P6", "S1", "S2", "S3", "S4", "S5"].includes(level)) return "hard";
+  if (["P1", "P2", "P3"].includes(level)) return "easy";
+  if (["P4", "P5", "P6"].includes(level)) return "normal";
+  if (["S1", "S2", "S3", "S4"].includes(level)) return "hard";
   return "extreme";
 }
 
