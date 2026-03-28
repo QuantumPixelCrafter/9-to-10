@@ -32,6 +32,7 @@ import DeveloperPanel from "@/pages/developer-panel";
 import Preferences from "@/pages/preferences";
 import ReviewPage from "@/pages/review";
 import Support from "@/pages/support";
+import Spin from "@/pages/spin";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -95,6 +96,7 @@ function AppRoutes() {
       <Route path="/preferences" component={Preferences} />
       <Route path="/review" component={ReviewPage} />
       <Route path="/support" component={Support} />
+      <Route path="/spin" component={Spin} />
       <Route path="/users/:userId" component={UserProfile} />
       <Route path="/login" component={RedirectToHome} />
       <Route path="/signup" component={RedirectToHome} />

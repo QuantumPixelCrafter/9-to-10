@@ -24,6 +24,7 @@ import gradeChangeRouter from "./grade-change";
 import stripeRouter from "./stripe";
 import storageRouter from "./storage";
 import streaksRouter from "./streaks";
+import spinRouter from "./spin";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use(curriculumQuizRouter);
 router.use(stripeRouter);
 router.use(storageRouter);
 router.use(streaksRouter);
+router.use(spinRouter);
 
 export default router;

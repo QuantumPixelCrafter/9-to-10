@@ -34,7 +34,14 @@ router.get("/shop/items", async (req, res) => {
 
   const [inventory, [userRow], balance] = await Promise.all([
     db.select({ itemKey: userInventoryTable.itemKey }).from(userInventoryTable).where(eq(userInventoryTable.userId, req.user.id)),
-    db.select({ equippedBackground: usersTable.equippedBackground, equippedFrame: usersTable.equippedFrame, equippedNametag: usersTable.equippedNametag }).from(usersTable).where(eq(usersTable.id, req.user.id)),
+    db.select({
+      equippedBackground: usersTable.equippedBackground,
+      equippedFrame: usersTable.equippedFrame,
+      equippedNametag: usersTable.equippedNametag,
+      shopDiscountPct: usersTable.shopDiscountPct,
+      shopDiscountExpiresAt: usersTable.shopDiscountExpiresAt,
+      shopDiscountUsesLeft: usersTable.shopDiscountUsesLeft,
+    }).from(usersTable).where(eq(usersTable.id, req.user.id)),
     getUserBalance(req.user.id),
   ]);
 
@@ -52,6 +59,13 @@ router.get("/shop/items", async (req, res) => {
         (item.type === "nametag"    && userRow?.equippedNametag === item.key),
     }));
 
+  // Resolve active discount
+  const now = new Date();
+  const discountActive =
+    userRow?.shopDiscountPct != null &&
+    userRow.shopDiscountUsesLeft != null && userRow.shopDiscountUsesLeft > 0 &&
+    userRow.shopDiscountExpiresAt != null && userRow.shopDiscountExpiresAt > now;
+
   res.json({
     items,
     balance,
@@ -60,6 +74,11 @@ router.get("/shop/items", async (req, res) => {
       frame: userRow?.equippedFrame ?? null,
       nametag: userRow?.equippedNametag ?? null,
     },
+    discount: discountActive ? {
+      pct: userRow!.shopDiscountPct,
+      usesLeft: userRow!.shopDiscountUsesLeft,
+      expiresAt: userRow!.shopDiscountExpiresAt!.toISOString(),
+    } : null,
   });
 });
 
@@ -94,18 +113,41 @@ router.post("/shop/purchase", async (req, res) => {
     return;
   }
 
+  // Resolve active discount for this user
+  const [userDiscountRow] = await db.select({
+    shopDiscountPct: usersTable.shopDiscountPct,
+    shopDiscountExpiresAt: usersTable.shopDiscountExpiresAt,
+    shopDiscountUsesLeft: usersTable.shopDiscountUsesLeft,
+  }).from(usersTable).where(eq(usersTable.id, req.user.id));
+
+  const now = new Date();
+  const discountValid =
+    userDiscountRow?.shopDiscountPct != null &&
+    userDiscountRow.shopDiscountUsesLeft != null && userDiscountRow.shopDiscountUsesLeft > 0 &&
+    userDiscountRow.shopDiscountExpiresAt != null && userDiscountRow.shopDiscountExpiresAt > now;
+
+  const effectivePrice = discountValid
+    ? Math.round(item.price * (1 - (userDiscountRow!.shopDiscountPct! / 100)))
+    : item.price;
+
   const balance = await getUserBalance(req.user.id);
-  if (balance < item.price) {
+  if (balance < effectivePrice) {
     res.status(400).json({ error: "Insufficient points" });
     return;
   }
 
+  const newUsesLeft = discountValid ? userDiscountRow!.shopDiscountUsesLeft! - 1 : null;
+
   await Promise.all([
     db.insert(userInventoryTable).values({ userId: req.user.id, itemKey }),
-    db.update(usersTable).set({ pointsSpent: req.user.pointsSpent + item.price, updatedAt: new Date() }).where(eq(usersTable.id, req.user.id)),
+    db.update(usersTable).set({
+      pointsSpent: req.user.pointsSpent + effectivePrice,
+      ...(discountValid && { shopDiscountUsesLeft: newUsesLeft }),
+      updatedAt: new Date(),
+    }).where(eq(usersTable.id, req.user.id)),
   ]);
 
-  res.json({ success: true, newBalance: balance - item.price });
+  res.json({ success: true, newBalance: balance - effectivePrice, discountApplied: discountValid ? userDiscountRow!.shopDiscountPct : null });
 });
 
 router.post("/shop/equip", async (req, res) => {

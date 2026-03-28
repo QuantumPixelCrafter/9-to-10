@@ -51,9 +51,18 @@ export const POWERUP_DEFS = [
     price: 700,
     purchasable: true,
   },
+  {
+    key: "spinning_voucher",
+    name: "Spinning Voucher",
+    emoji: "🎡",
+    description: "One spin on the Wheel of Fortune. Rewards range from bonus points to rare items.",
+    longDescription: "Head to the Wheel of Fortune page and spend one voucher to spin. Chances range from small points all the way to 20,000 pts and an exclusive nametag.",
+    price: 1000,
+    purchasable: true,
+  },
 ] as const;
 
-export type PowerupKey = "streak_freeze" | "double_points" | "hint_token" | "retry_pass" | "random_quiz_bonus";
+export type PowerupKey = "streak_freeze" | "double_points" | "hint_token" | "retry_pass" | "random_quiz_bonus" | "spinning_voucher";
 
 // Triangular distribution: min, max, mode
 function triangularRandom(min: number, max: number, mode: number): number {
@@ -356,7 +365,7 @@ router.post("/powerups/use-random-bonus", async (req, res) => {
     res.json({ rewardType: "points", points: pts });
   } else {
     // Equal-probability draw from all other power-ups
-    const grantable = ["streak_freeze", "double_points", "hint_token", "retry_pass"] as const;
+    const grantable = ["streak_freeze", "double_points", "hint_token", "retry_pass", "spinning_voucher"] as const;
     const chosen = grantable[Math.floor(Math.random() * grantable.length)];
     const chosenDef = POWERUP_DEFS.find(d => d.key === chosen)!;
     const existingPowerup = await getOrCreatePowerup(userId, chosen);

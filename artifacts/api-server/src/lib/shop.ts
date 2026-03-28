@@ -9,6 +9,7 @@ export interface ShopItem {
   emoji?: string;
   colors?: string[];
   developerOnly?: boolean;
+  spinOnly?: boolean;
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -69,8 +70,9 @@ export const SHOP_ITEMS: ShopItem[] = [
   { key: "tag_quizking",   name: "Quiz King",    type: "nametag", price: 120,  description: "Dominator of every quiz",       emoji: "👑" },
   { key: "tag_legend",     name: "Legend",       type: "nametag", price: 200,  description: "Reserved for the very best",    emoji: "⚡" },
   { key: "tag_celestial",  name: "Celestial",    type: "nametag", price: 1000, description: "Ultimate — only the truly chosen bear this mark", emoji: "✨" },
-  { key: "tag_backer",     name: "Backer",       type: "nametag", price: 0,    description: "Exclusive to those who've donated to Mind Forge.", emoji: "🙌", developerOnly: false },
-  { key: "tag_developer",  name: "Developer",    type: "nametag", price: 0,    description: "Reserved for the one who built this. That's you.", emoji: "🛠️", developerOnly: true },
+  { key: "tag_backer",     name: "Backer",         type: "nametag", price: 0,    description: "Exclusive to those who've donated to Mind Forge.", emoji: "🙌", developerOnly: false },
+  { key: "tag_luckiest",   name: "Luckiest Person", type: "nametag", price: 0,    description: "Awarded to the rarest of the lucky — only from the Wheel of Fortune.", emoji: "🍀", developerOnly: false, spinOnly: true },
+  { key: "tag_developer",  name: "Developer",      type: "nametag", price: 0,    description: "Reserved for the one who built this. That's you.", emoji: "🛠️", developerOnly: true },
 
 ];
 

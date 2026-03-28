@@ -5,7 +5,7 @@ import {
   Home, BookOpen, Calendar as CalendarIcon, 
   Target, Clock, Smile, Menu, Flag,
   BrainCircuit, Sparkles, ChevronRight, Gamepad2, Trophy, User, LogOut, Medal, ShoppingBag, Users,
-  Inbox, BadgeCheck, Code2, Settings, ClipboardList, Heart, Bell, X, MessageCircle
+  Inbox, BadgeCheck, Code2, Settings, ClipboardList, Heart, Bell, X, MessageCircle, Ticket
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -36,6 +36,7 @@ function buildNavItems(t: Translations["nav"]) {
     { href: "/quiz",         label: t.quiz,         icon: Sparkles,      color: "text-amber-500",   bg: "bg-amber-500/10"   },
     { href: "/review",       label: t.review,       icon: ClipboardList, color: "text-orange-500",  bg: "bg-orange-500/10"  },
     { href: "/shop",         label: t.shop,         icon: ShoppingBag,   color: "text-rose-500",    bg: "bg-rose-500/10"    },
+    { href: "/spin",         label: "Wheel",        icon: Ticket,        color: "text-violet-500",  bg: "bg-violet-500/10"  },
     { href: "/inbox",        label: t.inbox,        icon: Inbox,         color: "text-indigo-500",  bg: "bg-indigo-500/10"  },
     { href: "/friends",      label: t.friends,      icon: Users,         color: "text-teal-500",    bg: "bg-teal-500/10"    },
     { href: "/support",      label: t.supportUs,    icon: Heart,         color: "text-rose-500",    bg: "bg-rose-500/10"    },
