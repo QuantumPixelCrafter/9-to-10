@@ -84,13 +84,12 @@ export default function Support() {
   useEffect(() => {
     if (isSuccess && sessionId && !claiming && claimedPoints === null) {
       setClaiming(true);
-      customFetch("/api/stripe/claim", {
+      customFetch<{ pointsAwarded?: number; alreadyClaimed?: boolean }>("/api/stripe/claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),
       })
-        .then(r => r.json())
-        .then((data: { pointsAwarded?: number; alreadyClaimed?: boolean }) => {
+        .then((data) => {
           setClaimedPoints(data.pointsAwarded ?? 0);
           if ((data.pointsAwarded ?? 0) > 0) {
             queryClient.invalidateQueries({ queryKey: ["shop-items"] });
@@ -104,9 +103,7 @@ export default function Support() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["stripe-products"],
     queryFn: async () => {
-      const res = await customFetch("/api/stripe/products");
-      if (!res.ok) throw new Error("Failed to load products");
-      const json = await res.json() as { data: Product[] };
+      const json = await customFetch<{ data: Product[] }>("/api/stripe/products");
       return json.data.filter(p => p.prices.length > 0);
     },
   });
@@ -117,17 +114,12 @@ export default function Support() {
   const checkoutMutation = useMutation({
     mutationFn: async (priceId: string) => {
       setLoadingPriceId(priceId);
-      const res = await customFetch("/api/stripe/checkout", {
+      const data = await customFetch<{ url: string }>("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ priceId }),
       });
-      if (!res.ok) {
-        const err = await res.json() as { error: string };
-        throw new Error(err.error || "Checkout failed");
-      }
-      const { url } = await res.json() as { url: string };
-      return url;
+      return data.url;
     },
     onSuccess: (url) => {
       window.location.href = url;
