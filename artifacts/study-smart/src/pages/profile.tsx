@@ -214,14 +214,14 @@ export default function ProfilePage() {
     }
   };
 
-  const handleCountrySave = async (countryCode: string) => {
+  const handleCountrySave = async (countryCode: string, gradeIndex: number) => {
     setSavingCountry(true);
     try {
       await customFetch("/api/auth/profile", {
         method: "PUT",
-        body: JSON.stringify({ country: countryCode }),
+        body: JSON.stringify({ country: countryCode, gradeIndex }),
       });
-      toast({ title: "Country saved!" });
+      toast({ title: "Country & grade saved!" });
       setShowCountryDialog(false);
       window.location.reload();
     } catch (err: any) {
@@ -659,10 +659,14 @@ export default function ProfilePage() {
           )}
         </motion.div>
 
-        {/* Country Card */}
+        {/* Country & Grade Card */}
         {(() => {
           const userCountry = (user as any)?.country as string | null | undefined;
+          const userGradeIndex = (user as any)?.gradeIndex as number | null | undefined;
           const countryDef = userCountry ? getCountry(userCountry) : null;
+          const gradeName = countryDef && userGradeIndex != null
+            ? getGradeName(userCountry!, userGradeIndex)
+            : null;
 
           return (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
@@ -672,7 +676,8 @@ export default function ProfilePage() {
                   <Globe2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base">Country</h3>
+                  <h3 className="font-bold text-base">Country &amp; Grade</h3>
+                  <p className="text-xs text-muted-foreground">Used to auto-advance your education level each school year</p>
                 </div>
               </div>
 
@@ -682,6 +687,10 @@ export default function ProfilePage() {
                     <span className="text-2xl">{countryDef.flag}</span>
                     <div>
                       <p className="font-semibold text-sm">{countryDef.name}</p>
+                      {gradeName
+                        ? <p className="text-xs text-muted-foreground mt-0.5">{gradeName}</p>
+                        : <p className="text-xs text-amber-500 mt-0.5">Grade not set</p>
+                      }
                     </div>
                   </div>
                   <Button variant="outline" size="sm" className="rounded-xl text-xs" onClick={() => {
@@ -693,12 +702,12 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <div className="text-center py-4">
-                  <p className="text-sm text-muted-foreground mb-3">No country set.</p>
+                  <p className="text-sm text-muted-foreground mb-3">No country or grade set.</p>
                   <Button variant="outline" className="rounded-xl" onClick={() => {
                     setCountryStep("country"); setCountrySearch(""); setSelectedCountry(null); setSelectedGradeIndex(null);
                     setShowCountryDialog(true);
                   }}>
-                    <Globe className="w-4 h-4 mr-2" /> Set Country
+                    <Globe className="w-4 h-4 mr-2" /> Set Country &amp; Grade
                   </Button>
                 </div>
               )}
@@ -1036,40 +1045,98 @@ export default function ProfilePage() {
           <div className="bg-card rounded-3xl border border-border/60 shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center gap-3 p-5 border-b border-border/40 shrink-0">
+              {countryStep === "grade" && (
+                <button
+                  onClick={() => { setCountryStep("country"); setSelectedCountry(null); setSelectedGradeIndex(null); }}
+                  className="p-1.5 rounded-xl hover:bg-muted/60 transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              )}
               <div className="flex-1">
-                <h3 className="font-bold text-base">Select Your Country</h3>
+                {countryStep === "country"
+                  ? <h3 className="font-bold text-base">Select Your Country</h3>
+                  : <div>
+                      <h3 className="font-bold text-base">Select Your Grade</h3>
+                      {selectedCountry && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{selectedCountry.flag} {selectedCountry.name}</p>
+                      )}
+                    </div>
+                }
               </div>
               <button onClick={() => setShowCountryDialog(false)} className="p-1.5 rounded-xl hover:bg-muted/60 transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-4 shrink-0">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  autoFocus
-                  type="text"
-                  value={countrySearch}
-                  onChange={e => setCountrySearch(e.target.value)}
-                  placeholder="Search countries…"
-                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-            </div>
-            <div className="overflow-y-auto flex-1 px-4 pb-4 space-y-1">
-              {searchCountries(countrySearch).map(c => (
-                <button
-                  key={c.code}
-                  disabled={savingCountry}
-                  onClick={() => handleCountrySave(c.code)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/60 transition-colors text-left disabled:opacity-50"
-                >
-                  <span className="text-xl">{c.flag}</span>
-                  <span className="font-medium text-sm">{c.name}</span>
-                </button>
-              ))}
-            </div>
+            {/* Step 1: Country */}
+            {countryStep === "country" && (
+              <>
+                <div className="p-4 shrink-0">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      autoFocus
+                      type="text"
+                      value={countrySearch}
+                      onChange={e => setCountrySearch(e.target.value)}
+                      placeholder="Search countries…"
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+                <div className="overflow-y-auto flex-1 px-4 pb-4 space-y-1">
+                  {searchCountries(countrySearch).map(c => (
+                    <button
+                      key={c.code}
+                      onClick={() => { setSelectedCountry(c); setSelectedGradeIndex(null); setCountryStep("grade"); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/60 transition-colors text-left"
+                    >
+                      <span className="text-xl">{c.flag}</span>
+                      <span className="font-medium text-sm">{c.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Step 2: Grade */}
+            {countryStep === "grade" && selectedCountry && (() => {
+              const groups = Array.from(new Set(selectedCountry.grades.map(g => g.group)));
+              const GROUP_LABELS: Record<string, string> = {
+                preschool: "Pre-school / Kindergarten",
+                primary: "Primary / Elementary",
+                secondary: "Secondary / High School",
+                university: "University / College",
+              };
+              return (
+                <div className="overflow-y-auto flex-1 px-4 pb-4 space-y-4 pt-3">
+                  {groups.map(group => (
+                    <div key={group}>
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">{GROUP_LABELS[group]}</p>
+                      <div className="space-y-1">
+                        {selectedCountry.grades.map((grade, idx) => {
+                          if (grade.group !== group) return null;
+                          return (
+                            <button
+                              key={grade.code}
+                              disabled={savingCountry}
+                              onClick={() => { setSelectedGradeIndex(idx); handleCountrySave(selectedCountry.code, idx); }}
+                              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-muted/60 transition-colors text-left disabled:opacity-50"
+                            >
+                              <span className="font-medium text-sm">{grade.name}</span>
+                              {savingCountry && selectedGradeIndex === idx && (
+                                <span className="text-xs text-muted-foreground">Saving…</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
