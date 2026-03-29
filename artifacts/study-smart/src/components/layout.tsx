@@ -81,21 +81,13 @@ type NavItemDef = ReturnType<typeof buildNavItems>[0];
 function NavItem({ item, isActive }: { item: NavItemDef; isActive: boolean }) {
   return (
     <div className={`
-      flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 group relative overflow-hidden
+      flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 group
       ${isActive ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}
     `}>
-      {isActive && (
-        <motion.div 
-          layoutId="activeNav" 
-          className="absolute inset-0 bg-primary/10 rounded-xl"
-          initial={false}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        />
-      )}
-      <div className={`relative z-10 flex items-center justify-center w-8 h-8 rounded-lg ${isActive ? item.bg : 'bg-transparent group-hover:bg-background'}`}>
+      <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-200 ${isActive ? item.bg : 'bg-transparent group-hover:bg-background'}`}>
         <item.icon className={`w-4 h-4 ${isActive ? item.color : 'text-current'}`} />
       </div>
-      <span className="relative z-10 text-sm">{item.label}</span>
+      <span className="text-sm">{item.label}</span>
     </div>
   );
 }
