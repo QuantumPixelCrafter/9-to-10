@@ -85,10 +85,10 @@ export const BUBBLE_POP_BOTS: BotScore[] = [
   { ...SOPHIE, score: 72  }, // ★ stand-out  ← top 3 are all in 70–110
   { ...LIAM,   score: 55  },
   { ...EMMA,   score: 42  },
-  { ...PRIYA,  score: 34  },
-  { ...ALEX,   score: 25  },
-  { ...NOAH,   score: 18  },
-  { ...MIA,    score: 12  },
+  { ...PRIYA,  score: 40  },
+  { ...ALEX,   score: 38  },
+  { ...NOAH,   score: 36  },
+  { ...MIA,    score: 35  },
 ];
 
 // ─── Memory Match bots ────────────────────────────────────────────────────────
