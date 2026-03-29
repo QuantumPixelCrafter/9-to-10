@@ -59,7 +59,7 @@ const DIFFICULTY_META: Record<Difficulty, {
     gradient: "from-sky-400 to-blue-500",
     time: 60,
     grades: "P4 – P6",
-    ops: "+  −  ×  ÷  (1–3 ± 2–3 digit)",
+    ops: "+  −  ×  ÷  (1–3 digit)",
     gameType: "math-blitz-normal",
   },
   hard: {
@@ -134,8 +134,8 @@ function generateQuestion(diff: Difficulty): Question {
     }
     const op: Op = Math.random() < 0.5 ? "+" : "−";
     let a = randNDigits(1, 3);
-    const b = randNDigits(2, 3);
-    if (op === "−" && a < b) a = b + randNDigits(2, 3);
+    const b = randNDigits(1, 2);
+    if (op === "−" && a < b) a = b + randNDigits(1, 2);
     return { a, b, op, answer: op === "+" ? a + b : a - b };
   }
 
