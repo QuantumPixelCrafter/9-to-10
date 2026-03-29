@@ -389,11 +389,7 @@ export default function MathBlitzPage() {
                           <div>
                             <div className="flex items-center gap-2">
                               <span className={cn("font-bold text-base", m.color)}>{m.label}</span>
-                              {isSuggested && (
-                                <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">
-                                  Recommended
-                                </span>
-                              )}
+
                               {(diff === "hard" || diff === "extreme") && (
                                 <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
                                   shared board
