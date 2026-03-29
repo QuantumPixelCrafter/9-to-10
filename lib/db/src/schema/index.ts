@@ -17,3 +17,4 @@ export * from "./grade-change-requests";
 export * from "./stripe-sessions";
 export * from "./user-streaks";
 export * from "./user-blocks";
+export * from "./chat-attachments";

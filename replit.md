@@ -149,12 +149,17 @@ artifacts-monorepo/
 - `POST /developer/gift-all`
 - `POST /developer/request-promote`
 
-### Object Storage (Media Uploads)
-- `POST /storage/uploads/request-url` — generates a GCS presigned PUT URL for client-direct upload; returns `{ uploadURL, objectPath, contentType }`
-- `GET /storage/objects/*` — serves uploaded files (requires auth); streams from GCS
+### Chat Attachments (Media Uploads — DB-backed)
+- `POST /attachments` — accepts `multipart/form-data` with a `file` field (max 8 MB); stores as base64 in `chat_attachments` DB table; returns `{ id, mediaUrl }` where `mediaUrl = /api/attachments/:id?t=<mediaType>`
+- `GET /attachments/:id` — serves the attachment (requires auth); reads from `chat_attachments` DB table; streams raw bytes with correct `Content-Type`
 
-**Upload flow**: client POSTs to get presigned URL → PUTs file directly to GCS → stores `objectPath` in DB → renders via `/api/storage/objects/<path>`
-**Media type detection**: objectPath stored with `?t=image` or `?t=video` suffix for display routing; query param is ignored by the serve endpoint.
+**Upload flow**: client POSTs FormData to `/api/attachments` → DB stores base64 → `mediaUrl` returned → stored in `chat_messages.media_url` → rendered via `AuthMedia` component which fetches with auth headers
+**Media type detection**: `mediaUrl` contains `?t=image` or `?t=video` suffix for display routing
+**Note**: GCS/Replit object storage sidecar is broken (returns 401 "no allowed resources" — platform issue); the DB-backed approach above is the replacement
+
+### Object Storage (Legacy — Broken)
+- `POST /storage/uploads/request-url` — GCS presigned URL (broken: sidecar auth fails)
+- `GET /storage/objects/*` — GCS file serve (broken: sidecar auth fails)
 
 ## Key Implementation Notes
 

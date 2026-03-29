@@ -529,7 +529,7 @@ export default function FriendsPage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingMedia, setPendingMedia] = useState<{
-    objectPath: string;
+    mediaUrl: string;
     preview: string | null;
     name: string;
     mediaType: "image" | "video" | "file";
@@ -745,7 +745,7 @@ export default function FriendsPage() {
       toast({ title: "Not enough points", description: `Sending a message costs ${cost} pts. You have ${balance} pts.`, variant: "destructive" });
       return;
     }
-    const mediaUrl = pendingMedia ? `/api/storage${pendingMedia.objectPath}` : undefined;
+    const mediaUrl = pendingMedia ? pendingMedia.mediaUrl : undefined;
     sendMsgMut.mutate({ userId: selectedFriendId, content: messageText, mediaUrl }, {
       onSuccess: () => { setMessageText(""); setPendingMedia(null); },
       onError: (err: Error) => toast({ title: "Message not sent", description: err.message, variant: "destructive" }),
@@ -755,17 +755,23 @@ export default function FriendsPage() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const MAX_SIZE = 8 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      toast({ title: "File too large", description: "Maximum file size is 8 MB.", variant: "destructive" });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     setIsUploading(true);
     try {
-      const { uploadURL, objectPath } = await customFetch<{ uploadURL: string; objectPath: string; contentType: string }>(
-        "/api/storage/uploads/request-url",
-        { method: "POST", body: JSON.stringify({ contentType: file.type || "application/octet-stream" }) }
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await customFetch<{ id: string; mediaUrl: string }>(
+        "/api/attachments",
+        { method: "POST", body: formData }
       );
-      await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } });
       const mediaType: "image" | "video" | "file" = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "file";
       const preview = mediaType !== "file" ? URL.createObjectURL(file) : null;
-      const typedPath = mediaType !== "file" ? `${objectPath}?t=${mediaType}` : objectPath;
-      setPendingMedia({ objectPath: typedPath, preview, name: file.name, mediaType });
+      setPendingMedia({ mediaUrl: result.mediaUrl, preview, name: file.name, mediaType });
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     } finally {
