@@ -660,12 +660,10 @@ export default function ProfilePage() {
           )}
         </motion.div>
 
-        {/* Country & Grade Card */}
+        {/* Country Card */}
         {(() => {
           const userCountry = (user as any)?.country as string | null | undefined;
-          const userGradeIndex = (user as any)?.gradeIndex as number | null | undefined;
           const countryDef = userCountry ? getCountry(userCountry) : null;
-          const gradeName = userCountry && userGradeIndex != null ? getGradeName(userCountry, userGradeIndex) : null;
 
           return (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
@@ -675,41 +673,30 @@ export default function ProfilePage() {
                   <Globe2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base">Country & Grade</h3>
-                  <p className="text-xs text-muted-foreground">Your grade automatically advances each school year</p>
+                  <h3 className="font-bold text-base">Country</h3>
                 </div>
               </div>
 
-              {countryDef && gradeName ? (
-                <div className="flex items-center justify-between p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/15">
+              {countryDef ? (
+                <div className="flex items-center p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/15">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{countryDef.flag}</span>
                     <div>
                       <p className="font-semibold text-sm">{countryDef.name}</p>
-                      <p className="text-xs text-muted-foreground">{gradeName}</p>
                     </div>
                   </div>
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-xl">
-                    <Lock className="w-3 h-3 shrink-0" />
-                    Auto-updates
-                  </span>
                 </div>
               ) : (
                 <div className="text-center py-4">
-                  <p className="text-sm text-muted-foreground mb-3">No country or grade set. Add one to unlock grade-based features.</p>
+                  <p className="text-sm text-muted-foreground mb-3">No country set.</p>
                   <Button variant="outline" className="rounded-xl" onClick={() => {
                     setCountryStep("country"); setCountrySearch(""); setSelectedCountry(null); setSelectedGradeIndex(null);
                     setShowCountryDialog(true);
                   }}>
-                    <Globe className="w-4 h-4 mr-2" /> Set Country & Grade
+                    <Globe className="w-4 h-4 mr-2" /> Set Country
                   </Button>
                 </div>
               )}
-
-              <p className="text-xs text-muted-foreground mt-3 flex items-start gap-1.5">
-                <Lock className="w-3 h-3 mt-0.5 shrink-0 text-muted-foreground/70" />
-                Your grade updates automatically at the start of each new school year in your region. Manual changes are not available.
-              </p>
             </motion.div>
           );
         })()}
