@@ -179,17 +179,16 @@ export function Layout({ children, title, actions }: LayoutProps) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Preserve tablet sidebar scroll position across navigation
+  // Preserve tablet sidebar scroll position across navigation.
+  // We save in the cleanup (runs after DOM mutations, before browser scroll-anchor adjustments)
+  // and restore immediately in the effect body (synchronous, before paint).
   useLayoutEffect(() => {
     const el = sidebarNavRef.current;
     if (!el) return;
-    // Restore immediately (before paint)
     el.scrollTop = sidebarScrollPos.current;
-    // Also restore after framer-motion layout animations settle
-    const raf = requestAnimationFrame(() => {
-      el.scrollTop = sidebarScrollPos.current;
-    });
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      sidebarScrollPos.current = sidebarNavRef.current?.scrollTop ?? sidebarScrollPos.current;
+    };
   }, [location]);
 
   // ── Shared drawer content (rendered inline to avoid inner-component remounting) ─
@@ -339,7 +338,7 @@ export function Layout({ children, title, actions }: LayoutProps) {
             <span className="font-display font-bold text-xl tracking-tight">Mind Forge</span>
           </div>
 
-          <div ref={sidebarNavRef} className="px-4 py-2 flex-1 overflow-y-auto" onScroll={(e) => { sidebarScrollPos.current = (e.currentTarget as HTMLDivElement).scrollTop; }}>
+          <div ref={sidebarNavRef} className="px-4 py-2 flex-1 overflow-y-auto" style={{ overflowAnchor: "none" }}>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 px-2">Menu</p>
             <nav className="space-y-1.5">
               {NAV_ITEMS.map((item) => {
