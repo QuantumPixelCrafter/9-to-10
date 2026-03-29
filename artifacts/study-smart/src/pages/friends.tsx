@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@workspace/replit-auth-web";
 import {
   useGetFriends, useSearchUsers, useSendFriendRequest, useAcceptFriendRequest,
   useDeclineFriendRequest, useRemoveFriend, useGetChat, useSendMessage, useGetChatBalance,
-  useGetPowerups, useUnreadChatMessages, customFetch,
+  useGetPowerups, useUnreadChatMessages, useDeleteMessageForMe, useDeleteMessageForEveryone,
+  useEditMessage, customFetch,
   type FriendEntry, type FriendUser,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
@@ -15,10 +16,78 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, UserPlus, MessageCircle, Check, X, Trash2,
   ArrowLeft, Send, User, Zap, ChevronRight, Users, Gift, X as XIcon, AlertTriangle, Coins, Settings,
-  Paperclip, FileText, Loader2, MoreVertical, Lock, LockOpen,
+  Paperclip, FileText, Loader2, MoreVertical, Lock, LockOpen, Pencil, Copy, Ban,
 } from "lucide-react";
 import { getItemDef } from "@/lib/shop-data";
 import { useLanguage } from "@/lib/language-context";
+
+// ── Media Lightbox ────────────────────────────────────────────────────────────
+function MediaLightbox({ src, mediaType, onClose }: { src: string; mediaType: "image" | "video"; onClose: () => void }) {
+  const [scale, setScale] = useState(1);
+  const lastTouchDist = useRef<number | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    setScale(prev => Math.min(5, Math.max(1, prev - e.deltaY * 0.005)));
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      if (lastTouchDist.current !== null) {
+        setScale(prev => Math.min(5, Math.max(1, prev * (dist / lastTouchDist.current!))));
+      }
+      lastTouchDist.current = dist;
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center" onClick={onClose}>
+      <button
+        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center z-[201] transition-colors"
+        onClick={onClose}
+      >
+        <X className="w-5 h-5" />
+      </button>
+      <p className="absolute bottom-4 text-white/40 text-xs">Scroll to zoom • Tap outside to close</p>
+      {mediaType === "video" ? (
+        <video
+          src={src}
+          controls
+          autoPlay
+          className="max-w-[92vw] max-h-[88vh] rounded-xl shadow-2xl"
+          onClick={e => e.stopPropagation()}
+        />
+      ) : (
+        <div
+          className="overflow-hidden flex items-center justify-center select-none"
+          onWheel={handleWheel}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={() => { lastTouchDist.current = null; }}
+          onClick={e => e.stopPropagation()}
+          style={{ cursor: scale > 1 ? "grab" : "zoom-in" }}
+        >
+          <img
+            src={src}
+            alt="media"
+            style={{ transform: `scale(${scale})`, transition: scale === 1 ? "transform 0.2s ease" : "none" }}
+            className="max-w-[92vw] max-h-[88vh] object-contain rounded-xl shadow-2xl"
+            draggable={false}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 const GIFTABLE_POWERUPS = [
   { key: "streak_freeze", name: "Streak Freeze", emoji: "🧊", price: 2000, cooldownDays: 4 },
@@ -393,6 +462,18 @@ export default function FriendsPage() {
   } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Lightbox state
+  const [lightbox, setLightbox] = useState<{ src: string; mediaType: "image" | "video" } | null>(null);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ msgId: number; x: number; y: number; isMe: boolean; hasText: boolean; deletedForEveryone: boolean } | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Edit state
+  const [editingMsgId, setEditingMsgId] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
+
   // Lock chat state
   const [chatLocks, setChatLocks] = useState<Record<string, string>>(loadChatLocks);
   const [lockModal, setLockModal] = useState<LockModal | null>(null);
@@ -496,6 +577,50 @@ export default function FriendsPage() {
   const declineMut = useDeclineFriendRequest();
   const removeMut = useRemoveFriend();
   const sendMsgMut = useSendMessage();
+  const deleteForMeMut = useDeleteMessageForMe();
+  const deleteForEveryoneMut = useDeleteMessageForEveryone();
+  const editMsgMut = useEditMessage();
+
+  const handleDeleteForMe = (msgId: number) => {
+    if (!selectedFriendId) return;
+    deleteForMeMut.mutate({ msgId, chatUserId: selectedFriendId }, {
+      onError: (err: Error) => toast({ title: "Couldn't delete", description: err.message, variant: "destructive" }),
+    });
+    setContextMenu(null);
+  };
+
+  const handleDeleteForEveryone = (msgId: number) => {
+    if (!selectedFriendId) return;
+    deleteForEveryoneMut.mutate({ msgId, chatUserId: selectedFriendId }, {
+      onError: (err: Error) => toast({ title: "Couldn't delete", description: err.message, variant: "destructive" }),
+    });
+    setContextMenu(null);
+  };
+
+  const handleStartEdit = (msgId: number, currentContent: string) => {
+    setEditingMsgId(msgId);
+    setEditingContent(currentContent);
+    setContextMenu(null);
+    setTimeout(() => editInputRef.current?.focus(), 50);
+  };
+
+  const handleEditSubmit = () => {
+    if (!editingMsgId || !selectedFriendId || !editingContent.trim()) return;
+    editMsgMut.mutate({ msgId: editingMsgId, content: editingContent, chatUserId: selectedFriendId }, {
+      onSuccess: () => { setEditingMsgId(null); setEditingContent(""); },
+      onError: (err: Error) => toast({ title: "Couldn't edit", description: err.message, variant: "destructive" }),
+    });
+  };
+
+  const openContextMenu = (e: { clientX: number; clientY: number }, msgId: number, isMe: boolean, hasText: boolean, deletedForEveryone: boolean) => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const menuW = 180;
+    const menuH = 160;
+    const x = Math.min(e.clientX, vw - menuW - 8);
+    const y = Math.min(e.clientY, vh - menuH - 8);
+    setContextMenu({ msgId, x, y, isMe, hasText, deletedForEveryone });
+  };
 
   const giftMut = useMutation({
     mutationFn: ({ recipientId, type }: { recipientId: string; type: string }) =>
@@ -718,7 +843,7 @@ export default function FriendsPage() {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3" onClick={() => setContextMenu(null)}>
                 {messages.length === 0 && (
                   <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                     {t.friends.startChat}
@@ -729,34 +854,92 @@ export default function FriendsPage() {
                   const hasMedia = !!msg.mediaUrl;
                   const isImage = hasMedia && (msg.mediaUrl!.includes("?t=image") || /\.(jpe?g|png|gif|webp|avif|svg)(\?|$)/i.test(msg.mediaUrl!));
                   const isVideo = hasMedia && (msg.mediaUrl!.includes("?t=video") || /\.(mp4|webm|ogg|mov)(\?|$)/i.test(msg.mediaUrl!));
+                  const isEditing = editingMsgId === msg.id;
+                  const isDeleted = msg.deletedForEveryone;
+
+                  const triggerContextMenu = (e: React.MouseEvent | React.TouchEvent) => {
+                    if (isDeleted) return;
+                    const pt = "touches" in e ? { clientX: (e as React.TouchEvent).touches[0]?.clientX ?? 0, clientY: (e as React.TouchEvent).touches[0]?.clientY ?? 0 } : e as React.MouseEvent;
+                    openContextMenu(pt, msg.id, isMe, !!msg.content, isDeleted);
+                  };
+
                   return (
                     <div key={msg.id} className={cn("flex", isMe ? "justify-end" : "justify-start")}>
-                      <div className={cn(
-                        "max-w-[75%] rounded-2xl text-sm leading-relaxed overflow-hidden",
-                        hasMedia && !msg.content ? "p-0" : "px-4 py-2.5",
-                        isMe ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted text-foreground rounded-bl-md"
-                      )}>
-                        {hasMedia && (
-                          <div className={msg.content ? "mb-2" : ""}>
-                            {isVideo ? (
-                              <video src={msg.mediaUrl!} controls className="max-w-[260px] max-h-[200px] rounded-xl" />
-                            ) : isImage ? (
-                              <a href={msg.mediaUrl!} target="_blank" rel="noopener noreferrer">
-                                <img src={msg.mediaUrl!} alt="media" className="max-w-[260px] max-h-[200px] rounded-xl object-cover" />
-                              </a>
-                            ) : (
-                              <a href={msg.mediaUrl!} target="_blank" rel="noopener noreferrer"
-                                className={cn("flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-medium underline", isMe ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                                <FileText className="w-4 h-4 shrink-0" />
-                                Attachment
-                              </a>
-                            )}
-                          </div>
+                      <div
+                        className={cn(
+                          "max-w-[75%] rounded-2xl text-sm leading-relaxed overflow-hidden select-none",
+                          isDeleted ? "px-4 py-2.5 opacity-60" : hasMedia && !msg.content ? "p-0" : "px-4 py-2.5",
+                          isMe
+                            ? isDeleted ? "bg-primary/40 text-primary-foreground/70 rounded-br-md" : "bg-primary text-primary-foreground rounded-br-md"
+                            : isDeleted ? "bg-muted/60 text-muted-foreground rounded-bl-md" : "bg-muted text-foreground rounded-bl-md"
                         )}
-                        {msg.content && <p className={hasMedia ? "px-4 pb-2.5" : ""}>{msg.content}</p>}
-                        <p className={cn("text-[10px] mt-1 opacity-60", isMe ? "text-right" : "text-left", hasMedia && !msg.content ? "px-4 pb-2" : "")}>
-                          {new Date(msg.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                        </p>
+                        onContextMenu={e => { e.preventDefault(); triggerContextMenu(e); }}
+                        onTouchStart={e => {
+                          longPressTimer.current = setTimeout(() => triggerContextMenu(e), 500);
+                        }}
+                        onTouchEnd={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } }}
+                        onTouchMove={() => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } }}
+                      >
+                        {isDeleted ? (
+                          <p className="italic flex items-center gap-1.5">
+                            <Ban className="w-3.5 h-3.5 shrink-0" /> This message was deleted
+                          </p>
+                        ) : isEditing ? (
+                          <div className="flex gap-1.5 items-center" onClick={e => e.stopPropagation()}>
+                            <input
+                              ref={editInputRef}
+                              value={editingContent}
+                              onChange={e => setEditingContent(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === "Enter") handleEditSubmit();
+                                if (e.key === "Escape") { setEditingMsgId(null); setEditingContent(""); }
+                              }}
+                              className="flex-1 bg-transparent border-b border-current/40 outline-none text-sm min-w-0"
+                              maxLength={2000}
+                            />
+                            <button onClick={handleEditSubmit} disabled={editMsgMut.isPending} className="shrink-0 opacity-80 hover:opacity-100">
+                              {editMsgMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            </button>
+                            <button onClick={() => { setEditingMsgId(null); setEditingContent(""); }} className="shrink-0 opacity-60 hover:opacity-100">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            {hasMedia && (
+                              <div className={msg.content ? "mb-2" : ""}>
+                                {isVideo ? (
+                                  <button
+                                    className="block"
+                                    onClick={e => { e.stopPropagation(); setLightbox({ src: msg.mediaUrl!, mediaType: "video" }); }}
+                                  >
+                                    <video src={msg.mediaUrl!} className="max-w-[260px] max-h-[200px] rounded-xl pointer-events-none" />
+                                  </button>
+                                ) : isImage ? (
+                                  <button
+                                    className="block"
+                                    onClick={e => { e.stopPropagation(); setLightbox({ src: msg.mediaUrl!, mediaType: "image" }); }}
+                                  >
+                                    <img src={msg.mediaUrl!} alt="media" className="max-w-[260px] max-h-[200px] rounded-xl object-cover" />
+                                  </button>
+                                ) : (
+                                  <a href={msg.mediaUrl!} target="_blank" rel="noopener noreferrer"
+                                    className={cn("flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-medium underline", isMe ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                                    <FileText className="w-4 h-4 shrink-0" />
+                                    Attachment
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                            {msg.content && <p className={hasMedia ? "px-4 pb-2.5" : ""}>{msg.content}</p>}
+                          </>
+                        )}
+                        {!isDeleted && !isEditing && (
+                          <p className={cn("text-[10px] mt-1 opacity-60 flex items-center gap-1", isMe ? "justify-end" : "justify-start", hasMedia && !msg.content ? "px-4 pb-2" : "")}>
+                            {msg.editedAt && <span className="italic">edited</span>}
+                            {new Date(msg.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        )}
                       </div>
                     </div>
                   );
@@ -844,6 +1027,64 @@ export default function FriendsPage() {
           )}
         </div>
       </div>
+
+      {/* Media lightbox */}
+      {lightbox && (
+        <MediaLightbox src={lightbox.src} mediaType={lightbox.mediaType} onClose={() => setLightbox(null)} />
+      )}
+
+      {/* Context menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-[150] bg-card border border-border shadow-xl rounded-2xl py-1 min-w-[160px] overflow-hidden"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={e => e.stopPropagation()}
+        >
+          {contextMenu.hasText && (
+            <button
+              className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted flex items-center gap-3 transition-colors"
+              onClick={() => {
+                const msg = messages.find(m => m.id === contextMenu.msgId);
+                if (msg?.content) navigator.clipboard.writeText(msg.content).catch(() => {});
+                setContextMenu(null);
+              }}
+            >
+              <Copy className="w-4 h-4 text-muted-foreground" /> Copy text
+            </button>
+          )}
+          {contextMenu.isMe && contextMenu.hasText && !contextMenu.deletedForEveryone && (
+            <button
+              className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted flex items-center gap-3 transition-colors"
+              onClick={() => {
+                const msg = messages.find(m => m.id === contextMenu.msgId);
+                if (msg) handleStartEdit(msg.id, msg.content);
+              }}
+            >
+              <Pencil className="w-4 h-4 text-muted-foreground" /> Edit
+            </button>
+          )}
+          {!contextMenu.deletedForEveryone && (
+            <button
+              className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted flex items-center gap-3 transition-colors text-destructive"
+              onClick={() => handleDeleteForMe(contextMenu.msgId)}
+            >
+              <Trash2 className="w-4 h-4" /> Delete for me
+            </button>
+          )}
+          {contextMenu.isMe && !contextMenu.deletedForEveryone && (
+            <button
+              className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted flex items-center gap-3 transition-colors text-destructive font-semibold"
+              onClick={() => handleDeleteForEveryone(contextMenu.msgId)}
+            >
+              <Ban className="w-4 h-4" /> Delete for everyone
+            </button>
+          )}
+        </div>
+      )}
+      {/* Click-away to close context menu */}
+      {contextMenu && (
+        <div className="fixed inset-0 z-[140]" onClick={() => setContextMenu(null)} />
+      )}
 
       {/* Gift modal */}
       {giftFriend && (

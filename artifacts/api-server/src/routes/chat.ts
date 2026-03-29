@@ -75,9 +75,17 @@ router.get("/chat/:userId", async (req, res) => {
     .select()
     .from(chatMessagesTable)
     .where(
-      or(
-        and(eq(chatMessagesTable.senderId, req.user.id), eq(chatMessagesTable.receiverId, otherId)),
-        and(eq(chatMessagesTable.senderId, otherId), eq(chatMessagesTable.receiverId, req.user.id))
+      and(
+        or(
+          and(eq(chatMessagesTable.senderId, req.user.id), eq(chatMessagesTable.receiverId, otherId)),
+          and(eq(chatMessagesTable.senderId, otherId), eq(chatMessagesTable.receiverId, req.user.id))
+        ),
+        // Hide messages the current user soft-deleted for themselves only
+        // (deletedForEveryone messages still appear — as a "deleted" placeholder)
+        or(
+          and(eq(chatMessagesTable.senderId, req.user.id), eq(chatMessagesTable.deletedForSender, false)),
+          and(eq(chatMessagesTable.receiverId, req.user.id), eq(chatMessagesTable.deletedForReceiver, false)),
+        )
       )
     )
     .orderBy(chatMessagesTable.createdAt)
@@ -228,6 +236,67 @@ router.get("/chat/unread/messages", async (req, res) => {
     .orderBy(chatMessagesTable.createdAt);
 
   res.json({ messages: unread, count: unread.length });
+});
+
+// DELETE /chat/message/:id — delete for me only
+router.delete("/chat/message/:id", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const msgId = Number(req.params.id);
+  if (isNaN(msgId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [msg] = await db.select().from(chatMessagesTable).where(eq(chatMessagesTable.id, msgId)).limit(1);
+  if (!msg) { res.status(404).json({ error: "Message not found" }); return; }
+
+  const isSender = msg.senderId === req.user.id;
+  const isReceiver = msg.receiverId === req.user.id;
+  if (!isSender && !isReceiver) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  if (isSender) {
+    await db.update(chatMessagesTable).set({ deletedForSender: true }).where(eq(chatMessagesTable.id, msgId));
+  } else {
+    await db.update(chatMessagesTable).set({ deletedForReceiver: true }).where(eq(chatMessagesTable.id, msgId));
+  }
+
+  res.json({ success: true });
+});
+
+// DELETE /chat/message/:id/everyone — delete for everyone (sender only)
+router.delete("/chat/message/:id/everyone", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const msgId = Number(req.params.id);
+  if (isNaN(msgId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [msg] = await db.select().from(chatMessagesTable).where(eq(chatMessagesTable.id, msgId)).limit(1);
+  if (!msg) { res.status(404).json({ error: "Message not found" }); return; }
+  if (msg.senderId !== req.user.id) { res.status(403).json({ error: "Only the sender can delete for everyone" }); return; }
+
+  await db.update(chatMessagesTable).set({ deletedForEveryone: true }).where(eq(chatMessagesTable.id, msgId));
+  res.json({ success: true });
+});
+
+// PATCH /chat/message/:id — edit message text (sender only)
+router.patch("/chat/message/:id", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const msgId = Number(req.params.id);
+  if (isNaN(msgId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const { content } = req.body;
+  if (typeof content !== "string" || !content.trim()) {
+    res.status(400).json({ error: "content is required" }); return;
+  }
+
+  const [msg] = await db.select().from(chatMessagesTable).where(eq(chatMessagesTable.id, msgId)).limit(1);
+  if (!msg) { res.status(404).json({ error: "Message not found" }); return; }
+  if (msg.senderId !== req.user.id) { res.status(403).json({ error: "Only the sender can edit" }); return; }
+  if (msg.deletedForEveryone) { res.status(400).json({ error: "Cannot edit a deleted message" }); return; }
+
+  const [updated] = await db
+    .update(chatMessagesTable)
+    .set({ content: content.trim(), editedAt: new Date() })
+    .where(eq(chatMessagesTable.id, msgId))
+    .returning();
+
+  res.json(updated);
 });
 
 export default router;

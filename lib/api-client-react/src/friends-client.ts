@@ -33,6 +33,10 @@ export interface ChatMessage {
   mediaUrl?: string | null;
   createdAt: string;
   readAt: string | null;
+  deletedForSender: boolean;
+  deletedForReceiver: boolean;
+  deletedForEveryone: boolean;
+  editedAt: string | null;
 }
 
 export interface LevelProgress {
@@ -187,6 +191,42 @@ export function useGetChatBalance(enabled: boolean) {
     queryFn: () => customFetch<{ balance: number; threshold: number | null; messageCost: number }>("/api/chat/balance"),
     enabled,
     refetchInterval: 5000,
+  });
+}
+
+export function useDeleteMessageForMe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ msgId, chatUserId }: { msgId: number; chatUserId: string }) =>
+      customFetch<{ success: boolean }>(`/api/chat/message/${msgId}`, { method: "DELETE" }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: getChatQueryKey(vars.chatUserId) });
+    },
+  });
+}
+
+export function useDeleteMessageForEveryone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ msgId, chatUserId }: { msgId: number; chatUserId: string }) =>
+      customFetch<{ success: boolean }>(`/api/chat/message/${msgId}/everyone`, { method: "DELETE" }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: getChatQueryKey(vars.chatUserId) });
+    },
+  });
+}
+
+export function useEditMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ msgId, content, chatUserId }: { msgId: number; content: string; chatUserId: string }) =>
+      customFetch<{ id: number; content: string; editedAt: string }>(`/api/chat/message/${msgId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ content }),
+      }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: getChatQueryKey(vars.chatUserId) });
+    },
   });
 }
 

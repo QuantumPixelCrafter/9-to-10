@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Mind Forge** - a full-stack student productivity web application with AI-powered quiz generation, notes management, study timetable, goals tracking, mood check-in, calendar, minigames, XP/level progression, friends & chat system, public user profiles, achievements, cosmetics shop, gamification (bonus points, power-ups, streaks), inbox, review system, and country/grade onboarding with grade-change request workflows.
+**Mind Forge** - a full-stack student productivity web application with AI-powered quiz generation, notes management, study timetable, goals tracking, mood check-in, calendar, minigames, XP/level progression, friends & chat system (with message delete/edit/lightbox), public user profiles, achievements, cosmetics shop, gamification (bonus points, power-ups, streaks), inbox, review system, and country/grade onboarding with grade-change request workflows.
 
 ## Stack
 
