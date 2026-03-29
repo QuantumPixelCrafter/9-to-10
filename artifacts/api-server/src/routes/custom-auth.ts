@@ -50,6 +50,7 @@ function buildSessionUser(user: typeof usersTable.$inferSelect) {
     gradeIndex: user.gradeIndex ?? null,
     gradeSchoolYear: user.gradeSchoolYear ?? null,
     preferredLanguage: user.preferredLanguage ?? null,
+    goalReminderDays: user.goalReminderDays ?? null,
   };
 }
 
@@ -201,7 +202,7 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
     return;
   }
 
-  const { level, firstName, lastName, isPublic, showNameOnLeaderboard, showNameInSearch, allowProfileView, chatPointWarningThreshold, preferredLanguage } = req.body;
+  const { level, firstName, lastName, isPublic, showNameOnLeaderboard, showNameInSearch, allowProfileView, chatPointWarningThreshold, preferredLanguage, goalReminderDays } = req.body;
   const validLevels = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
 
   if (isPublic !== undefined && typeof isPublic !== "boolean") {
@@ -236,6 +237,13 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
   }
   if (preferredLanguage !== undefined && typeof preferredLanguage === "string") {
     updates.preferredLanguage = preferredLanguage || null;
+  }
+  if (goalReminderDays !== undefined) {
+    if (goalReminderDays === null) {
+      updates.goalReminderDays = null;
+    } else if (typeof goalReminderDays === "number" && goalReminderDays >= 0) {
+      updates.goalReminderDays = Math.floor(goalReminderDays);
+    }
   }
 
   const [updated] = await db

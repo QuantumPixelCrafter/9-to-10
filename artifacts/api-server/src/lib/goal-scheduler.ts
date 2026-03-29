@@ -1,18 +1,13 @@
-import { db, goalsTable, inboxMessagesTable } from "@workspace/db";
-import { and, eq, lt, isNotNull } from "drizzle-orm";
+import { db, goalsTable, inboxMessagesTable, usersTable } from "@workspace/db";
+import { and, eq, lt, lte, isNotNull, gt } from "drizzle-orm";
 
 // The system/admin account that sends automated notifications.
-// This is the developer/approver account already used for system messages.
 const SYSTEM_SENDER_ID = "5705e7da-bb0b-47e5-8563-9bdd23b24973";
 
+/** Notify users whose goal deadline has already passed and they haven't completed it. */
 async function checkOverdueGoals() {
   const now = new Date();
 
-  // Find goals that are:
-  //  - past their deadline
-  //  - NOT completed
-  //  - NOT yet notified
-  //  - owned by a real user
   const overdueGoals = await db
     .select()
     .from(goalsTable)
@@ -25,11 +20,8 @@ async function checkOverdueGoals() {
       ),
     );
 
-  if (overdueGoals.length === 0) return;
-
   for (const goal of overdueGoals) {
     try {
-      // Send inbox notification to the goal owner
       await db.insert(inboxMessagesTable).values({
         recipientId: goal.userId!,
         senderId: SYSTEM_SENDER_ID,
@@ -38,33 +30,93 @@ async function checkOverdueGoals() {
         status: "none",
       });
 
-      // Mark as notified so we don't spam
       await db
         .update(goalsTable)
         .set({ overdueNotified: true })
         .where(eq(goalsTable.id, goal.id));
 
-      console.log(`[goal-scheduler] Notified user ${goal.userId} about overdue goal "${goal.title}"`);
+      console.log(`[goal-scheduler] Overdue notice sent to ${goal.userId} for "${goal.title}"`);
     } catch (err: any) {
-      console.error(`[goal-scheduler] Failed to notify for goal ${goal.id}:`, err.message);
+      console.error(`[goal-scheduler] Overdue notice failed for goal ${goal.id}:`, err.message);
     }
   }
 }
 
-/** Start the overdue-goals scheduler. Checks every 15 minutes. */
-export function startGoalScheduler() {
-  const INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+/** Notify users of upcoming goal deadlines based on their reminder preference. */
+async function checkUpcomingGoals() {
+  const now = new Date();
 
-  // Run immediately on startup to catch any overdue goals from downtime
-  checkOverdueGoals().catch((err) =>
-    console.error("[goal-scheduler] Initial check failed:", err.message),
-  );
-
-  setInterval(() => {
-    checkOverdueGoals().catch((err) =>
-      console.error("[goal-scheduler] Check failed:", err.message),
+  // Fetch all users who have a goal reminder preference set
+  const usersWithReminder = await db
+    .select({ id: usersTable.id, goalReminderDays: usersTable.goalReminderDays })
+    .from(usersTable)
+    .where(
+      and(
+        isNotNull(usersTable.goalReminderDays),
+        gt(usersTable.goalReminderDays, 0),
+      ),
     );
-  }, INTERVAL_MS);
 
-  console.log("[goal-scheduler] Started — checking every 15 minutes for overdue goals");
+  for (const u of usersWithReminder) {
+    const days = u.goalReminderDays!;
+    const windowEnd = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+    // Goals owned by this user, not completed, not yet reminded, deadline within the window
+    const upcomingGoals = await db
+      .select()
+      .from(goalsTable)
+      .where(
+        and(
+          eq(goalsTable.userId, u.id),
+          eq(goalsTable.completed, false),
+          eq(goalsTable.reminderNotified, false),
+          gt(goalsTable.deadline, now),       // not overdue yet
+          lte(goalsTable.deadline, windowEnd),  // within reminder window
+        ),
+      );
+
+    for (const goal of upcomingGoals) {
+      try {
+        const daysLeft = Math.ceil((goal.deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const daysLabel = daysLeft === 1 ? "1 day" : `${daysLeft} days`;
+        const deadlineStr = goal.deadline.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+        await db.insert(inboxMessagesTable).values({
+          recipientId: u.id,
+          senderId: SYSTEM_SENDER_ID,
+          type: "system",
+          message: `⏰ Reminder: your goal "${goal.title}" is due in ${daysLabel} (${deadlineStr}). Keep going — you've got this!`,
+          status: "none",
+        });
+
+        await db
+          .update(goalsTable)
+          .set({ reminderNotified: true })
+          .where(eq(goalsTable.id, goal.id));
+
+        console.log(`[goal-scheduler] Reminder sent to ${u.id} for "${goal.title}" (${daysLabel} left)`);
+      } catch (err: any) {
+        console.error(`[goal-scheduler] Reminder failed for goal ${goal.id}:`, err.message);
+      }
+    }
+  }
+}
+
+/** Start the goal scheduler — runs every 15 minutes. */
+export function startGoalScheduler() {
+  const INTERVAL_MS = 15 * 60 * 1000;
+
+  async function tick() {
+    await checkOverdueGoals().catch((e) =>
+      console.error("[goal-scheduler] Overdue check failed:", e.message),
+    );
+    await checkUpcomingGoals().catch((e) =>
+      console.error("[goal-scheduler] Reminder check failed:", e.message),
+    );
+  }
+
+  tick(); // run immediately on startup
+  setInterval(tick, INTERVAL_MS);
+
+  console.log("[goal-scheduler] Started — checking every 15 minutes for overdue and upcoming goals");
 }

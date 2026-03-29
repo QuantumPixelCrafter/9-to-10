@@ -7,7 +7,15 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useThemeMode } from "@/lib/theme-context";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Coins, MessageCircle, Settings, Sun, Moon, Monitor, Globe2, EyeOff } from "lucide-react";
+import { AlertTriangle, Bell, Coins, MessageCircle, Settings, Sun, Moon, Monitor, Globe2, EyeOff } from "lucide-react";
+
+const REMINDER_OPTIONS: { label: string; value: number | null }[] = [
+  { label: "Don't remind me", value: null },
+  { label: "1 day before", value: 1 },
+  { label: "2 days before", value: 2 },
+  { label: "3 days before", value: 3 },
+  { label: "1 week before", value: 7 },
+];
 
 export default function Preferences() {
   const { user } = useAuth();
@@ -20,6 +28,13 @@ export default function Preferences() {
   const [warningEnabled, setWarningEnabled] = useState(false);
   const [thresholdInput, setThresholdInput] = useState("50");
   const [initialised, setInitialised] = useState(false);
+
+  const currentGoalReminderDays = (user as any)?.goalReminderDays ?? null;
+  const [goalReminderDays, setGoalReminderDays] = useState<number | null>(currentGoalReminderDays);
+
+  useEffect(() => {
+    setGoalReminderDays((user as any)?.goalReminderDays ?? null);
+  }, [(user as any)?.goalReminderDays]);
 
   useEffect(() => {
     if (balanceData && !initialised) {
@@ -36,12 +51,13 @@ export default function Preferences() {
 
   const handleSave = async () => {
     const threshold = warningEnabled ? Math.max(0, parseInt(thresholdInput, 10) || 0) : null;
-    await updatePrefsMut.mutateAsync({ chatPointWarningThreshold: threshold });
+    await updatePrefsMut.mutateAsync({
+      chatPointWarningThreshold: threshold,
+      goalReminderDays,
+    });
     toast({
       title: "Preferences saved",
-      description: warningEnabled
-        ? `You'll be warned when your balance drops to ${threshold} pts or below.`
-        : "Messaging balance warnings are now off.",
+      description: "Your settings have been updated.",
     });
   };
 
@@ -181,6 +197,55 @@ export default function Preferences() {
           )}
         </div>
 
+        {/* Goal Reminders */}
+        <div className="bg-card border border-border/50 rounded-2xl p-6 space-y-5">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-violet-500/10 shrink-0 mt-0.5">
+              <Bell className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Goal Reminders</h3>
+              <p className="text-sm text-muted-foreground">
+                Get an inbox notification before your goal's deadline so you don't miss it.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Remind me before a goal is due:</p>
+            <div className="grid grid-cols-1 gap-2">
+              {REMINDER_OPTIONS.map(({ label, value }) => {
+                const isSelected = goalReminderDays === value;
+                return (
+                  <button
+                    key={String(value)}
+                    onClick={() => setGoalReminderDays(value)}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium text-left transition-all duration-200",
+                      isSelected
+                        ? "bg-violet-500 text-white border-violet-500 shadow-md shadow-violet-500/20"
+                        : "border-border bg-background text-foreground hover:border-violet-400/40"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center",
+                      isSelected ? "border-white" : "border-muted-foreground/40"
+                    )}>
+                      {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                    </div>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {goalReminderDays !== null && (
+              <p className="text-xs text-muted-foreground pt-1">
+                You'll receive an inbox notification {goalReminderDays === 1 ? "1 day" : `${goalReminderDays} days`} before each goal's deadline.
+              </p>
+            )}
+          </div>
+        </div>
+
         {/* Messaging cost section */}
         <div className="bg-card border border-border/50 rounded-2xl p-6 space-y-5">
           <div className="flex items-start gap-3">
@@ -247,7 +312,7 @@ export default function Preferences() {
           </div>
         </div>
 
-        {/* Save button (for messaging prefs) */}
+        {/* Save button */}
         <Button
           onClick={handleSave}
           disabled={updatePrefsMut.isPending || isLoading || (warningEnabled && !thresholdValid)}

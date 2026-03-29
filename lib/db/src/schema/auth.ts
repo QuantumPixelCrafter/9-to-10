@@ -38,6 +38,7 @@ export const usersTable = pgTable("users", {
   lastRetryPassGrantAt: timestamp("last_retry_pass_grant_at", { withTimezone: true }),
   giftCooldownEndsAt: timestamp("gift_cooldown_ends_at", { withTimezone: true }),
   chatPointWarningThreshold: integer("chat_point_warning_threshold"),
+  goalReminderDays: integer("goal_reminder_days"),
   country: varchar("country", { length: 10 }),
   gradeIndex: integer("grade_index"),
   gradeSchoolYear: integer("grade_school_year"),

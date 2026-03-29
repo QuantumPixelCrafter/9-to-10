@@ -11,6 +11,7 @@ export const goalsTable = pgTable("goals", {
   deadline: timestamp("deadline").notNull(),
   completed: boolean("completed").notNull().default(false),
   overdueNotified: boolean("overdue_notified").notNull().default(false),
+  reminderNotified: boolean("reminder_notified").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
