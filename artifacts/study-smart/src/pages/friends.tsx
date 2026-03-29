@@ -16,12 +16,74 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, UserPlus, MessageCircle, Check, X, Trash2,
   ArrowLeft, Send, User, Zap, ChevronRight, Users, Gift, X as XIcon, AlertTriangle, Coins, Settings,
-  Paperclip, FileText, Loader2, MoreVertical, Lock, LockOpen, Pencil, Copy, Ban,
+  Paperclip, FileText, Loader2, MoreVertical, Lock, LockOpen, Pencil, Copy, Ban, ImageOff,
 } from "lucide-react";
 import { getItemDef } from "@/lib/shop-data";
 import { useLanguage } from "@/lib/language-context";
 
 // ── Media Lightbox ────────────────────────────────────────────────────────────
+// ── AuthMedia: fetches media with auth headers, renders via blob URL ──────────
+function AuthMedia({
+  src,
+  type,
+  className,
+  onBlobReady,
+  onClick,
+}: {
+  src: string;
+  type: "image" | "video";
+  className?: string;
+  onBlobReady?: (blobUrl: string) => void;
+  onClick?: (blobUrl: string) => void;
+}) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const onBlobReadyRef = useRef(onBlobReady);
+  useEffect(() => { onBlobReadyRef.current = onBlobReady; }, [onBlobReady]);
+
+  useEffect(() => {
+    let revokeUrl: string | null = null;
+    let cancelled = false;
+    customFetch<Blob>(src, { responseType: "blob" })
+      .then(blob => {
+        if (cancelled) return;
+        const url = URL.createObjectURL(blob);
+        revokeUrl = url;
+        setBlobUrl(url);
+        onBlobReadyRef.current?.(url);
+      })
+      .catch(() => { if (!cancelled) setFailed(true); });
+    return () => {
+      cancelled = true;
+      if (revokeUrl) URL.revokeObjectURL(revokeUrl);
+    };
+  }, [src]);
+
+  if (failed) return (
+    <div className={cn("flex items-center justify-center bg-muted/40 rounded-xl min-w-[80px] min-h-[60px]", className)}>
+      <ImageOff className="w-6 h-6 text-muted-foreground/40" />
+    </div>
+  );
+
+  if (!blobUrl) return (
+    <div className={cn("animate-pulse bg-muted/60 rounded-xl min-w-[80px] min-h-[60px]", className)} />
+  );
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (blobUrl && onClick) onClick(blobUrl);
+  };
+
+  if (type === "video") {
+    return onClick
+      ? <button className="block" onClick={handleClick}><video src={blobUrl} className={className} /></button>
+      : <video src={blobUrl} className={className} />;
+  }
+  return onClick
+    ? <button className="block" onClick={handleClick}><img src={blobUrl} alt="media" className={className} /></button>
+    : <img src={blobUrl} alt="media" className={className} />;
+}
+
 function MediaLightbox({ src, mediaType, onClose }: { src: string; mediaType: "image" | "video"; onClose: () => void }) {
   const [scale, setScale] = useState(1);
   const lastTouchDist = useRef<number | null>(null);
@@ -926,19 +988,19 @@ export default function FriendsPage() {
                             {hasMedia && (
                               <div className={msg.content ? "mb-2" : ""}>
                                 {isVideo ? (
-                                  <button
-                                    className="block"
-                                    onClick={e => { e.stopPropagation(); setLightbox({ src: msg.mediaUrl!, mediaType: "video" }); }}
-                                  >
-                                    <video src={msg.mediaUrl!} className="max-w-[260px] max-h-[200px] rounded-xl pointer-events-none" />
-                                  </button>
+                                  <AuthMedia
+                                    src={msg.mediaUrl!}
+                                    type="video"
+                                    className="max-w-[260px] max-h-[200px] rounded-xl pointer-events-none"
+                                    onClick={(blobUrl) => setLightbox({ src: blobUrl, mediaType: "video" })}
+                                  />
                                 ) : isImage ? (
-                                  <button
-                                    className="block"
-                                    onClick={e => { e.stopPropagation(); setLightbox({ src: msg.mediaUrl!, mediaType: "image" }); }}
-                                  >
-                                    <img src={msg.mediaUrl!} alt="media" className="max-w-[260px] max-h-[200px] rounded-xl object-cover" />
-                                  </button>
+                                  <AuthMedia
+                                    src={msg.mediaUrl!}
+                                    type="image"
+                                    className="max-w-[260px] max-h-[200px] rounded-xl object-cover"
+                                    onClick={(blobUrl) => setLightbox({ src: blobUrl, mediaType: "image" })}
+                                  />
                                 ) : (
                                   <a href={msg.mediaUrl!} target="_blank" rel="noopener noreferrer"
                                     className={cn("flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-medium underline", isMe ? "text-primary-foreground/80" : "text-muted-foreground")}>
