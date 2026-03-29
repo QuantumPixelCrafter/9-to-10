@@ -214,15 +214,14 @@ export default function ProfilePage() {
     }
   };
 
-  const handleCountryGradeSave = async () => {
-    if (!selectedCountry || selectedGradeIndex === null) return;
+  const handleCountrySave = async (countryCode: string) => {
     setSavingCountry(true);
     try {
       await customFetch("/api/auth/profile", {
         method: "PUT",
-        body: JSON.stringify({ country: selectedCountry.code, gradeIndex: selectedGradeIndex }),
+        body: JSON.stringify({ country: countryCode }),
       });
-      toast({ title: "Country & grade saved!" });
+      toast({ title: "Country saved!" });
       setShowCountryDialog(false);
       window.location.reload();
     } catch (err: any) {
@@ -678,13 +677,19 @@ export default function ProfilePage() {
               </div>
 
               {countryDef ? (
-                <div className="flex items-center p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/15">
+                <div className="flex items-center justify-between p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/15">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{countryDef.flag}</span>
                     <div>
                       <p className="font-semibold text-sm">{countryDef.name}</p>
                     </div>
                   </div>
+                  <Button variant="outline" size="sm" className="rounded-xl text-xs" onClick={() => {
+                    setCountryStep("country"); setCountrySearch(""); setSelectedCountry(null); setSelectedGradeIndex(null);
+                    setShowCountryDialog(true);
+                  }}>
+                    Change
+                  </Button>
                 </div>
               ) : (
                 <div className="text-center py-4">
@@ -1031,97 +1036,40 @@ export default function ProfilePage() {
           <div className="bg-card rounded-3xl border border-border/60 shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center gap-3 p-5 border-b border-border/40 shrink-0">
-              {countryStep === "grade" && (
-                <button onClick={() => setCountryStep("country")} className="p-1.5 rounded-xl hover:bg-muted/60 transition-colors">
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-              )}
               <div className="flex-1">
-                <h3 className="font-bold text-base">
-                  {countryStep === "country" ? "Select Your Country" : `Select Grade — ${selectedCountry?.flag} ${selectedCountry?.name}`}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {countryStep === "country" ? "Step 1 of 2" : "Step 2 of 2"}
-                </p>
+                <h3 className="font-bold text-base">Select Your Country</h3>
               </div>
               <button onClick={() => setShowCountryDialog(false)} className="p-1.5 rounded-xl hover:bg-muted/60 transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {countryStep === "country" && (
-              <>
-                <div className="p-4 shrink-0">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                      autoFocus
-                      type="text"
-                      value={countrySearch}
-                      onChange={e => setCountrySearch(e.target.value)}
-                      placeholder="Search countries…"
-                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-                <div className="overflow-y-auto flex-1 px-4 pb-4 space-y-1">
-                  {searchCountries(countrySearch).map(c => (
-                    <button
-                      key={c.code}
-                      onClick={() => { setSelectedCountry(c); setSelectedGradeIndex(null); setCountryStep("grade"); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/60 transition-colors text-left"
-                    >
-                      <span className="text-xl">{c.flag}</span>
-                      <span className="font-medium text-sm">{c.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {countryStep === "grade" && selectedCountry && (
-              <div className="overflow-y-auto flex-1 p-4 space-y-4">
-                {Object.entries(
-                  selectedCountry.grades.reduce<Record<string, { name: string; idx: number }[]>>((acc, g, i) => {
-                    if (!acc[g.group]) acc[g.group] = [];
-                    acc[g.group].push({ name: g.name, idx: i });
-                    return acc;
-                  }, {})
-                ).map(([group, items]) => (
-                  <div key={group}>
-                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 capitalize">{group}</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {items.map(({ name, idx }) => (
-                        <button
-                          key={idx}
-                          onClick={() => setSelectedGradeIndex(idx)}
-                          className={cn(
-                            "py-2.5 px-2 rounded-xl text-xs font-semibold transition-all text-center",
-                            selectedGradeIndex === idx
-                              ? "bg-primary text-primary-foreground shadow-lg"
-                              : "bg-muted/50 hover:bg-muted text-foreground"
-                          )}
-                        >
-                          {name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+            <div className="p-4 shrink-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={countrySearch}
+                  onChange={e => setCountrySearch(e.target.value)}
+                  placeholder="Search countries…"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
               </div>
-            )}
-
-            {countryStep === "grade" && (
-              <div className="p-4 border-t border-border/40 shrink-0">
-                <Button
-                  className="w-full rounded-xl"
-                  disabled={selectedGradeIndex === null || savingCountry}
-                  onClick={handleCountryGradeSave}
+            </div>
+            <div className="overflow-y-auto flex-1 px-4 pb-4 space-y-1">
+              {searchCountries(countrySearch).map(c => (
+                <button
+                  key={c.code}
+                  disabled={savingCountry}
+                  onClick={() => handleCountrySave(c.code)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/60 transition-colors text-left disabled:opacity-50"
                 >
-                  {savingCountry ? "Saving…" : "Save Country & Grade"}
-                </Button>
-              </div>
-            )}
+                  <span className="text-xl">{c.flag}</span>
+                  <span className="font-medium text-sm">{c.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
