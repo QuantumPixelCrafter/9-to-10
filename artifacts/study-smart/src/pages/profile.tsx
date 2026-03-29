@@ -100,6 +100,7 @@ export default function ProfilePage() {
   const [selectedCountry, setSelectedCountry] = useState<CountryDef | null>(null);
   const [selectedGradeIndex, setSelectedGradeIndex] = useState<number | null>(null);
   const [savingCountry, setSavingCountry] = useState(false);
+  const [togglingDevMode, setTogglingDevMode] = useState(false);
   // Username change
   const [showUsernameChange, setShowUsernameChange] = useState(false);
   const [newUsername, setNewUsername] = useState("");
@@ -228,6 +229,19 @@ export default function ProfilePage() {
       toast({ title: "Failed to save", description: err?.message, variant: "destructive" });
     } finally {
       setSavingCountry(false);
+    }
+  };
+
+  const handleToggleDevMode = async () => {
+    setTogglingDevMode(true);
+    try {
+      const res = await customFetch<{ devMode: boolean }>("/api/developer/toggle-dev-mode", { method: "POST" });
+      toast({ title: res.devMode ? "Developer mode ON" : "Developer mode OFF", description: res.devMode ? "Scores and XP are paused." : "You are now earning scores and XP normally." });
+      window.location.reload();
+    } catch (err: any) {
+      toast({ title: "Failed to toggle", description: err?.message, variant: "destructive" });
+    } finally {
+      setTogglingDevMode(false);
     }
   };
 
@@ -714,6 +728,41 @@ export default function ProfilePage() {
             </motion.div>
           );
         })()}
+
+        {/* Developer Mode Card — only visible to the developer themselves */}
+        {user?.isDeveloper && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+            className={`rounded-3xl border shadow-sm p-6 ${(user as any).devMode ? "bg-violet-500/10 border-violet-500/30" : "bg-card border-border/60"}`}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${(user as any).devMode ? "bg-violet-500/20" : "bg-muted"}`}>
+                <span className="text-lg">🛠️</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-base">Developer Grade</h3>
+                <p className="text-xs text-muted-foreground">Only you can see this</p>
+              </div>
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-xl ${(user as any).devMode ? "bg-violet-500 text-white" : "bg-muted text-muted-foreground"}`}>
+                {(user as any).devMode ? "ON" : "OFF"}
+              </span>
+            </div>
+            <div className="rounded-2xl bg-background/60 border border-border/40 p-4 mb-4 space-y-1.5">
+              <p className="text-sm font-semibold">{(user as any).devMode ? "You are in Developer grade" : "You are in your real grade"}</p>
+              <p className="text-xs text-muted-foreground">
+                {(user as any).devMode
+                  ? "Scores and XP are not saved. You won't appear on any leaderboard while this is on."
+                  : "Switch to Developer grade to test the game without affecting scores or leaderboards."}
+              </p>
+            </div>
+            <Button
+              onClick={handleToggleDevMode}
+              disabled={togglingDevMode}
+              variant="outline"
+              className={`w-full rounded-xl ${(user as any).devMode ? "border-violet-500/40 text-violet-600 dark:text-violet-400 hover:bg-violet-500/10" : ""}`}
+            >
+              {togglingDevMode ? "Switching…" : (user as any).devMode ? "Switch to real grade" : "Switch to Developer grade"}
+            </Button>
+          </motion.div>
+        )}
 
         {/* Achievements + Shop quick links */}
         <div className="grid grid-cols-2 gap-3">

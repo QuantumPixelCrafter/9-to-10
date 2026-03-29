@@ -46,6 +46,7 @@ function buildSessionUser(user: typeof usersTable.$inferSelect) {
     showNameInSearch: user.showNameInSearch ?? true,
     allowProfileView: user.allowProfileView ?? true,
     isDeveloper: user.isDeveloper ?? false,
+    devMode: user.devMode ?? false,
     country: user.country ?? null,
     gradeIndex: user.gradeIndex ?? null,
     gradeSchoolYear: user.gradeSchoolYear ?? null,

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, scoresTable, usersTable } from "@workspace/db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, ne } from "drizzle-orm";
 import { mergeWithBots, MATH_BLITZ_EASY_BOTS, MATH_BLITZ_NORMAL_BOTS, MATH_BLITZ_HARD_BOTS } from "../lib/bots";
 
 const router: IRouter = Router();
@@ -30,7 +30,9 @@ async function buildMathBlitzBoard(gameType: string) {
       usersTable.equippedNametag,
       usersTable.gameLevel,
       usersTable.showNameOnLeaderboard,
+      usersTable.devMode,
     )
+    .having(sql`bool_or(${usersTable.devMode}) IS DISTINCT FROM true`)
     .orderBy(desc(sql<number>`max(${scoresTable.score})`))
     .limit(20);
 

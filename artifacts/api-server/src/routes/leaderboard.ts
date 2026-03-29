@@ -271,6 +271,25 @@ router.post("/leaderboard/scores", async (req, res) => {
     return;
   }
 
+  // Developer dev-mode: skip score & XP entirely
+  if (req.user.isDeveloper && req.user.devMode) {
+    res.json({
+      id: null,
+      userId: req.user.id,
+      displayName: null,
+      profileImageUrl: null,
+      gameType,
+      score,
+      subject: subject ?? null,
+      userLevel: userLevel ?? null,
+      createdAt: new Date().toISOString(),
+      xpAwarded: 0,
+      levelUp: null,
+      devMode: true,
+    });
+    return;
+  }
+
   const now = new Date();
   const [saved] = await db
     .insert(scoresTable)

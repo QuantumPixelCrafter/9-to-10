@@ -21,4 +21,5 @@ export interface AuthUser {
   /** @nullable */
   level: string | null;
   isDeveloper?: boolean;
+  devMode?: boolean;
 }

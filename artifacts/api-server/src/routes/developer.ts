@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, usersTable, inboxMessagesTable, userPowerupsTable } from "@workspace/db";
 import { eq, ne, sql, and } from "drizzle-orm";
+import { getSessionId, getSession, updateSession } from "../lib/auth";
 import { POWERUP_DEFS } from "./powerups";
 
 const router: IRouter = Router();
@@ -174,6 +175,31 @@ router.post("/developer/gift-user", requireDeveloper, async (req: Request, res: 
   }
 
   res.status(400).json({ error: "giftType must be 'points', 'powerup', or 'free_messages'." });
+});
+
+router.post("/developer/toggle-dev-mode", requireDeveloper, async (req: Request, res: Response) => {
+  const [user] = await db
+    .select({ devMode: usersTable.devMode })
+    .from(usersTable)
+    .where(eq(usersTable.id, req.user!.id))
+    .limit(1);
+
+  const newDevMode = !(user?.devMode ?? false);
+  await db.update(usersTable)
+    .set({ devMode: newDevMode, updatedAt: new Date() })
+    .where(eq(usersTable.id, req.user!.id));
+
+  // Patch the session so subsequent requests see the new devMode value
+  const sid = getSessionId(req);
+  if (sid) {
+    const session = await getSession(sid);
+    if (session?.user) {
+      session.user = { ...session.user, devMode: newDevMode };
+      await updateSession(sid, session);
+    }
+  }
+
+  res.json({ devMode: newDevMode });
 });
 
 router.post("/developer/request-promote", requireDeveloper, async (req: Request, res: Response) => {
