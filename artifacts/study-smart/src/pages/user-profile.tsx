@@ -63,11 +63,12 @@ export default function UserProfilePage() {
     return <Layout title="Not Found"><div className="text-center py-20 text-muted-foreground">User not found.</div></Layout>;
   }
 
-  const isMe = me?.id === profile.id;
+  const isBot = !!(profile as any).isBot;
+  const isMe = !isBot && me?.id === profile.id;
   const fs = profile.friendship;
   const isFriend = fs?.status === "accepted";
   const isPending = fs?.status === "pending";
-  // Friends always see the full profile, even if the account is private
+  // Friends always see the full profile, even if the account is private. Bots follow their own isPublic flag.
   const isPublic = profile.isPublic !== false || isMe || isFriend;
 
   const bgStyle = getBgStyle(profile.equippedBackground);
@@ -114,7 +115,7 @@ export default function UserProfilePage() {
   const eduGroup = profile.level ? LEVEL_GROUP[profile.level] ?? null : null;
 
   // ── Shared friend action buttons ──────────────────────────────────────────
-  const FriendActions = () => !isMe ? (
+  const FriendActions = () => (!isMe && !isBot) ? (
     <div className="flex gap-2 flex-wrap">
       {!fs && (
         <Button size="sm" onClick={handleAddFriend} disabled={sendReqMut.isPending} className="rounded-xl gap-1.5">
@@ -224,6 +225,11 @@ export default function UserProfilePage() {
                       {nametagDef.emoji} {nametagDef.name}
                     </span>
                   )}
+                  {isBot && (
+                    <span className="mt-2 inline-flex items-center gap-1 bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 text-xs font-bold px-2 py-0.5 rounded-full">
+                      🤖 Bot
+                    </span>
+                  )}
                 </div>
 
                 {/* Friend count + join month */}
@@ -256,6 +262,11 @@ export default function UserProfilePage() {
                     {nametagDef && (
                       <span className="inline-flex items-center gap-1 bg-gradient-to-r from-primary/20 to-accent/20 border border-primary/20 text-xs font-bold px-2 py-0.5 rounded-full">
                         {nametagDef.emoji} {nametagDef.name}
+                      </span>
+                    )}
+                    {isBot && (
+                      <span className="inline-flex items-center gap-1 bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 text-xs font-bold px-2 py-0.5 rounded-full">
+                        🤖 Bot
                       </span>
                     )}
                   </div>

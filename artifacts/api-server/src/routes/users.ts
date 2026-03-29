@@ -3,6 +3,7 @@ import { db, usersTable, userAchievementsTable, scoresTable, friendshipsTable, u
 import { eq, or, and, desc } from "drizzle-orm";
 import { ACHIEVEMENTS } from "../lib/achievements";
 import { getLevelProgress } from "../lib/xp";
+import { getBotProfile } from "../lib/bots";
 
 const router: IRouter = Router();
 
@@ -13,6 +14,37 @@ router.get("/users/:userId", async (req, res) => {
     return;
   }
   const { userId } = req.params;
+
+  // ── Bot profile ──────────────────────────────────────────────────────────
+  const botProfile = getBotProfile(userId);
+  if (botProfile) {
+    const levelProgress = getLevelProgress(botProfile.xp);
+    return res.json({
+      id: botProfile.userId,
+      username: botProfile.username,
+      firstName: null,
+      lastName: null,
+      displayName: botProfile.displayName,
+      profileImageUrl: null,
+      isPublic: botProfile.isPublic,
+      isBot: true,
+      level: botProfile.level,
+      gameLevel: botProfile.gameLevel,
+      xp: botProfile.xp,
+      levelProgress,
+      equippedBackground: botProfile.equippedBackground,
+      equippedFrame: botProfile.equippedFrame,
+      equippedNametag: botProfile.equippedNametag,
+      country: botProfile.country,
+      gradeIndex: botProfile.gradeIndex,
+      createdAt: botProfile.createdAt,
+      friendCount: 0,
+      achievements: { earned: 0, total: ACHIEVEMENTS.length, totalPoints: 0, list: [] },
+      scores: { memory: botProfile.scores.memory, bubble: botProfile.scores.bubble, quiz: botProfile.scores.quiz },
+      friendship: null,
+    });
+  }
+  // ── End bot profile ───────────────────────────────────────────────────────
 
   const [user] = await db
     .select({
