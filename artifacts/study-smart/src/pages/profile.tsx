@@ -815,7 +815,7 @@ export default function ProfilePage() {
                           <input
                             type="text"
                             value={newUsername}
-                            onChange={e => setNewUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                            onChange={e => setNewUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, ""))}
                             placeholder="new_username"
                             maxLength={30}
                             className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"

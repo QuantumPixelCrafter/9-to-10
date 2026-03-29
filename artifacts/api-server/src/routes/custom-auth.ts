@@ -379,8 +379,8 @@ router.patch("/auth/username", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Username is required." }); return;
   }
   const trimmed = username.trim().toLowerCase();
-  if (!/^[a-z0-9_]{3,30}$/.test(trimmed)) {
-    res.status(400).json({ error: "Username must be 3–30 characters and contain only letters, numbers, and underscores." }); return;
+  if (!/^[a-z0-9_.]{3,30}$/.test(trimmed)) {
+    res.status(400).json({ error: "Username must be 3–30 characters and contain only letters, numbers, underscores, and dots." }); return;
   }
 
   // Check cooldown
