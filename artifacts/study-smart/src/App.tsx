@@ -7,6 +7,7 @@ import { Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { ThemeProvider } from "@/lib/theme-context";
 import { LanguageProvider } from "@/lib/language-context";
+import { UIModeProvider } from "@/lib/ui-mode-context";
 
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -110,6 +111,7 @@ function AppRoutes() {
 function App() {
   return (
     <ThemeProvider>
+      <UIModeProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <LanguageProvider>
@@ -122,6 +124,7 @@ function App() {
           </LanguageProvider>
         </AuthProvider>
       </QueryClientProvider>
+      </UIModeProvider>
     </ThemeProvider>
   );
 }
