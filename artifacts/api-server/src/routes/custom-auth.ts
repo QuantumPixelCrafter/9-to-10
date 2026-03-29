@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, friendshipsTable, inboxMessagesTable } from "@workspace/db";
+import { eq, or, and } from "drizzle-orm";
 import {
   createSession,
   updateSession,
@@ -52,6 +52,7 @@ function buildSessionUser(user: typeof usersTable.$inferSelect) {
     preferredLanguage: user.preferredLanguage ?? null,
     goalReminderDays: user.goalReminderDays ?? null,
     receiveStrangerMessages: user.receiveStrangerMessages ?? false,
+    usernameChangedAt: user.usernameChangedAt?.toISOString() ?? null,
   };
 }
 
@@ -203,7 +204,7 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
     return;
   }
 
-  const { level, firstName, lastName, isPublic, showNameOnLeaderboard, showNameInSearch, allowProfileView, chatPointWarningThreshold, preferredLanguage, goalReminderDays, receiveStrangerMessages } = req.body;
+  const { level, firstName, lastName, isPublic, showNameOnLeaderboard, showNameInSearch, allowProfileView, chatPointWarningThreshold, preferredLanguage, goalReminderDays, receiveStrangerMessages, country, gradeIndex } = req.body;
   const validLevels = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
 
   if (isPublic !== undefined && typeof isPublic !== "boolean") {
@@ -248,6 +249,18 @@ router.put("/auth/profile", async (req: Request, res: Response) => {
   }
   if (receiveStrangerMessages !== undefined && typeof receiveStrangerMessages === "boolean") {
     updates.receiveStrangerMessages = receiveStrangerMessages;
+  }
+  if (country !== undefined) {
+    updates.country = typeof country === "string" && country.trim() ? country.trim().toUpperCase() : null;
+    if (updates.country && typeof gradeIndex === "number") {
+      updates.gradeIndex = Math.max(0, Math.floor(gradeIndex));
+      updates.gradeSchoolYear = computeSchoolYear(SCHOOL_YEAR_START[updates.country] ?? 9);
+    } else if (updates.country === null) {
+      updates.gradeIndex = null;
+      updates.gradeSchoolYear = null;
+    }
+  } else if (gradeIndex !== undefined && typeof gradeIndex === "number") {
+    updates.gradeIndex = Math.max(0, Math.floor(gradeIndex));
   }
 
   const [updated] = await db
@@ -353,6 +366,75 @@ router.put("/auth/change-password", async (req: Request, res: Response) => {
     .where(eq(usersTable.id, req.user.id));
 
   res.json({ success: true });
+});
+
+const SYSTEM_SENDER_ID = "5705e7da-bb0b-47e5-8563-9bdd23b24973";
+const USERNAME_CHANGE_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000; // 2 weeks
+
+router.patch("/auth/username", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const { username } = req.body;
+  if (!username || typeof username !== "string") {
+    res.status(400).json({ error: "Username is required." }); return;
+  }
+  const trimmed = username.trim().toLowerCase();
+  if (!/^[a-z0-9_]{3,30}$/.test(trimmed)) {
+    res.status(400).json({ error: "Username must be 3–30 characters and contain only letters, numbers, and underscores." }); return;
+  }
+
+  // Check cooldown
+  const [currentUser] = await db.select({ usernameChangedAt: usersTable.usernameChangedAt, username: usersTable.username })
+    .from(usersTable).where(eq(usersTable.id, req.user.id)).limit(1);
+  if (!currentUser) { res.status(404).json({ error: "User not found." }); return; }
+
+  if (currentUser.usernameChangedAt) {
+    const msSinceChange = Date.now() - new Date(currentUser.usernameChangedAt).getTime();
+    if (msSinceChange < USERNAME_CHANGE_COOLDOWN_MS) {
+      const daysLeft = Math.ceil((USERNAME_CHANGE_COOLDOWN_MS - msSinceChange) / (24 * 60 * 60 * 1000));
+      res.status(429).json({ error: `You can change your username again in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.` }); return;
+    }
+  }
+
+  if (trimmed === currentUser.username) {
+    res.status(400).json({ error: "That is already your username." }); return;
+  }
+
+  const [updated] = await db.update(usersTable)
+    .set({ username: trimmed, usernameChangedAt: new Date(), updatedAt: new Date() })
+    .where(eq(usersTable.id, req.user.id))
+    .returning();
+
+  // Update session
+  const sid = getSessionId(req);
+  if (sid) {
+    const session = await getSession(sid);
+    if (session) { session.user = buildSessionUser(updated); await updateSession(sid, session); }
+  }
+
+  // Notify all accepted friends via inbox
+  const friendships = await db.select().from(friendshipsTable).where(
+    and(
+      eq(friendshipsTable.status, "accepted"),
+      or(eq(friendshipsTable.requesterId, req.user.id), eq(friendshipsTable.addresseeId, req.user.id))
+    )
+  );
+  const friendIds = friendships.map(f => f.requesterId === req.user.id ? f.addresseeId : f.requesterId);
+  const displayName = [updated.firstName, updated.lastName].filter(Boolean).join(" ") || updated.username || "A friend";
+
+  if (friendIds.length > 0) {
+    await db.insert(inboxMessagesTable).values(
+      friendIds.map(fid => ({
+        recipientId: fid,
+        senderId: SYSTEM_SENDER_ID,
+        type: "system",
+        message: `${displayName} has changed their username to @${trimmed}.`,
+        status: "none",
+      }))
+    );
+  }
+
+  res.json({ user: buildSessionUser(updated) });
 });
 
 router.delete("/auth/account", async (req: Request, res: Response) => {

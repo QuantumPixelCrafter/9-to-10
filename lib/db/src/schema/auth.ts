@@ -49,6 +49,7 @@ export const usersTable = pgTable("users", {
   shopDiscountPct: integer("shop_discount_pct"),
   shopDiscountExpiresAt: timestamp("shop_discount_expires_at", { withTimezone: true }),
   shopDiscountUsesLeft: integer("shop_discount_uses_left"),
+  usernameChangedAt: timestamp("username_changed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

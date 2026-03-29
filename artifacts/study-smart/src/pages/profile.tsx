@@ -5,12 +5,13 @@ import type { ShopItem } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Globe, Globe2, Palette, Trash2, AlertTriangle } from "lucide-react";
+import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Globe, Globe2, Palette, Trash2, AlertTriangle, Search, ChevronLeft, AtSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { getBgStyle, getFrameGradient, getItemDef } from "@/lib/shop-data";
-import { getCountry, getGradeName } from "@/lib/countries-grades";
+import { getCountry, getGradeName, searchCountries } from "@/lib/countries-grades";
+import type { CountryDef } from "@/lib/countries-grades";
 
 const LEVELS = [
   { code: "P1", label: "P1", group: "Primary" },
@@ -92,6 +93,17 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  // Country / grade dialog
+  const [showCountryDialog, setShowCountryDialog] = useState(false);
+  const [countryStep, setCountryStep] = useState<"country" | "grade">("country");
+  const [countrySearch, setCountrySearch] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState<CountryDef | null>(null);
+  const [selectedGradeIndex, setSelectedGradeIndex] = useState<number | null>(null);
+  const [savingCountry, setSavingCountry] = useState(false);
+  // Username change
+  const [showUsernameChange, setShowUsernameChange] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [savingUsername, setSavingUsername] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -193,13 +205,49 @@ export default function ProfilePage() {
     if (deleteConfirmText !== "DELETE") return;
     setIsDeletingAccount(true);
     try {
-      const res = await fetch("/api/auth/account", { method: "DELETE", credentials: "include" });
-      if (!res.ok) throw new Error("Failed to delete account");
+      await customFetch("/api/auth/account", { method: "DELETE" });
       await logout();
       setLocation("/login");
-    } catch {
-      toast({ title: "Failed to delete account. Please try again.", variant: "destructive" });
+    } catch (err: any) {
+      toast({ title: "Failed to delete account. Please try again.", description: err?.message, variant: "destructive" });
       setIsDeletingAccount(false);
+    }
+  };
+
+  const handleCountryGradeSave = async () => {
+    if (!selectedCountry || selectedGradeIndex === null) return;
+    setSavingCountry(true);
+    try {
+      await customFetch("/api/auth/profile", {
+        method: "PUT",
+        body: JSON.stringify({ country: selectedCountry.code, gradeIndex: selectedGradeIndex }),
+      });
+      toast({ title: "Country & grade saved!" });
+      setShowCountryDialog(false);
+      window.location.reload();
+    } catch (err: any) {
+      toast({ title: "Failed to save", description: err?.message, variant: "destructive" });
+    } finally {
+      setSavingCountry(false);
+    }
+  };
+
+  const handleUsernameChange = async () => {
+    if (!newUsername.trim()) return;
+    setSavingUsername(true);
+    try {
+      await customFetch("/api/auth/username", {
+        method: "PATCH",
+        body: JSON.stringify({ username: newUsername.trim() }),
+      });
+      toast({ title: "Username updated!", description: "Your friends have been notified." });
+      setShowUsernameChange(false);
+      setNewUsername("");
+      window.location.reload();
+    } catch (err: any) {
+      toast({ title: "Could not change username", description: err?.message, variant: "destructive" });
+    } finally {
+      setSavingUsername(false);
     }
   };
 
@@ -649,7 +697,10 @@ export default function ProfilePage() {
               ) : (
                 <div className="text-center py-4">
                   <p className="text-sm text-muted-foreground mb-3">No country or grade set. Add one to unlock grade-based features.</p>
-                  <Button variant="outline" className="rounded-xl" onClick={() => setLocation("/signup")}>
+                  <Button variant="outline" className="rounded-xl" onClick={() => {
+                    setCountryStep("country"); setCountrySearch(""); setSelectedCountry(null); setSelectedGradeIndex(null);
+                    setShowCountryDialog(true);
+                  }}>
                     <Globe className="w-4 h-4 mr-2" /> Set Country & Grade
                   </Button>
                 </div>
@@ -745,10 +796,55 @@ export default function ProfilePage() {
               <span className="font-medium">{displayName}</span>
             </div>
             {user?.username && (
-              <div className="flex items-center gap-3 py-2.5 border-b border-border/40">
-                <User className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground w-24">Username</span>
-                <span className="font-medium">@{user.username}</span>
+              <div className="py-2.5 border-b border-border/40">
+                <div className="flex items-center gap-3">
+                  <AtSign className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-muted-foreground w-24 shrink-0">Username</span>
+                  <span className="font-medium flex-1">@{user.username}</span>
+                  <button
+                    onClick={() => { setShowUsernameChange(v => !v); setNewUsername(""); }}
+                    className="text-xs text-primary hover:underline shrink-0"
+                  >
+                    Change
+                  </button>
+                </div>
+                {showUsernameChange && (
+                  <div className="mt-3 space-y-2 pl-8">
+                    {(() => {
+                      const changedAt = (user as any)?.usernameChangedAt;
+                      const msSince = changedAt ? Date.now() - new Date(changedAt).getTime() : null;
+                      const cooldownMs = 14 * 24 * 60 * 60 * 1000;
+                      const daysLeft = msSince !== null && msSince < cooldownMs
+                        ? Math.ceil((cooldownMs - msSince) / (24 * 60 * 60 * 1000)) : 0;
+                      if (daysLeft > 0) {
+                        return (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 rounded-xl border border-amber-200 dark:border-amber-500/20">
+                            You can change your username again in {daysLeft} day{daysLeft === 1 ? "" : "s"}.
+                          </p>
+                        );
+                      }
+                      return (
+                        <>
+                          <input
+                            type="text"
+                            value={newUsername}
+                            onChange={e => setNewUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                            placeholder="new_username"
+                            maxLength={30}
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                          <p className="text-[11px] text-muted-foreground">Letters, numbers, underscores only. 3–30 characters. You can change once every 2 weeks.</p>
+                          <div className="flex gap-2">
+                            <Button size="sm" className="rounded-xl flex-1" disabled={newUsername.trim().length < 3 || savingUsername} onClick={handleUsernameChange}>
+                              {savingUsername ? "Saving…" : "Save Username"}
+                            </Button>
+                            <Button size="sm" variant="outline" className="rounded-xl" onClick={() => { setShowUsernameChange(false); setNewUsername(""); }}>Cancel</Button>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             )}
             <div className="flex items-center gap-3 py-2.5">
@@ -941,6 +1037,107 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* ── Country & Grade Dialog ─────────────────────────────────────── */}
+      {showCountryDialog && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowCountryDialog(false)}>
+          <div className="bg-card rounded-3xl border border-border/60 shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center gap-3 p-5 border-b border-border/40 shrink-0">
+              {countryStep === "grade" && (
+                <button onClick={() => setCountryStep("country")} className="p-1.5 rounded-xl hover:bg-muted/60 transition-colors">
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              )}
+              <div className="flex-1">
+                <h3 className="font-bold text-base">
+                  {countryStep === "country" ? "Select Your Country" : `Select Grade — ${selectedCountry?.flag} ${selectedCountry?.name}`}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {countryStep === "country" ? "Step 1 of 2" : "Step 2 of 2"}
+                </p>
+              </div>
+              <button onClick={() => setShowCountryDialog(false)} className="p-1.5 rounded-xl hover:bg-muted/60 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {countryStep === "country" && (
+              <>
+                <div className="p-4 shrink-0">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      autoFocus
+                      type="text"
+                      value={countrySearch}
+                      onChange={e => setCountrySearch(e.target.value)}
+                      placeholder="Search countries…"
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+                <div className="overflow-y-auto flex-1 px-4 pb-4 space-y-1">
+                  {searchCountries(countrySearch).map(c => (
+                    <button
+                      key={c.code}
+                      onClick={() => { setSelectedCountry(c); setSelectedGradeIndex(null); setCountryStep("grade"); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/60 transition-colors text-left"
+                    >
+                      <span className="text-xl">{c.flag}</span>
+                      <span className="font-medium text-sm">{c.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {countryStep === "grade" && selectedCountry && (
+              <div className="overflow-y-auto flex-1 p-4 space-y-4">
+                {Object.entries(
+                  selectedCountry.grades.reduce<Record<string, { name: string; idx: number }[]>>((acc, g, i) => {
+                    if (!acc[g.group]) acc[g.group] = [];
+                    acc[g.group].push({ name: g.name, idx: i });
+                    return acc;
+                  }, {})
+                ).map(([group, items]) => (
+                  <div key={group}>
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 capitalize">{group}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {items.map(({ name, idx }) => (
+                        <button
+                          key={idx}
+                          onClick={() => setSelectedGradeIndex(idx)}
+                          className={cn(
+                            "py-2.5 px-2 rounded-xl text-xs font-semibold transition-all text-center",
+                            selectedGradeIndex === idx
+                              ? "bg-primary text-primary-foreground shadow-lg"
+                              : "bg-muted/50 hover:bg-muted text-foreground"
+                          )}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {countryStep === "grade" && (
+              <div className="p-4 border-t border-border/40 shrink-0">
+                <Button
+                  className="w-full rounded-xl"
+                  disabled={selectedGradeIndex === null || savingCountry}
+                  onClick={handleCountryGradeSave}
+                >
+                  {savingCountry ? "Saving…" : "Save Country & Grade"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
