@@ -326,7 +326,7 @@ export default function DeveloperPanel() {
                 <label className="text-sm font-medium">{dp.giftAllNameLabel}</label>
                 <div className="relative">
                   <Input
-                    placeholder={dp.giftAllNamePlaceholder}
+                    placeholder={`e.g. "${SUGGEST_NAMES[0].emoji} ${SUGGEST_NAMES[0].name}" or "${SUGGEST_NAMES[1].emoji} ${SUGGEST_NAMES[1].name}"`}
                     value={giftName}
                     onChange={(e) => { setGiftName(e.target.value); setShowSuggestions(true); }}
                     onFocus={() => setShowSuggestions(true)}
