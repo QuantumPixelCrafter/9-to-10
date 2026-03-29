@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, useRef } from "react";
+import { ReactNode, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -103,6 +103,8 @@ function NavItem({ item, isActive }: { item: NavItemDef; isActive: boolean }) {
 export function Layout({ children, title, actions }: LayoutProps) {
   const [location] = useLocation();
   const [scrolled, setScrolled] = useState(false);
+  const sidebarNavRef = useRef<HTMLDivElement>(null);
+  const sidebarScrollPos = useRef(0);
   const { user, logout, isAuthenticated } = useAuth();
   const { t } = useLanguage();
   const { uiMode } = useUIMode();
@@ -184,6 +186,21 @@ export function Layout({ children, title, actions }: LayoutProps) {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Preserve tablet sidebar scroll position across navigation
+  useEffect(() => {
+    const el = sidebarNavRef.current;
+    if (!el) return;
+    return () => {
+      sidebarScrollPos.current = el.scrollTop;
+    };
+  }, [location]);
+
+  useLayoutEffect(() => {
+    const el = sidebarNavRef.current;
+    if (!el) return;
+    el.scrollTop = sidebarScrollPos.current;
+  }, [location]);
 
   // ── Shared drawer content (rendered inline to avoid inner-component remounting) ─
   const renderDrawerNavContent = () => (
@@ -332,7 +349,7 @@ export function Layout({ children, title, actions }: LayoutProps) {
             <span className="font-display font-bold text-xl tracking-tight">Mind Forge</span>
           </div>
 
-          <div className="px-4 py-2 flex-1 overflow-y-auto">
+          <div ref={sidebarNavRef} className="px-4 py-2 flex-1 overflow-y-auto">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 px-2">Menu</p>
             <nav className="space-y-1.5">
               {NAV_ITEMS.map((item) => {
