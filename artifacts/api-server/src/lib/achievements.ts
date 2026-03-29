@@ -41,9 +41,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   // ─── Goals ───────────────────────────────────────────────────────────────────
   // Permanent milestones
   { key: "first_goal",     title: "Goal Setter",  description: "Every achievement starts with a goal.",                       requirement: "Set your first goal",                   icon: "🎯", points: 80,  category: "goals" },
-  { key: "goal_completed", title: "Goal Crusher", description: "Words into action—you've crushed your first goal.",           requirement: "Mark your first goal as complete",       icon: "✅", points: 150, category: "goals" },
+  { key: "goal_completed", title: "Goal Crusher", description: "Words into action—you've crushed your first goal.",           requirement: "Mark your first goal as complete",       icon: "✅", points: 50,  category: "goals" },
   // Periodic
-  { key: "goals_5_done",   title: "Overachiever", description: "Five completed goals in one month—you're relentless.",        requirement: "Complete 5 goals this month",            icon: "🌟", points: 360, category: "goals",  periodic: "monthly" },
+  { key: "goals_5_done",   title: "Overachiever", description: "Five completed goals in one month—you're relentless.",        requirement: "Complete 5 goals this month",            icon: "🌟", points: 110, category: "goals",  periodic: "monthly" },
 
   // ─── Timetable ───────────────────────────────────────────────────────────────
   // Permanent milestones
@@ -103,7 +103,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { key: "monthly_quiz_20",  title: "Monthly Marathon",     description: "Twenty quizzes in a month—your dedication is something else.",    requirement: "Complete 20 quizzes this month",                  icon: "🏃", points: 600,  category: "challenges", periodic: "monthly"  },
   { key: "monthly_notes_10", title: "Monthly Writer",       description: "Ten notes in a month—you're actively building your knowledge.",   requirement: "Write 10 notes this month",                      icon: "📒", points: 480,  category: "challenges", periodic: "monthly"  },
   { key: "monthly_mood_20",  title: "Month of Mindfulness", description: "Twenty mood logs in a month—consistency is your superpower.",    requirement: "Log your mood 20 times this month",              icon: "🧘", points: 360,  category: "challenges", periodic: "monthly"  },
-  { key: "monthly_goals_2",  title: "Monthly Achiever",     description: "Set the pace—crush at least 2 goals every month.",               requirement: "Complete 2 goals this month",                    icon: "🎯", points: 420,  category: "challenges", periodic: "monthly"  },
+  { key: "monthly_goals_2",  title: "Monthly Achiever",     description: "Set the pace—crush at least 2 goals every month.",               requirement: "Complete 2 goals this month",                    icon: "🎯", points: 130,  category: "challenges", periodic: "monthly"  },
   // Seasonal
   { key: "seasonal_quiz_50",  title: "Seasonal Scholar",    description: "Fifty quizzes a season proves you're always in study mode.",     requirement: "Complete 50 quizzes this season",                icon: "📚", points: 1200, category: "challenges", periodic: "seasonal" },
   { key: "seasonal_notes_20", title: "Seasonal Author",     description: "Twenty notes across a season—your knowledge library is growing.", requirement: "Write 20 notes this season",                    icon: "🗒️", points: 960,  category: "challenges", periodic: "seasonal" },

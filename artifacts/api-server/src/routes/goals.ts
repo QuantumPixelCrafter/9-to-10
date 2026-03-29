@@ -49,8 +49,8 @@ router.put("/goals/:id", async (req, res) => {
 
   if (justCompleted && req.isAuthenticated()) {
     try {
-      const result = await awardXp(req.user.id, 50);
-      xpAwarded = 50;
+      const result = await awardXp(req.user.id, 20);
+      xpAwarded = 20;
       levelUp = { leveledUp: result.leveledUp, newLevel: result.newLevel };
     } catch {}
   }
