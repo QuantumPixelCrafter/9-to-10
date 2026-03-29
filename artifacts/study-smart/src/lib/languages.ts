@@ -37,6 +37,7 @@ export interface Translations {
     quiz: string;
     review: string;
     shop: string;
+    inventory: string;
     inbox: string;
     friends: string;
     devPanel: string;
@@ -491,7 +492,7 @@ const en: Translations = {
     goals: "Goals", calendar: "Calendar", mood: "Mood Check-in",
     minigames: "Minigames", objectives: "Objectives", leaderboard: "Leaderboard",
     achievements: "Achievements", quiz: "AI Quiz", review: "Review",
-    shop: "Shop", inbox: "Inbox", friends: "Friends",
+    shop: "Shop", inventory: "Inventory", inbox: "Inbox", friends: "Friends",
     devPanel: "Dev Panel", profile: "Profile", preferences: "Preferences", logout: "Log out", supportUs: "Support Us",
   },
   common: {
@@ -748,7 +749,7 @@ const zhTW: Translations = {
     goals: "目標", calendar: "行事曆", mood: "心情記錄",
     minigames: "小遊戲", objectives: "任務", leaderboard: "排行榜",
     achievements: "成就", quiz: "AI 測驗", review: "複習",
-    shop: "商店", inbox: "收件箱", friends: "朋友",
+    shop: "商店", inventory: "Inventory", inbox: "收件箱", friends: "朋友",
     devPanel: "開發者面板", profile: "個人資料", preferences: "偏好設定", logout: "登出", supportUs: "支持我們",
   },
   common: {
@@ -1011,7 +1012,7 @@ const zhCN: Translations = {
     goals: "目标", calendar: "日历", mood: "心情记录",
     minigames: "小游戏", objectives: "任务", leaderboard: "排行榜",
     achievements: "成就", quiz: "AI 测验", review: "复习",
-    shop: "商店", inbox: "收件箱", friends: "朋友",
+    shop: "商店", inventory: "Inventory", inbox: "收件箱", friends: "朋友",
     devPanel: "开发者面板", profile: "个人资料", preferences: "偏好设置", logout: "退出登录", supportUs: "支持我们",
   },
   common: {
@@ -1274,7 +1275,7 @@ const ja: Translations = {
     goals: "目標", calendar: "カレンダー", mood: "気分チェック",
     minigames: "ミニゲーム", objectives: "課題", leaderboard: "ランキング",
     achievements: "実績", quiz: "AIクイズ", review: "復習",
-    shop: "ショップ", inbox: "受信箱", friends: "フレンド",
+    shop: "ショップ", inventory: "Inventory", inbox: "受信箱", friends: "フレンド",
     devPanel: "開発パネル", profile: "プロフィール", preferences: "設定", logout: "ログアウト", supportUs: "応援する",
   },
   common: {
@@ -1537,7 +1538,7 @@ const ko: Translations = {
     goals: "목표", calendar: "달력", mood: "기분 체크",
     minigames: "미니게임", objectives: "과제", leaderboard: "리더보드",
     achievements: "업적", quiz: "AI 퀴즈", review: "복습",
-    shop: "상점", inbox: "받은 편지함", friends: "친구",
+    shop: "상점", inventory: "Inventory", inbox: "받은 편지함", friends: "친구",
     devPanel: "개발자 패널", profile: "프로필", preferences: "환경설정", logout: "로그아웃", supportUs: "후원하기",
   },
   common: {
@@ -1800,7 +1801,7 @@ const fr: Translations = {
     goals: "Objectifs", calendar: "Calendrier", mood: "Suivi de l'humeur",
     minigames: "Mini-jeux", objectives: "Missions", leaderboard: "Classement",
     achievements: "Succès", quiz: "Quiz IA", review: "Révision",
-    shop: "Boutique", inbox: "Messages", friends: "Amis",
+    shop: "Boutique", inventory: "Inventory", inbox: "Messages", friends: "Amis",
     devPanel: "Panneau Dev", profile: "Profil", preferences: "Préférences", logout: "Déconnexion", supportUs: "Nous soutenir",
   },
   common: {
@@ -2063,7 +2064,7 @@ const de: Translations = {
     goals: "Ziele", calendar: "Kalender", mood: "Stimmungs-Check",
     minigames: "Minispiele", objectives: "Aufgaben", leaderboard: "Rangliste",
     achievements: "Erfolge", quiz: "KI-Quiz", review: "Wiederholung",
-    shop: "Shop", inbox: "Posteingang", friends: "Freunde",
+    shop: "Shop", inventory: "Inventory", inbox: "Posteingang", friends: "Freunde",
     devPanel: "Entwickler-Panel", profile: "Profil", preferences: "Einstellungen", logout: "Abmelden", supportUs: "Unterstützen",
   },
   common: {
@@ -2326,7 +2327,7 @@ const es: Translations = {
     goals: "Metas", calendar: "Calendario", mood: "Control de ánimo",
     minigames: "Minijuegos", objectives: "Objetivos", leaderboard: "Clasificación",
     achievements: "Logros", quiz: "Quiz IA", review: "Repaso",
-    shop: "Tienda", inbox: "Bandeja de entrada", friends: "Amigos",
+    shop: "Tienda", inventory: "Inventory", inbox: "Bandeja de entrada", friends: "Amigos",
     devPanel: "Panel Dev", profile: "Perfil", preferences: "Preferencias", logout: "Cerrar sesión", supportUs: "Apóyanos",
   },
   common: {
@@ -2589,7 +2590,7 @@ const pt: Translations = {
     goals: "Metas", calendar: "Calendário", mood: "Registo de humor",
     minigames: "Minijogos", objectives: "Objetivos", leaderboard: "Classificação",
     achievements: "Conquistas", quiz: "Quiz IA", review: "Revisão",
-    shop: "Loja", inbox: "Caixa de entrada", friends: "Amigos",
+    shop: "Loja", inventory: "Inventory", inbox: "Caixa de entrada", friends: "Amigos",
     devPanel: "Painel Dev", profile: "Perfil", preferences: "Preferências", logout: "Sair", supportUs: "Apoie-nos",
   },
   common: {
@@ -2852,7 +2853,7 @@ const it: Translations = {
     goals: "Obiettivi", calendar: "Calendario", mood: "Stato d'animo",
     minigames: "Minigiochi", objectives: "Attività", leaderboard: "Classifica",
     achievements: "Traguardi", quiz: "Quiz IA", review: "Ripasso",
-    shop: "Negozio", inbox: "Messaggi", friends: "Amici",
+    shop: "Negozio", inventory: "Inventory", inbox: "Messaggi", friends: "Amici",
     devPanel: "Pannello Dev", profile: "Profilo", preferences: "Preferenze", logout: "Esci", supportUs: "Supportaci",
   },
   common: {
@@ -3115,7 +3116,7 @@ const id: Translations = {
     goals: "Tujuan", calendar: "Kalender", mood: "Cek Suasana Hati",
     minigames: "Minigame", objectives: "Misi", leaderboard: "Papan Peringkat",
     achievements: "Pencapaian", quiz: "Kuis AI", review: "Ulasan",
-    shop: "Toko", inbox: "Kotak Masuk", friends: "Teman",
+    shop: "Toko", inventory: "Inventory", inbox: "Kotak Masuk", friends: "Teman",
     devPanel: "Panel Dev", profile: "Profil", preferences: "Preferensi", logout: "Keluar", supportUs: "Dukung Kami",
   },
   common: {
@@ -3378,7 +3379,7 @@ const ms: Translations = {
     goals: "Matlamat", calendar: "Kalendar", mood: "Semak Mood",
     minigames: "Mini Permainan", objectives: "Objektif", leaderboard: "Papan Kedudukan",
     achievements: "Pencapaian", quiz: "Kuiz AI", review: "Ulangkaji",
-    shop: "Kedai", inbox: "Peti Masuk", friends: "Rakan",
+    shop: "Kedai", inventory: "Inventory", inbox: "Peti Masuk", friends: "Rakan",
     devPanel: "Panel Dev", profile: "Profil", preferences: "Keutamaan", logout: "Log Keluar", supportUs: "Sokong Kami",
   },
   common: {
@@ -3641,7 +3642,7 @@ const nl: Translations = {
     goals: "Doelen", calendar: "Kalender", mood: "Stemming Bijhouden",
     minigames: "Minispelletjes", objectives: "Opdrachten", leaderboard: "Ranglijst",
     achievements: "Prestaties", quiz: "AI Quiz", review: "Herhaling",
-    shop: "Winkel", inbox: "Inbox", friends: "Vrienden",
+    shop: "Winkel", inventory: "Inventory", inbox: "Inbox", friends: "Vrienden",
     devPanel: "Dev-paneel", profile: "Profiel", preferences: "Voorkeuren", logout: "Uitloggen", supportUs: "Steun Ons",
   },
   common: {
@@ -3904,7 +3905,7 @@ const sv: Translations = {
     goals: "Mål", calendar: "Kalender", mood: "Humörregistrering",
     minigames: "Minispel", objectives: "Uppdrag", leaderboard: "Topplista",
     achievements: "Prestationer", quiz: "AI-quiz", review: "Repetition",
-    shop: "Butik", inbox: "Inkorg", friends: "Vänner",
+    shop: "Butik", inventory: "Inventory", inbox: "Inkorg", friends: "Vänner",
     devPanel: "Utvecklarpanel", profile: "Profil", preferences: "Inställningar", logout: "Logga ut", supportUs: "Stöd Oss",
   },
   common: {
@@ -4167,7 +4168,7 @@ const no: Translations = {
     goals: "Mål", calendar: "Kalender", mood: "Humørsjekk",
     minigames: "Minispill", objectives: "Oppdrag", leaderboard: "Toppliste",
     achievements: "Prestasjoner", quiz: "AI-quiz", review: "Repetisjon",
-    shop: "Butikk", inbox: "Innboks", friends: "Venner",
+    shop: "Butikk", inventory: "Inventory", inbox: "Innboks", friends: "Venner",
     devPanel: "Utviklerpanel", profile: "Profil", preferences: "Innstillinger", logout: "Logg ut", supportUs: "Støtt Oss",
   },
   common: {
@@ -4430,7 +4431,7 @@ const da: Translations = {
     goals: "Mål", calendar: "Kalender", mood: "Humørregistrering",
     minigames: "Minispil", objectives: "Opgaver", leaderboard: "Toprangliste",
     achievements: "Præstationer", quiz: "AI-quiz", review: "Repetition",
-    shop: "Butik", inbox: "Indbakke", friends: "Venner",
+    shop: "Butik", inventory: "Inventory", inbox: "Indbakke", friends: "Venner",
     devPanel: "Udviklerpanel", profile: "Profil", preferences: "Præferencer", logout: "Log ud", supportUs: "Støt Os",
   },
   common: {
@@ -4693,7 +4694,7 @@ const fi: Translations = {
     goals: "Tavoitteet", calendar: "Kalenteri", mood: "Mielialaseuranta",
     minigames: "Minipelit", objectives: "Tehtävät", leaderboard: "Pisteytyslista",
     achievements: "Saavutukset", quiz: "AI-tietovisa", review: "Kertaus",
-    shop: "Kauppa", inbox: "Saapuneet", friends: "Ystävät",
+    shop: "Kauppa", inventory: "Inventory", inbox: "Saapuneet", friends: "Ystävät",
     devPanel: "Kehittäjäpaneeli", profile: "Profiili", preferences: "Asetukset", logout: "Kirjaudu ulos", supportUs: "Tue Meitä",
   },
   common: {
@@ -4956,7 +4957,7 @@ const ru: Translations = {
     goals: "Цели", calendar: "Календарь", mood: "Настроение",
     minigames: "Мини-игры", objectives: "Задания", leaderboard: "Рейтинг",
     achievements: "Достижения", quiz: "ИИ-викторина", review: "Повторение",
-    shop: "Магазин", inbox: "Входящие", friends: "Друзья",
+    shop: "Магазин", inventory: "Inventory", inbox: "Входящие", friends: "Друзья",
     devPanel: "Панель разработчика", profile: "Профиль", preferences: "Настройки", logout: "Выйти", supportUs: "Поддержать нас",
   },
   common: {
@@ -5219,7 +5220,7 @@ const pl: Translations = {
     goals: "Cele", calendar: "Kalendarz", mood: "Sprawdzenie humoru",
     minigames: "Minigry", objectives: "Zadania", leaderboard: "Ranking",
     achievements: "Osiągnięcia", quiz: "Quiz AI", review: "Powtórzenie",
-    shop: "Sklep", inbox: "Skrzynka odbiorcza", friends: "Znajomi",
+    shop: "Sklep", inventory: "Inventory", inbox: "Skrzynka odbiorcza", friends: "Znajomi",
     devPanel: "Panel deweloperski", profile: "Profil", preferences: "Preferencje", logout: "Wyloguj się", supportUs: "Wspieraj Nas",
   },
   common: {
@@ -5482,7 +5483,7 @@ const el: Translations = {
     goals: "Στόχοι", calendar: "Ημερολόγιο", mood: "Καταγραφή Διάθεσης",
     minigames: "Μικροπαιχνίδια", objectives: "Αποστολές", leaderboard: "Κατάταξη",
     achievements: "Επιτεύγματα", quiz: "Κουίζ ΑΙ", review: "Επανάληψη",
-    shop: "Κατάστημα", inbox: "Εισερχόμενα", friends: "Φίλοι",
+    shop: "Κατάστημα", inventory: "Inventory", inbox: "Εισερχόμενα", friends: "Φίλοι",
     devPanel: "Πάνελ Dev", profile: "Προφίλ", preferences: "Προτιμήσεις", logout: "Αποσύνδεση", supportUs: "Υποστήριξέ Μας",
   },
   common: {
@@ -5745,7 +5746,7 @@ const tr: Translations = {
     goals: "Hedefler", calendar: "Takvim", mood: "Ruh Hali Kaydı",
     minigames: "Mini Oyunlar", objectives: "Görevler", leaderboard: "Sıralama",
     achievements: "Başarılar", quiz: "AI Sınavı", review: "Tekrar",
-    shop: "Mağaza", inbox: "Gelen Kutusu", friends: "Arkadaşlar",
+    shop: "Mağaza", inventory: "Inventory", inbox: "Gelen Kutusu", friends: "Arkadaşlar",
     devPanel: "Geliştirici Paneli", profile: "Profil", preferences: "Tercihler", logout: "Çıkış yap", supportUs: "Bizi Destekle",
   },
   common: {
@@ -6008,7 +6009,7 @@ const ar: Translations = {
     goals: "الأهداف", calendar: "التقويم", mood: "تتبع المزاج",
     minigames: "الألعاب الصغيرة", objectives: "المهام", leaderboard: "لوحة المتصدرين",
     achievements: "الإنجازات", quiz: "اختبار الذكاء الاصطناعي", review: "المراجعة",
-    shop: "المتجر", inbox: "صندوق الوارد", friends: "الأصدقاء",
+    shop: "المتجر", inventory: "Inventory", inbox: "صندوق الوارد", friends: "الأصدقاء",
     devPanel: "لوحة المطور", profile: "الملف الشخصي", preferences: "التفضيلات", logout: "تسجيل الخروج", supportUs: "ادعمنا",
   },
   common: {
@@ -6271,7 +6272,7 @@ const th: Translations = {
     goals: "เป้าหมาย", calendar: "ปฏิทิน", mood: "บันทึกอารมณ์",
     minigames: "มินิเกมส์", objectives: "ภารกิจ", leaderboard: "ลีดเดอร์บอร์ด",
     achievements: "ความสำเร็จ", quiz: "แบบทดสอบ AI", review: "ทบทวน",
-    shop: "ร้านค้า", inbox: "กล่องข้อความ", friends: "เพื่อน",
+    shop: "ร้านค้า", inventory: "Inventory", inbox: "กล่องข้อความ", friends: "เพื่อน",
     devPanel: "แผงนักพัฒนา", profile: "โปรไฟล์", preferences: "การตั้งค่า", logout: "ออกจากระบบ", supportUs: "สนับสนุนเรา",
   },
   common: {
@@ -6534,7 +6535,7 @@ const vi: Translations = {
     goals: "Mục tiêu", calendar: "Lịch", mood: "Ghi chép tâm trạng",
     minigames: "Trò chơi nhỏ", objectives: "Nhiệm vụ", leaderboard: "Bảng xếp hạng",
     achievements: "Thành tích", quiz: "Bài kiểm tra AI", review: "Ôn tập",
-    shop: "Cửa hàng", inbox: "Hộp thư", friends: "Bạn bè",
+    shop: "Cửa hàng", inventory: "Inventory", inbox: "Hộp thư", friends: "Bạn bè",
     devPanel: "Bảng phát triển", profile: "Hồ sơ", preferences: "Tùy chọn", logout: "Đăng xuất", supportUs: "Ủng Hộ Chúng Tôi",
   },
   common: {
@@ -6797,7 +6798,7 @@ const hi: Translations = {
     goals: "लक्ष्य", calendar: "कैलेंडर", mood: "मूड चेक-इन",
     minigames: "मिनी गेम्स", objectives: "कार्य", leaderboard: "लीडरबोर्ड",
     achievements: "उपलब्धियाँ", quiz: "AI क्विज़", review: "पुनरावलोकन",
-    shop: "दुकान", inbox: "इनबॉक्स", friends: "मित्र",
+    shop: "दुकान", inventory: "Inventory", inbox: "इनबॉक्स", friends: "मित्र",
     devPanel: "डेव पैनल", profile: "प्रोफ़ाइल", preferences: "प्राथमिकताएँ", logout: "लॉग आउट", supportUs: "हमें सहयोग दें",
   },
   common: {
@@ -7060,7 +7061,7 @@ const bn: Translations = {
     goals: "লক্ষ্য", calendar: "ক্যালেন্ডার", mood: "মেজাজ পরীক্ষা",
     minigames: "মিনিগেমস", objectives: "কার্যক্রম", leaderboard: "লিডারবোর্ড",
     achievements: "সাফল্য", quiz: "AI কুইজ", review: "পর্যালোচনা",
-    shop: "দোকান", inbox: "ইনবক্স", friends: "বন্ধু",
+    shop: "দোকান", inventory: "Inventory", inbox: "ইনবক্স", friends: "বন্ধু",
     devPanel: "ডেভ প্যানেল", profile: "প্রোফাইল", preferences: "পছন্দ", logout: "লগ আউট", supportUs: "আমাদের সহায়তা করুন",
   },
   common: {
@@ -7323,7 +7324,7 @@ const fil: Translations = {
     goals: "Mga Layunin", calendar: "Kalendaryo", mood: "Pagsusuri ng Mood",
     minigames: "Mga Minilaro", objectives: "Mga Gawain", leaderboard: "Leaderboard",
     achievements: "Mga Tagumpay", quiz: "AI Quiz", review: "Pagsusuri",
-    shop: "Tindahan", inbox: "Inbox", friends: "Mga Kaibigan",
+    shop: "Tindahan", inventory: "Inventory", inbox: "Inbox", friends: "Mga Kaibigan",
     devPanel: "Dev Panel", profile: "Profile", preferences: "Mga Kagustuhan", logout: "Mag-sign out", supportUs: "Suportahan Kami",
   },
   common: {
@@ -7586,7 +7587,7 @@ const si: Translations = {
     goals: "ඉලක්ක", calendar: "දිනදර්ශනය", mood: "මනෝ තත්ත්වය",
     minigames: "කෙටි ක්‍රීඩා", objectives: "කාර්යයන්", leaderboard: "ශ්‍රේණිගත කිරීම",
     achievements: "ජයග්‍රහණ", quiz: "AI ප්‍රශ්නාවලිය", review: "සමාලෝචනය",
-    shop: "සාප්පුව", inbox: "ලිපි පෙට්ටිය", friends: "මිතුරන්",
+    shop: "සාප්පුව", inventory: "Inventory", inbox: "ලිපි පෙට්ටිය", friends: "මිතුරන්",
     devPanel: "සංවර්ධක පැනලය", profile: "පැතිකඩ", preferences: "මනාපයන්", logout: "ඉවත් වන්න", supportUs: "අපව සහාය කරන්න",
   },
   common: {
@@ -7849,7 +7850,7 @@ const ur: Translations = {
     goals: "اہداف", calendar: "کیلنڈر", mood: "موڈ چیک",
     minigames: "منی گیمز", objectives: "مقاصد", leaderboard: "لیڈربورڈ",
     achievements: "کامیابیاں", quiz: "AI کوئز", review: "جائزہ",
-    shop: "دکان", inbox: "ان باکس", friends: "دوست",
+    shop: "دکان", inventory: "Inventory", inbox: "ان باکس", friends: "دوست",
     devPanel: "ڈیو پینل", profile: "پروفائل", preferences: "ترجیحات", logout: "لاگ آؤٹ", supportUs: "ہمیں سپورٹ کریں",
   },
   common: {

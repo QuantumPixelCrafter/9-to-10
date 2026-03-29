@@ -24,6 +24,7 @@ import Leaderboard from "@/pages/leaderboard";
 import Achievements from "@/pages/achievements";
 import Objectives from "@/pages/objectives";
 import Shop from "@/pages/shop";
+import Inventory from "@/pages/inventory";
 import Friends from "@/pages/friends";
 import UserProfile from "@/pages/user-profile";
 import Quiz from "@/pages/quiz";
@@ -90,6 +91,7 @@ function AppRoutes() {
       <Route path="/achievements" component={Achievements} />
       <Route path="/objectives" component={Objectives} />
       <Route path="/shop" component={Shop} />
+      <Route path="/inventory" component={Inventory} />
       <Route path="/quiz" component={Quiz} />
       <Route path="/friends" component={Friends} />
       <Route path="/inbox" component={InboxPage} />
