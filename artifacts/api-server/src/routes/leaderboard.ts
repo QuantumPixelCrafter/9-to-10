@@ -8,6 +8,7 @@ import {
   getNextWeeklyReset, getNextMonthlyReset,
   WEEKLY_REWARDS, SEASON_REWARDS, getRewardForRank,
 } from "../lib/period";
+import { mergeWithBots, BUBBLE_POP_BOTS, MEMORY_MATCH_BOTS, QUIZ_BOTS } from "../lib/bots";
 
 const router: IRouter = Router();
 
@@ -133,11 +134,15 @@ router.get("/leaderboard", async (req, res) => {
 
   distributeRewards(boardType, prevPeriodKey).catch(() => {});
 
-  const [memoryMatch, bubblePop, quiz] = await Promise.all([
+  const [memoryMatchRaw, bubblePopRaw, quizRaw] = await Promise.all([
     buildScoreBoard("memory-match", periodKey, isWeekly),
     buildScoreBoard("bubble-pop", periodKey, isWeekly),
     buildScoreBoard("quiz", periodKey, isWeekly, quizLevel, quizSubject),
   ]);
+
+  const memoryMatch = mergeWithBots(memoryMatchRaw, MEMORY_MATCH_BOTS);
+  const bubblePop   = mergeWithBots(bubblePopRaw,   BUBBLE_POP_BOTS);
+  const quiz        = mergeWithBots(quizRaw,         QUIZ_BOTS);
 
   const allQuizRows = await db
     .select({ subject: scoresTable.subject, userLevel: scoresTable.userLevel })
