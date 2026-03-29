@@ -282,7 +282,7 @@ export default function SignupPage() {
                       type="text"
                       placeholder={t.signup.usernamePlaceholder}
                       value={username}
-                      onChange={e => { setUsername(e.target.value.replace(/\s/g, "")); clearAuthError(); }}
+                      onChange={e => { setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, "")); clearAuthError(); }}
                       required
                       autoComplete="username"
                       className="rounded-xl h-11"
