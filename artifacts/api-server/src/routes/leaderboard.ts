@@ -8,7 +8,10 @@ import {
   getNextWeeklyReset, getNextMonthlyReset,
   WEEKLY_REWARDS, SEASON_REWARDS, getRewardForRank,
 } from "../lib/period";
-import { mergeWithBots, BUBBLE_POP_BOTS, MEMORY_MATCH_BOTS, QUIZ_BOTS } from "../lib/bots";
+import {
+  mergeWithBots, mergeLevelBoardWithBots,
+  BUBBLE_POP_BOTS, MEMORY_MATCH_BOTS, QUIZ_BOTS, LEVEL_BOARD_BOTS,
+} from "../lib/bots";
 
 const router: IRouter = Router();
 
@@ -62,6 +65,7 @@ async function buildScoreBoard(
   quizSubject?: string,
 ) {
   const keyCol = isWeekly ? scoresTable.weekKey : scoresTable.monthKey;
+  const isQuiz = gameType === "quiz";
 
   const conditions: ReturnType<typeof eq>[] = [
     eq(scoresTable.gameType, gameType as any),
@@ -70,10 +74,22 @@ async function buildScoreBoard(
   if (quizLevel) conditions.push(eq(scoresTable.userLevel, quizLevel));
   if (quizSubject) conditions.push(eq(scoresTable.subject, quizSubject));
 
+  // Quiz leaderboard uses the accumulated SUM of all quiz scores in the period
+  // (streak bonuses are included as they are part of the submitted score;
+  // random quiz bonus rewards go to bonusPoints only, so they are excluded).
+  // All other boards use best (MAX) score.
+  const scoreAgg = isQuiz
+    ? sql<number>`sum(${scoresTable.score})`.as("best_score")
+    : sql<number>`max(${scoresTable.score})`.as("best_score");
+
+  const orderAgg = isQuiz
+    ? desc(sql<number>`sum(${scoresTable.score})`)
+    : desc(sql<number>`max(${scoresTable.score})`);
+
   const rows = await db
     .select({
       userId: scoresTable.userId,
-      bestScore: sql<number>`max(${scoresTable.score})`.as("best_score"),
+      bestScore: scoreAgg,
       subject: sql<string>`(array_agg(${scoresTable.subject} order by ${scoresTable.score} desc))[1]`.as("subject"),
       userLevel: sql<string>`(array_agg(${scoresTable.userLevel} order by ${scoresTable.score} desc))[1]`.as("user_level"),
       createdAt: sql<Date>`max(${scoresTable.createdAt})`.as("created_at"),
@@ -98,7 +114,7 @@ async function buildScoreBoard(
       usersTable.isPublic,
       usersTable.allowProfileView,
     )
-    .orderBy(desc(sql<number>`max(${scoresTable.score})`))
+    .orderBy(orderAgg)
     .limit(50);
 
   return rows.map((row, i) => {
@@ -142,7 +158,9 @@ router.get("/leaderboard", async (req, res) => {
 
   const memoryMatch = mergeWithBots(memoryMatchRaw, MEMORY_MATCH_BOTS);
   const bubblePop   = mergeWithBots(bubblePopRaw,   BUBBLE_POP_BOTS);
-  const quiz        = mergeWithBots(quizRaw,         QUIZ_BOTS);
+  // For quiz bots: pass quizLevel so only matching-level bots appear when filtered.
+  // When no level filter is active (quizLevel undefined), all bots are shown.
+  const quiz        = mergeWithBots(quizRaw, QUIZ_BOTS, 50, false, quizLevel);
 
   const allQuizRows = await db
     .select({ subject: scoresTable.subject, userLevel: scoresTable.userLevel })
@@ -166,6 +184,16 @@ router.get("/leaderboard", async (req, res) => {
     ...new Set(allQuizRows.map(r => r.userLevel).filter(Boolean) as string[]),
   ].sort();
 
+  // Known test accounts to exclude from the level board (by full name or username).
+  const TEST_DISPLAY_NAMES = [
+    'leaderboard tester', 'test user', 'tester pop',
+    'test user (another one)', 'shop tester', 'bob test', 'test test',
+  ];
+  const TEST_USERNAMES = [
+    'for_testing', 'leaderboard_tester', 'tester_pop', 'shop_tester',
+    'bob_test', 'test_test', 'test_user',
+  ];
+
   const xpBoard = await db
     .select({
       id: usersTable.id,
@@ -182,10 +210,18 @@ router.get("/leaderboard", async (req, res) => {
       allowProfileView: usersTable.allowProfileView,
     })
     .from(usersTable)
+    .where(
+      sql`NOT (
+        lower(trim(coalesce(${usersTable.firstName}, '') || ' ' || coalesce(${usersTable.lastName}, '')))
+          = ANY(ARRAY[${sql.raw(TEST_DISPLAY_NAMES.map(n => `'${n}'`).join(","))}])
+        OR lower(coalesce(${usersTable.username}, ''))
+          = ANY(ARRAY[${sql.raw(TEST_USERNAMES.map(n => `'${n}'`).join(","))}])
+      )`,
+    )
     .orderBy(desc(usersTable.xp))
     .limit(50);
 
-  const levelBoard = xpBoard.map((u, i) => {
+  const xpBoardMapped = xpBoard.map((u, i) => {
     const showName = u.showNameOnLeaderboard !== false;
     const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ");
     const displayName = showName ? (fullName || u.username || "Anonymous") : (u.username || "Anonymous");
@@ -201,8 +237,11 @@ router.get("/leaderboard", async (req, res) => {
       xp: u.xp ?? 0,
       equippedNametag: u.equippedNametag ?? null,
       levelProgress: getLevelProgress(u.xp ?? 0),
+      score: u.xp ?? 0,
     };
   });
+
+  const levelBoard = mergeLevelBoardWithBots(xpBoardMapped, LEVEL_BOARD_BOTS);
 
   res.json({
     memoryMatch,
