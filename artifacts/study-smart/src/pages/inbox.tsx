@@ -45,7 +45,7 @@ interface InboxMessage {
   } | null;
 }
 
-const INTERACTIVE_TYPES = ["developer_request", "developer_request_rejected", "friend_request", "stripe_claim"];
+const INTERACTIVE_TYPES = ["developer_request", "developer_request_rejected", "friend_request", "stripe_claim", "stranger_message_request"];
 
 function getSenderName(sender: InboxMessage["sender"]) {
   if (!sender) return "System";
@@ -132,6 +132,29 @@ export default function InboxPage() {
   const skipNotifyMutation = useMutation({
     mutationFn: (id: string) => customFetch(`/api/inbox/${id}/skip-notify`, { method: "PUT" }),
     onSuccess: () => { toast({ title: "Dismissed", description: "The user was not notified." }); inv(); },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const sendFriendFromStrangerMutation = useMutation({
+    mutationFn: async ({ msgId, targetUserId }: { msgId: string; targetUserId: string }) => {
+      await customFetch("/api/friends/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ addresseeId: targetUserId }),
+      });
+      await customFetch(`/api/inbox/${msgId}/read`, { method: "PUT" });
+    },
+    onSuccess: () => {
+      toast({ title: "Friend request sent!" });
+      inv();
+      queryClient.invalidateQueries({ queryKey: ["friends"] });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const dismissStrangerMutation = useMutation({
+    mutationFn: (id: string) => customFetch(`/api/inbox/${id}/read`, { method: "PUT" }),
+    onSuccess: inv,
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
@@ -307,6 +330,37 @@ export default function InboxPage() {
                         {msg.status === "declined" && (
                           <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
                             <UserX className="w-4 h-4" /> {t.inbox.declined}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Stranger message request */}
+                    {msg.type === "stranger_message_request" && msg.targetUserId && (
+                      <div className="space-y-3">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm font-semibold">
+                          <Bell className="w-4 h-4" />
+                          Message Request
+                        </div>
+                        {!msg.readAt && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="rounded-xl gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                              onClick={(e) => { e.stopPropagation(); sendFriendFromStrangerMutation.mutate({ msgId: msg.id, targetUserId: msg.targetUserId! }); }}
+                              disabled={sendFriendFromStrangerMutation.isPending || dismissStrangerMutation.isPending}
+                            >
+                              <UserCheck className="w-3.5 h-3.5" /> Add Friend
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-xl gap-1.5"
+                              onClick={(e) => { e.stopPropagation(); dismissStrangerMutation.mutate(msg.id); }}
+                              disabled={sendFriendFromStrangerMutation.isPending || dismissStrangerMutation.isPending}
+                            >
+                              Dismiss
+                            </Button>
                           </div>
                         )}
                       </div>

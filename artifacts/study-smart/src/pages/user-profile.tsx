@@ -1,15 +1,18 @@
+import { useState } from "react";
 import { useParams } from "wouter";
 import { Layout } from "@/components/layout";
-import { useGetUserProfile, useSendFriendRequest, useRemoveFriend } from "@workspace/api-client-react";
+import { useGetUserProfile, useSendFriendRequest, useRemoveFriend, customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
+import { useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { getBgStyle, getFrameGradient, getItemDef } from "@/lib/shop-data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft, EyeOff, GraduationCap, UserCheck, UserMinus, UserPlus,
-  Zap, Brain, Leaf, Sparkles, Trophy, Medal, Lock, Users, User,
+  Zap, Brain, Leaf, Sparkles, Trophy, Medal, Lock, Users, User, MessageCircle, X, Send,
 } from "lucide-react";
 import { getCountry, getGradeName } from "@/lib/countries-grades";
 
@@ -28,6 +31,24 @@ export default function UserProfilePage() {
   const { data: profile, isLoading, refetch } = useGetUserProfile(userId);
   const sendReqMut = useSendFriendRequest();
   const removeMut = useRemoveFriend();
+
+  const [showMsgDialog, setShowMsgDialog] = useState(false);
+  const [msgText, setMsgText] = useState("");
+
+  const sendStrangerMsg = useMutation({
+    mutationFn: (content: string) =>
+      customFetch(`/api/chat/${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      }),
+    onSuccess: () => {
+      toast({ title: "Message sent!", description: "They'll see it in their chat." });
+      setShowMsgDialog(false);
+      setMsgText("");
+    },
+    onError: (err: Error) => toast({ title: "Could not send message", description: err.message, variant: "destructive" }),
+  });
 
   if (isLoading) {
     return (
@@ -99,6 +120,11 @@ export default function UserProfilePage() {
         <Button size="sm" onClick={handleAddFriend} disabled={sendReqMut.isPending} className="rounded-xl gap-1.5">
           <UserPlus className="w-3.5 h-3.5" />
           {sendReqMut.isPending ? "Sending…" : "Add Friend"}
+        </Button>
+      )}
+      {!isFriend && (
+        <Button size="sm" variant="outline" onClick={() => setShowMsgDialog(true)} className="rounded-xl gap-1.5">
+          <MessageCircle className="w-3.5 h-3.5" /> Message
         </Button>
       )}
       {isPending && fs?.iAmRequester && (
@@ -183,6 +209,11 @@ export default function UserProfilePage() {
 
                 {/* Username + nametag — only identifiers shown for private */}
                 <div>
+                  {(profile.firstName || profile.lastName) && (
+                    <h2 className="text-xl font-bold leading-tight mb-0.5">
+                      {[profile.firstName, profile.lastName].filter(Boolean).join(" ")}
+                    </h2>
+                  )}
                   {profile.username && (
                     <p className="text-muted-foreground text-base font-semibold flex items-center gap-1.5">
                       <User className="w-4 h-4" /> @{profile.username}
@@ -439,6 +470,50 @@ export default function UserProfilePage() {
         )}
 
       </div>
+
+      {/* Stranger message dialog */}
+      {showMsgDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setShowMsgDialog(false)}>
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-primary" />
+                Send a message
+              </h3>
+              <button onClick={() => setShowMsgDialog(false)}
+                className="rounded-lg p-1.5 hover:bg-muted transition-colors text-muted-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              You can send up to <span className="font-semibold text-foreground">3 messages</span> to{" "}
+              <span className="font-semibold text-foreground">{profile.displayName}</span>.
+              Add them as a friend to chat freely.
+            </p>
+            <Textarea
+              value={msgText}
+              onChange={(e) => setMsgText(e.target.value)}
+              placeholder="Write your message…"
+              className="resize-none"
+              rows={3}
+              maxLength={500}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowMsgDialog(false)} className="rounded-xl">Cancel</Button>
+              <Button
+                onClick={() => msgText.trim() && sendStrangerMsg.mutate(msgText.trim())}
+                disabled={!msgText.trim() || sendStrangerMsg.isPending}
+                className="rounded-xl gap-1.5"
+              >
+                <Send className="w-3.5 h-3.5" />
+                {sendStrangerMsg.isPending ? "Sending…" : "Send"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

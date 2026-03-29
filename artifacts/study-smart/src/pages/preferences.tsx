@@ -197,6 +197,37 @@ export default function Preferences() {
           )}
         </div>
 
+        {/* Messaging Preferences */}
+        <div className="bg-card border border-border/50 rounded-2xl p-6 space-y-5">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-blue-500/10 shrink-0 mt-0.5">
+              <MessageCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Messaging</h3>
+              <p className="text-sm text-muted-foreground">Control who can message you.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-xl bg-muted/30">
+            <div className="min-w-0">
+              <p className="text-sm font-medium leading-snug">Allow messages from non-friends</p>
+              <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                Let people who aren't your friend send you up to 3 messages. You'll get an inbox notification.
+              </p>
+            </div>
+            <Switch
+              checked={((user as any)?.receiveStrangerMessages ?? false) as boolean}
+              onCheckedChange={async (v) => {
+                await updatePrefsMut.mutateAsync({ receiveStrangerMessages: v });
+                toast({ title: v ? "Non-friend messages enabled" : "Non-friend messages disabled" });
+              }}
+              disabled={updatePrefsMut.isPending}
+              className="shrink-0"
+            />
+          </div>
+        </div>
+
         {/* Goal Reminders */}
         <div className="bg-card border border-border/50 rounded-2xl p-6 space-y-5">
           <div className="flex items-start gap-3">

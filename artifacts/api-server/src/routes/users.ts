@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, userAchievementsTable, scoresTable, friendshipsTable } from "@workspace/db";
+import { db, usersTable, userAchievementsTable, scoresTable, friendshipsTable, userBlocksTable } from "@workspace/db";
 import { eq, or, and, desc } from "drizzle-orm";
 import { ACHIEVEMENTS } from "../lib/achievements";
 import { getLevelProgress } from "../lib/xp";
@@ -42,6 +42,19 @@ router.get("/users/:userId", async (req, res) => {
   }
 
   const isOwnProfile = user.id === req.user.id;
+
+  // If viewer is blocked by this user, return 404
+  if (!isOwnProfile) {
+    const [blockRow] = await db
+      .select({ id: userBlocksTable.id })
+      .from(userBlocksTable)
+      .where(and(eq(userBlocksTable.blockerId, userId), eq(userBlocksTable.blockedId, req.user.id)))
+      .limit(1);
+    if (blockRow) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+  }
 
   // Achievements
   const earnedRows = await db
@@ -105,6 +118,8 @@ router.get("/users/:userId", async (req, res) => {
   res.json({
     id: user.id,
     username: user.username ?? null,
+    firstName: user.firstName ?? null,
+    lastName: user.lastName ?? null,
     displayName: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username || "Anonymous",
     profileImageUrl: user.profileImageUrl ?? null,
     isPublic,
@@ -163,6 +178,37 @@ router.get("/users", async (req, res) => {
         };
       })
   );
+});
+
+// POST /users/:userId/block — block a user (also removes friendship)
+router.post("/users/:userId/block", async (req, res) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const { userId } = req.params;
+  if (userId === req.user.id) { res.status(400).json({ error: "Cannot block yourself" }); return; }
+
+  await db.insert(userBlocksTable).values({ blockerId: req.user.id, blockedId: userId }).onConflictDoNothing();
+
+  // Remove any existing friendship
+  await db.delete(friendshipsTable).where(
+    or(
+      and(eq(friendshipsTable.requesterId, req.user.id), eq(friendshipsTable.addresseeId, userId)),
+      and(eq(friendshipsTable.requesterId, userId), eq(friendshipsTable.addresseeId, req.user.id))
+    )
+  );
+
+  res.json({ success: true });
+});
+
+// DELETE /users/:userId/block — unblock a user
+router.delete("/users/:userId/block", async (req, res) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const { userId } = req.params;
+
+  await db.delete(userBlocksTable).where(
+    and(eq(userBlocksTable.blockerId, req.user.id), eq(userBlocksTable.blockedId, userId))
+  );
+
+  res.json({ success: true });
 });
 
 export default router;

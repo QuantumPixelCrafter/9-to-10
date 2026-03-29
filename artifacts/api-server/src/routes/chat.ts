@@ -1,11 +1,11 @@
 import { Router, type IRouter } from "express";
-import { db, chatMessagesTable, friendshipsTable, usersTable, inboxMessagesTable, userAchievementsTable } from "@workspace/db";
+import { db, chatMessagesTable, friendshipsTable, usersTable, inboxMessagesTable, userAchievementsTable, userBlocksTable } from "@workspace/db";
 import { eq, or, and, sql, isNull } from "drizzle-orm";
 import { ACHIEVEMENTS } from "../lib/achievements";
 
 const router: IRouter = Router();
 
-const MESSAGE_COST = 10;
+const MESSAGE_COST = 5;
 
 function requireAuth(req: any, res: any): boolean {
   if (!req.isAuthenticated()) {
@@ -123,10 +123,59 @@ router.post("/chat/:userId", async (req, res) => {
     return;
   }
 
+  // Check if sender is blocked by receiver
+  const [blockRow] = await db
+    .select({ id: userBlocksTable.id })
+    .from(userBlocksTable)
+    .where(and(eq(userBlocksTable.blockerId, otherId), eq(userBlocksTable.blockedId, req.user.id)))
+    .limit(1);
+  if (blockRow) {
+    res.status(403).json({ error: "Could not send message" });
+    return;
+  }
+
   const friends = await areFriends(req.user.id, otherId);
   if (!friends) {
-    res.status(403).json({ error: "You must be friends to chat" });
-    return;
+    // Check if receiver allows stranger messages
+    const [receiverRow] = await db
+      .select({ receiveStrangerMessages: usersTable.receiveStrangerMessages })
+      .from(usersTable)
+      .where(eq(usersTable.id, otherId))
+      .limit(1);
+
+    if (!receiverRow?.receiveStrangerMessages) {
+      res.status(403).json({ error: "This user doesn't accept messages from non-friends" });
+      return;
+    }
+
+    // Count messages sender has already sent to this non-friend
+    const [{ cnt }] = await db
+      .select({ cnt: sql<number>`count(*)::int` })
+      .from(chatMessagesTable)
+      .where(and(eq(chatMessagesTable.senderId, req.user.id), eq(chatMessagesTable.receiverId, otherId)));
+
+    if (cnt >= 3) {
+      res.status(403).json({ error: "You've reached the 3-message limit for non-friends. Add them as a friend to keep chatting!" });
+      return;
+    }
+
+    // Send inbox notification on the very first message
+    if (cnt === 0) {
+      const [senderRow] = await db
+        .select({ firstName: usersTable.firstName, lastName: usersTable.lastName, username: usersTable.username })
+        .from(usersTable)
+        .where(eq(usersTable.id, req.user.id))
+        .limit(1);
+      const senderName = [senderRow?.firstName, senderRow?.lastName].filter(Boolean).join(" ") || senderRow?.username || "Someone";
+      await db.insert(inboxMessagesTable).values({
+        recipientId: otherId,
+        senderId: req.user.id,
+        type: "stranger_message_request",
+        message: `${senderName} wants to message you. Add them as a friend to continue chatting beyond 3 messages.`,
+        status: "pending",
+        targetUserId: req.user.id,
+      });
+    }
   }
 
   // Fetch warning threshold + free message quota

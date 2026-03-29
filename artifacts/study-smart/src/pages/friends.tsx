@@ -5,7 +5,7 @@ import {
   useGetFriends, useSearchUsers, useSendFriendRequest, useAcceptFriendRequest,
   useDeclineFriendRequest, useRemoveFriend, useGetChat, useSendMessage, useGetChatBalance,
   useGetPowerups, useUnreadChatMessages, useDeleteMessageForMe, useDeleteMessageForEveryone,
-  useEditMessage, customFetch,
+  useEditMessage, useBlockUser, customFetch,
   type FriendEntry, type FriendUser,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
@@ -292,7 +292,7 @@ function GiftModal({
 
 // ── FriendListItem ─────────────────────────────────────────────────────────────
 function FriendListItem({
-  entry, selected, onSelect, onAccept, onDecline, onRemove, myId, onViewProfile, onGift, onLockChat, isLocked, unreadCount,
+  entry, selected, onSelect, onAccept, onDecline, onRemove, myId, onViewProfile, onGift, onLockChat, onBlock, isLocked, unreadCount,
 }: {
   entry: FriendEntry;
   selected: boolean;
@@ -304,6 +304,7 @@ function FriendListItem({
   onViewProfile: () => void;
   onGift?: () => void;
   onLockChat?: () => void;
+  onBlock?: () => void;
   isLocked?: boolean;
   unreadCount?: number;
 }) {
@@ -424,6 +425,17 @@ function FriendListItem({
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   {isAccepted ? "Delete Friend" : "Cancel Request"}
+                </button>
+              )}
+
+              {/* Block */}
+              {isAccepted && onBlock && (
+                <button
+                  onClick={() => { setMenuOpen(false); onBlock(); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-destructive/10 text-destructive transition-colors text-left"
+                >
+                  <Ban className="w-3.5 h-3.5" />
+                  Block this user
                 </button>
               )}
             </div>
@@ -576,6 +588,7 @@ export default function FriendsPage() {
   const acceptMut = useAcceptFriendRequest();
   const declineMut = useDeclineFriendRequest();
   const removeMut = useRemoveFriend();
+  const blockMut = useBlockUser();
   const sendMsgMut = useSendMessage();
   const deleteForMeMut = useDeleteMessageForMe();
   const deleteForEveryoneMut = useDeleteMessageForEveryone();
@@ -665,7 +678,7 @@ export default function FriendsPage() {
     if (!messageText.trim() && !pendingMedia) return;
     if (!selectedFriendId) return;
     const balance = chatBalance?.balance ?? null;
-    const cost = chatBalance?.messageCost ?? 10;
+    const cost = chatBalance?.messageCost ?? 5;
     if (balance !== null && balance < cost) {
       toast({ title: "Not enough points", description: `Sending a message costs ${cost} pts. You have ${balance} pts.`, variant: "destructive" });
       return;
@@ -807,6 +820,10 @@ export default function FriendsPage() {
                     onViewProfile={() => entry.user && setLocation(`/users/${entry.user.id}`)}
                     onGift={() => entry.user && setGiftFriend({ id: entry.user.id, displayName: entry.user.displayName, profileImageUrl: entry.user.profileImageUrl })}
                     onLockChat={() => entry.user && handleLockChat(entry.user.id)}
+                    onBlock={() => entry.user && blockMut.mutate(entry.user.id, {
+                      onSuccess: () => { toast({ title: "User blocked" }); setSelectedFriendId(null); },
+                      onError: (err: Error) => toast({ title: "Could not block user", description: err.message, variant: "destructive" }),
+                    })}
                     isLocked={!!entry.user && !!chatLocks[entry.user.id]}
                     unreadCount={entry.user ? (unreadByFriend[entry.user.id] ?? 0) : 0}
                   />
@@ -1009,7 +1026,7 @@ export default function FriendsPage() {
                 </div>
                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60 px-1">
                   <Coins className="w-3 h-3" />
-                  <span>{t.friends.msgCosts.replace("{n}", String(chatBalance?.messageCost ?? 10))}</span>
+                  <span>{t.friends.msgCosts.replace("{n}", String(chatBalance?.messageCost ?? 5))}</span>
                   {chatBalance !== undefined && (
                     <span className="ml-auto font-medium text-muted-foreground">{chatBalance.balance} {t.friends.pts} {t.friends.remaining}</span>
                   )}

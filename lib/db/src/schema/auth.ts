@@ -45,6 +45,7 @@ export const usersTable = pgTable("users", {
   preferredLanguage: varchar("preferred_language", { length: 10 }),
   stripeCustomerId: varchar("stripe_customer_id"),
   freeMessages: integer("free_messages").notNull().default(0),
+  receiveStrangerMessages: boolean("receive_stranger_messages").notNull().default(false),
   shopDiscountPct: integer("shop_discount_pct"),
   shopDiscountExpiresAt: timestamp("shop_discount_expires_at", { withTimezone: true }),
   shopDiscountUsesLeft: integer("shop_discount_uses_left"),

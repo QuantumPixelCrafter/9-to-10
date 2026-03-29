@@ -50,6 +50,8 @@ export interface LevelProgress {
 export interface PublicUserProfile {
   id: string;
   username: string | null;
+  firstName: string | null;
+  lastName: string | null;
   displayName: string;
   profileImageUrl: string | null;
   isPublic: boolean;
@@ -191,6 +193,28 @@ export function useGetChatBalance(enabled: boolean) {
     queryFn: () => customFetch<{ balance: number; threshold: number | null; messageCost: number }>("/api/chat/balance"),
     enabled,
     refetchInterval: 5000,
+  });
+}
+
+export function useBlockUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) =>
+      customFetch<{ success: boolean }>(`/api/users/${userId}/block`, { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: getFriendsQueryKey() });
+    },
+  });
+}
+
+export function useUnblockUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) =>
+      customFetch<{ success: boolean }>(`/api/users/${userId}/block`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: getFriendsQueryKey() });
+    },
   });
 }
 
