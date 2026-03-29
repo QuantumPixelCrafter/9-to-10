@@ -7,7 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useThemeMode } from "@/lib/theme-context";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Bell, Coins, MessageCircle, Settings, Sun, Moon, Monitor, Globe2, EyeOff } from "lucide-react";
+import { AlertTriangle, Bell, Coins, MessageCircle, Settings, Sun, Moon, Monitor, Globe2, EyeOff, Smartphone, Tablet } from "lucide-react";
+import { useUIMode } from "@/lib/ui-mode-context";
 
 const REMINDER_OPTIONS: { label: string; value: number | null }[] = [
   { label: "Don't remind me", value: null },
@@ -21,6 +22,7 @@ export default function Preferences() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { theme, setTheme } = useThemeMode();
+  const { uiMode, setUIMode } = useUIMode();
 
   const { data: balanceData, isLoading } = useGetChatBalance(!!user);
   const updatePrefsMut = useUpdatePreferences();
@@ -122,6 +124,42 @@ export default function Preferences() {
               >
                 <Icon className="w-4 h-4" />
                 {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Layout Mode */}
+        <div className="bg-card border border-border/50 rounded-2xl p-6 space-y-5">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-sky-500/10 shrink-0 mt-0.5">
+              <Smartphone className="w-5 h-5 text-sky-500" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Layout</h3>
+              <p className="text-sm text-muted-foreground">Switch between a mobile bottom-bar layout or a tablet sidebar layout.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { value: "mobile" as const, label: "Mobile",  Icon: Smartphone, sub: "Bottom nav + drawer" },
+              { value: "tablet" as const, label: "Tablet",  Icon: Tablet,      sub: "Fixed sidebar"      },
+            ]).map(({ value, label, Icon, sub }) => (
+              <button
+                key={value}
+                onClick={() => setUIMode(value)}
+                className={cn(
+                  "flex flex-col items-start gap-1 p-3 rounded-xl border text-left transition-all duration-200",
+                  uiMode === value
+                    ? "bg-sky-500 text-white border-sky-500 shadow-lg shadow-sky-500/20"
+                    : "border-border bg-background text-muted-foreground hover:border-sky-400/40"
+                )}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Icon className="w-3.5 h-3.5" />
+                  <span className="text-xs font-bold">{label}</span>
+                </div>
+                <span className={cn("text-[10px] leading-tight", uiMode === value ? "text-white/70" : "text-muted-foreground/60")}>{sub}</span>
               </button>
             ))}
           </div>

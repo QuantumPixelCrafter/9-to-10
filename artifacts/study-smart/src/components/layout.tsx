@@ -6,7 +6,6 @@ import {
   Target, Clock, Smile, Menu, Flag,
   BrainCircuit, Sparkles, ChevronRight, Gamepad2, Trophy, User, LogOut, Medal, ShoppingBag, Users,
   Inbox, BadgeCheck, Code2, Settings, ClipboardList, Bell, X, MessageCircle, Ticket, Calculator, Package,
-  Smartphone, Tablet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -106,7 +105,7 @@ export function Layout({ children, title, actions }: LayoutProps) {
   const [scrolled, setScrolled] = useState(false);
   const { user, logout, isAuthenticated } = useAuth();
   const { t } = useLanguage();
-  const { uiMode, setUIMode } = useUIMode();
+  const { uiMode } = useUIMode();
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.username || "Student";
   const { data: unreadCount = 0 } = useInboxUnreadCount();
   const { data: unreadChatData } = useUnreadChatMessages(isAuthenticated);
@@ -263,13 +262,6 @@ export function Layout({ children, title, actions }: LayoutProps) {
             </div>
           </SheetTrigger>
         </Link>
-        <button
-          onClick={() => setUIMode(uiMode === "mobile" ? "tablet" : "mobile")}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground text-sm transition-colors"
-        >
-          {uiMode === "mobile" ? <Tablet className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
-          Switch to {uiMode === "mobile" ? "Tablet" : "Mobile"} UI
-        </button>
         <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-destructive hover:bg-destructive/5 text-sm transition-colors">
           <LogOut className="w-4 h-4" />
           {t.nav.logout}
@@ -406,13 +398,6 @@ export function Layout({ children, title, actions }: LayoutProps) {
                 {t.nav.preferences}
               </div>
             </Link>
-            <button
-              onClick={() => setUIMode("mobile")}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-pointer transition-all text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <Smartphone className="w-3.5 h-3.5 shrink-0" />
-              Switch to Mobile UI
-            </button>
           </div>
         </aside>
 
