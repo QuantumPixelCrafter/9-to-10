@@ -64,15 +64,15 @@ export default function UserProfilePage() {
   }
 
   const isMe = me?.id === profile.id;
-  const isPublic = profile.isPublic !== false;
+  const fs = profile.friendship;
+  const isFriend = fs?.status === "accepted";
+  const isPending = fs?.status === "pending";
+  // Friends always see the full profile, even if the account is private
+  const isPublic = profile.isPublic !== false || isMe || isFriend;
 
   const bgStyle = getBgStyle(profile.equippedBackground);
   const frameGrad = getFrameGradient(profile.equippedFrame);
   const nametagDef = getItemDef(profile.equippedNametag);
-
-  const fs = profile.friendship;
-  const isFriend = fs?.status === "accepted";
-  const isPending = fs?.status === "pending";
 
   const handleAddFriend = () => {
     sendReqMut.mutate(profile.id, {
