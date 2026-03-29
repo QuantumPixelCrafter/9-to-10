@@ -31,14 +31,24 @@ type QuizData = {
 const QUESTION_COUNTS = [5, 10, 15] as const;
 type QCount = (typeof QUESTION_COUNTS)[number];
 
-const LEVEL_ORDER = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","Uni"];
+const LEVEL_ORDER = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
 
-function calcScore(correct: number, quizLevel: string, userLevel: string): number {
-  if (correct === 0) return 2;
+// Points per correct answer based on difficulty (at or above the user's grade level).
+const DIFFICULTY_PTS: Record<string, number> = { easy: 4.5, normal: 5, hard: 5.5 };
+
+function calcScore(correct: number, quizLevel: string, userLevel: string, difficulty: string): number {
+  if (correct === 0) return 0;
   const quizIdx = LEVEL_ORDER.indexOf(quizLevel);
   const userIdx = LEVEL_ORDER.indexOf(userLevel);
-  const isLowerThanUserGrade = quizIdx !== -1 && userIdx !== -1 && quizIdx < userIdx;
-  return correct * (isLowerThanUserGrade ? 1 : 3);
+  const isBelowGrade = quizIdx !== -1 && userIdx !== -1 && quizIdx < userIdx;
+  const ptsEach = isBelowGrade ? 2 : (DIFFICULTY_PTS[difficulty] ?? 5);
+  return Math.round(correct * ptsEach);
+}
+
+function isQuizBelowGrade(quizLevel: string, userLevel: string): boolean {
+  const quizIdx = LEVEL_ORDER.indexOf(quizLevel);
+  const userIdx = LEVEL_ORDER.indexOf(userLevel);
+  return quizIdx !== -1 && userIdx !== -1 && quizIdx < userIdx;
 }
 
 type WrongAnswer = {
@@ -337,8 +347,10 @@ export default function QuizPage() {
 
   const q = quiz?.questions[currentQ];
   const failed = score === 0 && (quiz?.questions.length ?? 0) > 0;
-  const rawScore = quiz ? calcScore(score, quiz.level, user?.level ?? "") : 0;
-  const finalScore = failed ? 2 : (doublePointsActive ? rawScore * 2 : rawScore);
+  const rawScore = quiz ? calcScore(score, quiz.level, user?.level ?? "", quiz.difficulty) : 0;
+  const belowGrade = quiz ? isQuizBelowGrade(quiz.level, user?.level ?? "") : false;
+  // No points for 0 correct; double-points power-up still applies for above/at-grade quizzes
+  const finalScore = score === 0 ? 0 : (doublePointsActive ? rawScore * 2 : rawScore);
   const pct = quiz ? Math.round((score / quiz.questions.length) * 100) : 0;
   const subjects = levelGroup ? getSubjectsForGroup(levelGroup) : [];
   const groupInfo = levelGroup ? LEVEL_GROUP_INFO[levelGroup] : null;
@@ -854,7 +866,15 @@ export default function QuizPage() {
               })()}
 
               <div className="space-y-3">
-                {isAuthenticated && !scoreSubmitted && (
+                {/* Below-grade notice: score is still shown but doesn't go to leaderboard */}
+                {belowGrade && (
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3 flex items-start gap-2 text-amber-700 dark:text-amber-400 text-sm">
+                    <span className="text-base shrink-0">⚠️</span>
+                    <span className="font-medium">This quiz is below your grade level — scores from lower-grade quizzes are not counted on the leaderboard.</span>
+                  </div>
+                )}
+
+                {isAuthenticated && !scoreSubmitted && !belowGrade && score > 0 && (
                   <Button onClick={async () => {
                     await submitScoreMut.mutateAsync({ data: {
                       gameType: "quiz", score: finalScore,
