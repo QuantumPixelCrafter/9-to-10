@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useGetLeaderboard } from "@workspace/api-client-react";
+import { useGetLeaderboard, useMathBlitzLeaderboard } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Layout } from "@/components/layout";
-import { Leaf, Sparkles, Trophy, GraduationCap, BookOpen, Zap, Clock, Gift } from "lucide-react";
+import { Leaf, Sparkles, Trophy, GraduationCap, BookOpen, Zap, Clock, Gift, Calculator } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
@@ -13,8 +13,9 @@ import { useLanguage } from "@/lib/language-context";
 const ALL_LEVELS = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6","U1","U2","U3","U4"];
 
 const GAME_TABS = [
-  { key: "bubblePop",   label: "Bubble Pop",   icon: Leaf,      color: "text-sky-500",    bg: "bg-sky-500/10",    gradient: "from-sky-400 to-violet-500" },
-  { key: "quiz",        label: "Quiz Scores",  icon: Sparkles,  color: "text-amber-500",  bg: "bg-amber-500/10",  gradient: "from-amber-400 to-orange-500" },
+  { key: "bubblePop",   label: "Bubble Pop",   icon: Leaf,       color: "text-sky-500",    bg: "bg-sky-500/10",    gradient: "from-sky-400 to-violet-500" },
+  { key: "quiz",        label: "Quiz Scores",  icon: Sparkles,   color: "text-amber-500",  bg: "bg-amber-500/10",  gradient: "from-amber-400 to-orange-500" },
+  { key: "mathBlitz",   label: "Math Blitz",   icon: Calculator, color: "text-orange-500", bg: "bg-orange-500/10", gradient: "from-orange-400 to-amber-500" },
 ] as const;
 
 const EXTRA_TABS = [
@@ -85,6 +86,8 @@ export default function LeaderboardPage() {
 
   const [quizLevel, setQuizLevel] = useState<string>("");
   const [quizSubject, setQuizSubject] = useState<string>("");
+  const [mbDiff, setMbDiff] = useState<"easy" | "normal" | "hard">("easy");
+  const { data: mbBoard } = useMathBlitzLeaderboard(tab === "mathBlitz");
 
   useEffect(() => {
     if (user?.level && !quizLevel) setQuizLevel(user.level);
@@ -131,8 +134,8 @@ export default function LeaderboardPage() {
           ))}
         </div>
 
-        {/* Weekly / Season toggle (only for game score tabs) */}
-        {tab !== "level" && (
+        {/* Weekly / Season toggle (only for game score tabs, not Math Blitz which is all-time) */}
+        {tab !== "level" && tab !== "mathBlitz" && (
           <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
             className="flex gap-2 p-1 bg-muted/40 rounded-xl w-fit mx-auto">
             {(["weekly", "season"] as BoardType[]).map(bt => (
@@ -157,7 +160,7 @@ export default function LeaderboardPage() {
         {/* Header card with countdown */}
         <div className={cn(
           "rounded-3xl bg-gradient-to-r p-6 text-white shadow-xl",
-          tab === "level" ? activeTab.gradient : BOARD_LABELS[boardType].color
+          tab === "level" ? activeTab.gradient : tab === "mathBlitz" ? activeTab.gradient : BOARD_LABELS[boardType].color
         )}>
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -166,16 +169,20 @@ export default function LeaderboardPage() {
                 <h2 className="text-lg font-bold leading-tight">
                   {tab === "level"
                     ? t.leaderboard.levelTitle
+                    : tab === "mathBlitz"
+                    ? "Math Blitz · All-Time Best"
                     : `${activeTab.label} · ${BOARD_LABELS[boardType].label}`}
                 </h2>
               </div>
               <p className="text-white/75 text-sm">
                 {tab === "level"
                   ? "Top 50 students ranked by XP earned"
+                  : tab === "mathBlitz"
+                  ? "All-time highest scores per difficulty"
                   : `Top 50 scores — resets automatically when the period ends`}
               </p>
             </div>
-            {tab !== "level" && (
+            {tab !== "level" && tab !== "mathBlitz" && (
               <button
                 onClick={() => setShowPrizes(p => !p)}
                 className="shrink-0 flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl text-sm font-bold transition-colors"
@@ -186,7 +193,7 @@ export default function LeaderboardPage() {
           </div>
 
           {/* Countdown timer */}
-          {countdown && tab !== "level" && (
+          {countdown && tab !== "level" && tab !== "mathBlitz" && (
             <div className="mt-4 flex items-center gap-2 flex-wrap">
               <Clock className="w-3.5 h-3.5 text-white/70 shrink-0" />
               <span className="text-white/70 text-xs font-medium">{t.leaderboard.resetsIn}</span>
@@ -207,7 +214,7 @@ export default function LeaderboardPage() {
 
         {/* Prize tiers panel */}
         <AnimatePresence>
-          {showPrizes && tab !== "level" && (
+          {showPrizes && tab !== "level" && tab !== "mathBlitz" && (
             <motion.div
               key="prizes"
               initial={{ opacity: 0, height: 0 }}
@@ -294,8 +301,94 @@ export default function LeaderboardPage() {
           </motion.div>
         )}
 
+        {/* Math Blitz board */}
+        {tab === "mathBlitz" && (
+          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            {/* Difficulty sub-tabs */}
+            <div className="flex gap-2 p-1 bg-muted/40 rounded-xl w-fit mx-auto">
+              {([
+                { key: "easy",   label: "Easy",         color: "bg-green-500",  shadow: "shadow-green-500/30" },
+                { key: "normal", label: "Normal",        color: "bg-blue-500",   shadow: "shadow-blue-500/30" },
+                { key: "hard",   label: "Hard + Extreme",color: "bg-red-500",    shadow: "shadow-red-500/30" },
+              ] as const).map(d => (
+                <button
+                  key={d.key}
+                  onClick={() => setMbDiff(d.key)}
+                  className={cn(
+                    "px-4 py-1.5 rounded-lg text-sm font-bold transition-all duration-200",
+                    mbDiff === d.key
+                      ? `${d.color} text-white shadow-md ${d.shadow}`
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Board entries */}
+            <div className="bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden">
+              {(() => {
+                const mbEntries: any[] = (mbBoard as any)?.[mbDiff] ?? [];
+                if (mbEntries.length === 0) {
+                  return (
+                    <div className="py-20 text-center">
+                      <Trophy className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="font-semibold text-lg mb-1">No scores yet</p>
+                      <p className="text-muted-foreground text-sm">Be the first! Play Math Blitz to get on the board.</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="divide-y divide-border/40">
+                    {mbEntries.map((entry: any, idx: number) => {
+                      const isMe = entry.userId === user?.id;
+                      const initials = entry.displayName.slice(0, 2).toUpperCase();
+                      return (
+                        <motion.div
+                          key={entry.userId}
+                          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.02 }}
+                          onClick={() => setLocation(`/users/${entry.userId}`)}
+                          className={cn("flex items-center gap-4 px-5 py-4 transition-colors cursor-pointer", isMe ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/30")}
+                        >
+                          <div className="w-8 flex items-center justify-center shrink-0">
+                            <RankBadge rank={entry.rank} />
+                          </div>
+                          {entry.profileImageUrl ? (
+                            <img src={entry.profileImageUrl} alt={entry.displayName}
+                              className="w-10 h-10 rounded-xl object-cover border-2 border-border/40 shrink-0" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                              {initials}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("font-semibold truncate", isMe && "text-primary")}>
+                              {entry.displayName}
+                              {isMe && <span className="ml-2 text-xs font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">You</span>}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Lv.{entry.gameLevel}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className={cn("text-xl font-extrabold",
+                              idx === 0 ? "text-amber-500" : idx === 1 ? "text-slate-400" : idx === 2 ? "text-amber-700" : "text-foreground")}>
+                              {entry.score}
+                            </p>
+                            <p className="text-xs text-muted-foreground">correct</p>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          </motion.div>
+        )}
+
         {/* Game score boards */}
-        {tab !== "level" && (
+        {tab !== "level" && tab !== "mathBlitz" && (
           <div className="bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden">
             {isLoading ? (
               <div className="flex flex-col gap-1 p-4">
@@ -426,7 +519,7 @@ export default function LeaderboardPage() {
         )}
 
         {/* Not-on-board notice */}
-        {tab !== "level" && !isLoading && entries.length > 0 && user && !entries.find(e => e.userId === user.id) && (
+        {tab !== "level" && tab !== "mathBlitz" && !isLoading && entries.length > 0 && user && !entries.find(e => e.userId === user.id) && (
           <div className="bg-muted/40 rounded-2xl p-4 border border-border/40 text-center text-sm text-muted-foreground">
             {tab === "quiz"
               ? "You haven't submitted a quiz score this period. Generate an AI quiz from your notes!"

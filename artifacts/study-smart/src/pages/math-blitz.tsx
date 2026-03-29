@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
-import { useSubmitScore, useMathBlitzLeaderboard } from "@workspace/api-client-react";
+import { useSubmitScore } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { getItemDef } from "@/lib/shop-data";
 import {
-  Timer, Zap, Trophy, RotateCcw, ChevronRight,
-  CheckCircle2, XCircle, Crown, Calculator,
+  Timer, Zap, RotateCcw, ChevronRight,
+  CheckCircle2, XCircle, Calculator,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -183,35 +182,6 @@ function generateQuestion(diff: Difficulty): Question {
 // ─── Feedback flash ────────────────────────────────────────────────────────────
 type Feedback = "correct" | "wrong" | null;
 
-// ─── Leaderboard row component ─────────────────────────────────────────────────
-function LeaderRow({ entry, isMe }: { entry: { rank: number; userId: string; displayName: string; profileImageUrl: string | null; equippedNametag: string | null; gameLevel: number; score: number }; isMe: boolean }) {
-  const nametagDef = getItemDef(entry.equippedNametag ?? undefined);
-  const initials = entry.displayName.slice(0, 2).toUpperCase();
-  const rankEl = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : entry.rank;
-
-  return (
-    <div className={cn(
-      "flex items-center gap-3 px-4 py-2.5 rounded-2xl",
-      isMe ? "bg-primary/10 border border-primary/25" : "hover:bg-muted/40 transition-colors",
-    )}>
-      <span className="w-7 text-center text-sm font-bold shrink-0">{rankEl}</span>
-      <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-xs font-bold">
-        {entry.profileImageUrl
-          ? <img src={entry.profileImageUrl} alt={entry.displayName} className="w-full h-full object-cover" />
-          : initials}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className={cn("text-sm font-semibold truncate", isMe && "text-primary")}>
-          {entry.displayName}
-          {nametagDef && <span className="ml-1.5 text-xs text-muted-foreground">{nametagDef.emoji}</span>}
-        </p>
-        <p className="text-[10px] text-muted-foreground">Lv.{entry.gameLevel}</p>
-      </div>
-      <p className="text-base font-black tabular-nums">{entry.score}</p>
-    </div>
-  );
-}
-
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function MathBlitzPage() {
   const { user } = useAuth();
@@ -234,8 +204,6 @@ export default function MathBlitzPage() {
   const scoreRef = useRef(0);
   const diffRef = useRef<Difficulty>("easy");
 
-  const { data: leaderboard, refetch: refetchBoard } = useMathBlitzLeaderboard(gameState === "results");
-
   const meta = DIFFICULTY_META[difficulty];
   const suggestedDiff = suggestDifficulty(user?.level as string | null | undefined);
 
@@ -256,12 +224,12 @@ export default function MathBlitzPage() {
       const gameType = DIFFICULTY_META[diffRef.current].gameType;
       submitMut.mutate(
         { data: { gameType: gameType as any, score: finalScore, secondsTaken: DIFFICULTY_META[diffRef.current].time } },
-        { onSuccess: () => { setSubmitted(true); refetchBoard(); } },
+        { onSuccess: () => { setSubmitted(true); } },
       );
     } else {
       setSubmitted(true);
     }
-  }, [submitMut, refetchBoard]);
+  }, [submitMut]);
 
   const startCountdown = (diff: Difficulty) => {
     setDifficulty(diff);
@@ -336,12 +304,6 @@ export default function MathBlitzPage() {
     ? "bg-amber-500"
     : "bg-red-500";
 
-  const leaderboardTab = difficulty === "hard" || difficulty === "extreme" ? "hard" : difficulty;
-  const boardEntries: typeof leaderboard extends undefined ? [] : any[] =
-    leaderboard
-      ? (leaderboard as any)[leaderboardTab] ?? []
-      : [];
-
   return (
     <Layout title="Math Blitz">
       <div className="max-w-xl mx-auto pb-12 py-4 space-y-5">
@@ -412,30 +374,10 @@ export default function MathBlitzPage() {
                 })}
               </div>
 
-              {/* All-time leaderboard (collapsed preview) */}
-              <div className="mt-6 bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden">
-                <div className="flex items-center gap-2 px-5 py-4 border-b border-border/40">
-                  <Trophy className="w-4 h-4 text-yellow-500" />
-                  <span className="font-bold text-sm">All-Time Leaderboard</span>
-                </div>
-                {(["easy", "normal", "hard"] as const).map(tab => {
-                  const entries = leaderboard ? (leaderboard as any)[tab]?.slice(0, 3) ?? [] : [];
-                  const tabMeta = DIFFICULTY_META[tab];
-                  const tabLabel = tab === "hard" ? "Hard + Extreme" : tabMeta.label;
-                  return (
-                    <div key={tab} className="px-4 py-3 border-b border-border/30 last:border-0">
-                      <p className={cn("text-xs font-semibold mb-2 flex items-center gap-1.5", tabMeta.color)}>
-                        <span>{tabMeta.emoji}</span> {tabLabel}
-                      </p>
-                      {entries.length === 0
-                        ? <p className="text-xs text-muted-foreground italic pl-1">No scores yet — be the first!</p>
-                        : entries.map((e: any) => (
-                          <LeaderRow key={e.userId} entry={e} isMe={e.userId === user?.id} />
-                        ))
-                      }
-                    </div>
-                  );
-                })}
+              {/* No-calculator notice */}
+              <div className="flex items-start gap-2 bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/50 rounded-2xl px-4 py-3 text-sm text-sky-800 dark:text-sky-300">
+                <span className="text-base shrink-0">🚫</span>
+                <p>This is a <span className="font-semibold">mental maths</span> challenge. Please do not use a calculator — scores achieved with one are unfair to other players.</p>
               </div>
             </motion.div>
           )}
@@ -566,28 +508,6 @@ export default function MathBlitzPage() {
                 </p>
                 {!submitted && score > 0 && (
                   <p className="text-xs text-muted-foreground mt-3 animate-pulse">Saving score…</p>
-                )}
-              </div>
-
-              {/* Leaderboard */}
-              <div className="bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden">
-                <div className="flex items-center gap-2 px-5 py-4 border-b border-border/40">
-                  <Crown className="w-4 h-4 text-yellow-500" />
-                  <span className="font-bold text-sm">
-                    {(difficulty === "hard" || difficulty === "extreme") ? "Hard + Extreme Leaderboard" : `${meta.label} Leaderboard`}
-                  </span>
-                  <span className="ml-auto text-xs text-muted-foreground">All-time best</span>
-                </div>
-                {boardEntries.length === 0 ? (
-                  <div className="px-5 py-6 text-center text-sm text-muted-foreground">
-                    {submitted ? "No scores yet — you could be first!" : "Loading…"}
-                  </div>
-                ) : (
-                  <div className="p-2 space-y-0.5">
-                    {boardEntries.map((e: any) => (
-                      <LeaderRow key={e.userId} entry={e} isMe={e.userId === user?.id} />
-                    ))}
-                  </div>
                 )}
               </div>
 
