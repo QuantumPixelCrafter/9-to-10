@@ -59,7 +59,7 @@ const DIFFICULTY_META: Record<Difficulty, {
     gradient: "from-sky-400 to-blue-500",
     time: 60,
     grades: "P4 – P6",
-    ops: "+  −  ×  ÷  (1–3 digit)",
+    ops: "+  −  ×  ÷  (1–3 ± 2–3 digit)",
     gameType: "math-blitz-normal",
   },
   hard: {
@@ -72,7 +72,7 @@ const DIFFICULTY_META: Record<Difficulty, {
     gradient: "from-orange-400 to-red-500",
     time: 40,
     grades: "S1 – S4",
-    ops: "+  −  ×  ÷  (3–5 digit)",
+    ops: "+  −  ×  ÷  (3–5 ± 2–3 digit)",
     gameType: "math-blitz-hard",
   },
   extreme: {
@@ -85,7 +85,7 @@ const DIFFICULTY_META: Record<Difficulty, {
     gradient: "from-red-500 to-rose-600",
     time: 40,
     grades: "S5 +",
-    ops: "+  −  ×  ÷  (3–6 digit)",
+    ops: "+  −  ×  ÷  (3–6 ± 2–3 digit)",
     gameType: "math-blitz-hard",
   },
 };
@@ -134,8 +134,8 @@ function generateQuestion(diff: Difficulty): Question {
     }
     const op: Op = Math.random() < 0.5 ? "+" : "−";
     let a = randNDigits(1, 3);
-    const b = randNDigits(1, 2);
-    if (op === "−" && a < b) a = b + randNDigits(1, 2);
+    const b = randNDigits(2, 3);
+    if (op === "−" && a < b) a = b + randNDigits(2, 3);
     return { a, b, op, answer: op === "+" ? a + b : a - b };
   }
 
@@ -154,8 +154,8 @@ function generateQuestion(diff: Difficulty): Question {
     }
     const op: Op = Math.random() < 0.5 ? "+" : "−";
     let a = randNDigits(3, 5);
-    const b = randNDigits(2, 5);
-    if (op === "−" && a < b) a = b + randNDigits(2, 4);
+    const b = randNDigits(2, 3);
+    if (op === "−" && a < b) a = b + randNDigits(2, 3);
     return { a, b, op, answer: op === "+" ? a + b : a - b };
   }
 
@@ -174,8 +174,8 @@ function generateQuestion(diff: Difficulty): Question {
   }
   const op: Op = Math.random() < 0.5 ? "+" : "−";
   let a = randNDigits(3, 6);
-  const b = randNDigits(2, 6);
-  if (op === "−" && a < b) a = b + randNDigits(2, 5);
+  const b = randNDigits(2, 3);
+  if (op === "−" && a < b) a = b + randNDigits(2, 3);
   return { a, b, op, answer: op === "+" ? a + b : a - b };
 }
 
