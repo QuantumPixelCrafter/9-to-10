@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { useSchedulesData, useDeleteScheduleAction, useSkipScheduleDateAction } from "@/hooks/use-schedules";
-import { useGoalsData } from "@/hooks/use-goals";
+import { useGoalsData, useUpdateGoalAction } from "@/hooks/use-goals";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, parseISO, isSameDay } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Target, BookOpen, Trash2, CalendarX, CalendarOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Target, BookOpen, Trash2, CalendarX, CalendarOff, CheckCircle2, Circle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import type { Schedule } from "@workspace/api-client-react";
@@ -34,8 +34,19 @@ export default function CalendarPage() {
   const { data: goals = [] } = useGoalsData();
   const deleteMut = useDeleteScheduleAction();
   const skipMut = useSkipScheduleDateAction();
+  const updateGoalMut = useUpdateGoalAction();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState | null>(null);
+
+  const handleGoalToggle = async (e: React.MouseEvent, goal: any) => {
+    e.stopPropagation();
+    try {
+      await updateGoalMut.mutateAsync({ id: goal.id, data: { completed: !goal.completed } });
+      toast({ title: goal.completed ? "Goal marked as pending" : "Goal marked as complete!" });
+    } catch {
+      toast({ title: "Failed to update goal", variant: "destructive" });
+    }
+  };
 
   const daysInMonth = eachDayOfInterval({
     start: startOfMonth(currentDate),
@@ -149,9 +160,26 @@ export default function CalendarPage() {
 
                 <div className="space-y-1 mt-0.5">
                   {dayGoals.slice(0, 2).map((g) => (
-                    <div key={g.id} className="text-[10px] md:text-xs font-medium bg-red-500/10 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded flex items-center gap-1 truncate">
+                    <div
+                      key={g.id}
+                      className={`group/goal text-[10px] md:text-xs font-medium px-1.5 py-0.5 rounded flex items-center gap-1 truncate relative
+                        ${g.completed
+                          ? "bg-green-500/10 text-green-600 dark:text-green-400 line-through"
+                          : "bg-red-500/10 text-red-600 dark:text-red-400"
+                        }`}
+                    >
                       <Target className="w-3 h-3 shrink-0 hidden md:block" />
-                      <span className="truncate">{g.title}</span>
+                      <span className="truncate flex-1">{g.title}</span>
+                      <button
+                        onClick={(e) => handleGoalToggle(e, g)}
+                        className="opacity-0 group-hover/goal:opacity-100 transition-opacity shrink-0 rounded hover:bg-black/10 p-0.5"
+                        title={g.completed ? "Mark as pending" : "Mark as complete"}
+                      >
+                        {g.completed
+                          ? <CheckCircle2 className="w-2.5 h-2.5 text-green-500" />
+                          : <Circle className="w-2.5 h-2.5" />
+                        }
+                      </button>
                     </div>
                   ))}
                   {dayGoals.length > 2 && (

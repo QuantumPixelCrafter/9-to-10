@@ -436,7 +436,7 @@ export const ListGoalsResponse = zod.array(ListGoalsResponseItem);
 export const CreateGoalBody = zod.object({
   title: zod.string(),
   description: zod.string().optional(),
-  deadline: zod.date(),
+  deadline: zod.coerce.date(),
 });
 
 /**
@@ -449,7 +449,7 @@ export const UpdateGoalParams = zod.object({
 export const UpdateGoalBody = zod.object({
   title: zod.string().optional(),
   description: zod.string().optional(),
-  deadline: zod.date().optional(),
+  deadline: zod.coerce.date().optional(),
   completed: zod.boolean().optional(),
 });
 
