@@ -36,12 +36,45 @@ router.get("/developer/users", requireDeveloper, async (req: Request, res: Respo
 });
 
 router.post("/developer/gift-all", requireDeveloper, async (req: Request, res: Response) => {
-  const { giftName, points } = req.body;
+  const { giftName, giftType = "points", points, freeMessages } = req.body;
 
   if (!giftName || typeof giftName !== "string" || giftName.trim().length === 0) {
     res.status(400).json({ error: "giftName is required." });
     return;
   }
+
+  const name = giftName.trim();
+
+  if (giftType === "free_messages") {
+    if (!freeMessages || typeof freeMessages !== "number" || freeMessages <= 0 || !Number.isInteger(freeMessages)) {
+      res.status(400).json({ error: "freeMessages must be a positive integer." });
+      return;
+    }
+    if (freeMessages > 10000) {
+      res.status(400).json({ error: "Cannot grant more than 10,000 free messages at once." });
+      return;
+    }
+
+    const allUsers = await db.select({ id: usersTable.id }).from(usersTable);
+    if (allUsers.length === 0) { res.json({ success: true, recipientCount: 0 }); return; }
+
+    await db.update(usersTable)
+      .set({ freeMessages: sql`${usersTable.freeMessages} + ${freeMessages}` });
+
+    await db.insert(inboxMessagesTable).values(
+      allUsers.map((u) => ({
+        recipientId: u.id,
+        senderId: req.user!.id,
+        type: "system",
+        message: `A gift from the development team: ${name} — you've received ${freeMessages.toLocaleString()} free chat message${freeMessages !== 1 ? "s" : ""}!`,
+      }))
+    );
+
+    res.json({ success: true, recipientCount: allUsers.length });
+    return;
+  }
+
+  // Default: points
   if (!points || typeof points !== "number" || points <= 0 || !Number.isInteger(points)) {
     res.status(400).json({ error: "points must be a positive integer." });
     return;
@@ -51,16 +84,8 @@ router.post("/developer/gift-all", requireDeveloper, async (req: Request, res: R
     return;
   }
 
-  const name = giftName.trim();
-
-  const allUsers = await db
-    .select({ id: usersTable.id })
-    .from(usersTable);
-
-  if (allUsers.length === 0) {
-    res.json({ success: true, recipientCount: 0 });
-    return;
-  }
+  const allUsers = await db.select({ id: usersTable.id }).from(usersTable);
+  if (allUsers.length === 0) { res.json({ success: true, recipientCount: 0 }); return; }
 
   await db.update(usersTable)
     .set({ bonusPoints: sql`${usersTable.bonusPoints} + ${points}` });
