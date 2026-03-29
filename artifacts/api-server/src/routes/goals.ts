@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, goalsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   CreateGoalBody,
   UpdateGoalBody,
@@ -11,32 +11,43 @@ import { awardXp } from "../lib/xp";
 
 const router: IRouter = Router();
 
-router.get("/goals", async (_req, res) => {
+router.get("/goals", async (req, res) => {
+  const userId = req.isAuthenticated() ? req.user.id : null;
   const goals = await db
     .select()
     .from(goalsTable)
+    .where(userId ? eq(goalsTable.userId, userId) : undefined)
     .orderBy(goalsTable.deadline);
   res.json(goals);
 });
 
 router.post("/goals", async (req, res) => {
   const body = CreateGoalBody.parse(req.body);
-  const [goal] = await db.insert(goalsTable).values(body).returning();
+  const userId = req.isAuthenticated() ? req.user.id : null;
+  const [goal] = await db
+    .insert(goalsTable)
+    .values({ ...body, userId })
+    .returning();
   res.status(201).json(goal);
 });
 
 router.put("/goals/:id", async (req, res) => {
   const { id } = UpdateGoalParams.parse(req.params);
   const body = UpdateGoalBody.parse(req.body);
+  const userId = req.isAuthenticated() ? req.user.id : null;
 
-  // Check if this update is marking as completed
-  const [existing] = await db.select().from(goalsTable).where(eq(goalsTable.id, id)).limit(1);
+  // Scope lookup to the authenticated user (if available)
+  const conditions = userId
+    ? and(eq(goalsTable.id, id), eq(goalsTable.userId, userId))
+    : eq(goalsTable.id, id);
+
+  const [existing] = await db.select().from(goalsTable).where(conditions).limit(1);
   const justCompleted = body.completed === true && existing && !existing.completed;
 
   const [goal] = await db
     .update(goalsTable)
     .set(body)
-    .where(eq(goalsTable.id, id))
+    .where(conditions)
     .returning();
 
   if (!goal) {
@@ -60,7 +71,11 @@ router.put("/goals/:id", async (req, res) => {
 
 router.delete("/goals/:id", async (req, res) => {
   const { id } = DeleteGoalParams.parse(req.params);
-  await db.delete(goalsTable).where(eq(goalsTable.id, id));
+  const userId = req.isAuthenticated() ? req.user.id : null;
+  const conditions = userId
+    ? and(eq(goalsTable.id, id), eq(goalsTable.userId, userId))
+    : eq(goalsTable.id, id);
+  await db.delete(goalsTable).where(conditions);
   res.status(204).send();
 });
 

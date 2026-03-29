@@ -1,5 +1,6 @@
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync, getUncachableStripeClient } from './stripeClient';
+import { startGoalScheduler } from './lib/goal-scheduler';
 import app from "./app";
 
 const STORE_PRODUCTS = [
@@ -114,4 +115,5 @@ await initStripe();
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
+  startGoalScheduler();
 });
