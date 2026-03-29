@@ -33,7 +33,7 @@ async function distributeRewards(boardType: "weekly" | "season", periodKey: stri
       bestScore: sql<number>`max(${scoresTable.score})`.as("best_score"),
     })
     .from(scoresTable)
-    .where(eq(keyCol, periodKey))
+    .where(and(eq(keyCol, periodKey), eq(scoresTable.gameType, "quiz")))
     .groupBy(scoresTable.userId)
     .orderBy(desc(sql<number>`max(${scoresTable.score})`))
     .limit(50);
