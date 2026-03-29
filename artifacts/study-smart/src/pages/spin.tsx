@@ -5,27 +5,29 @@ import { customFetch } from "@workspace/api-client-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ticket, Sparkles, ShoppingBag } from "lucide-react";
+import { Ticket, Sparkles, ShoppingBag, Info } from "lucide-react";
 import { useLocation } from "wouter";
 
 // ── Wheel segment definitions ─────────────────────────────────────────────────
 const SEGMENTS = [
-  { id: "grand_prize",    emoji: "🍀", label: "20K pts\n+ Nametag",   color: "#F59E0B", dark: "#92400E" },
-  { id: "streak_freezes", emoji: "🧊", label: "5 Streak\nFreezes",     color: "#3B82F6", dark: "#1E3A5F" },
-  { id: "objective_pass", emoji: "🎯", label: "Objective\nPass",       color: "#8B5CF6", dark: "#2D1B5A" },
-  { id: "message_quota",  emoji: "💬", label: "1500\nQuotas",          color: "#EC4899", dark: "#500E30" },
-  { id: "free_spins",     emoji: "🎡", label: "5 Free\nSpins",         color: "#06B6D4", dark: "#0E3A50" },
-  { id: "discount_50",    emoji: "🔥", label: "50% Shop\nDiscount",    color: "#EF4444", dark: "#4A0000" },
-  { id: "discount_25",    emoji: "🏷️", label: "25% Shop\nDiscount",   color: "#F97316", dark: "#4A1600" },
-  { id: "pts_5000",       emoji: "💎", label: "5,000\nPoints",         color: "#10B981", dark: "#0A3B28" },
-  { id: "pts_2000",       emoji: "⭐", label: "2,000\nPoints",         color: "#22C55E", dark: "#0F3A1E" },
-  { id: "pts_tier9",      emoji: "✨", label: "1500–1990\nPoints",     color: "#84CC16", dark: "#2A3A0A" },
-  { id: "pts_tier10",     emoji: "🌟", label: "1000–1490\nPoints",     color: "#EAB308", dark: "#3A2E00" },
-  { id: "pts_tier11",     emoji: "💫", label: "500–990\nPoints",       color: "#F59E0B", dark: "#3A2000" },
-  { id: "pts_tier12",     emoji: "🎲", label: "10–490\nPoints",        color: "#94A3B8", dark: "#1E2D3A" },
+  { id: "grand_prize",    emoji: "🍀", label: "20K pts\n+ Nametag",   color: "#F59E0B", dark: "#92400E", desc: "20,000 pts + 🍀 Luckiest Person nametag",            weight: 5    },
+  { id: "streak_freezes", emoji: "🧊", label: "5 Streak\nFreezes",     color: "#3B82F6", dark: "#1E3A5F", desc: "5 Streak Freezes",                                   weight: 100  },
+  { id: "objective_pass", emoji: "🎯", label: "Objective\nPass",       color: "#8B5CF6", dark: "#2D1B5A", desc: "Objective Pass — clears all weekly & monthly goals",  weight: 100  },
+  { id: "message_quota",  emoji: "💬", label: "3,000\nQuotas",         color: "#EC4899", dark: "#500E30", desc: "3,000 free message quotas",                           weight: 300  },
+  { id: "free_spins",     emoji: "🎡", label: "5 Free\nSpins",         color: "#06B6D4", dark: "#0E3A50", desc: "5 Free Spins (Spinning Vouchers)",                    weight: 500  },
+  { id: "discount_50",    emoji: "🔥", label: "50% Shop\nDiscount",    color: "#EF4444", dark: "#4A0000", desc: "50% Shop Discount (10 min, 3 items)",                 weight: 795  },
+  { id: "discount_25",    emoji: "🏷️", label: "25% Shop\nDiscount",   color: "#F97316", dark: "#4A1600", desc: "25% Shop Discount (10 min, 3 items)",                 weight: 900  },
+  { id: "pts_5000",       emoji: "💎", label: "5,000\nPoints",         color: "#10B981", dark: "#0A3B28", desc: "5,000 Points",                                        weight: 1000 },
+  { id: "pts_2000",       emoji: "⭐", label: "2,000\nPoints",         color: "#22C55E", dark: "#0F3A1E", desc: "2,000 Points",                                        weight: 1300 },
+  { id: "pts_tier9",      emoji: "✨", label: "1500–1990\nPoints",     color: "#84CC16", dark: "#2A3A0A", desc: "1,500–1,990 Points (random)",                         weight: 1800 },
+  { id: "pts_tier10",     emoji: "🌟", label: "1000–1490\nPoints",     color: "#EAB308", dark: "#3A2E00", desc: "1,000–1,490 Points (random)",                         weight: 2400 },
+  { id: "pts_tier11",     emoji: "💫", label: "500–990\nPoints",       color: "#F59E0B", dark: "#3A2000", desc: "500–990 Points (random)",                              weight: 600  },
+  { id: "pts_tier12",     emoji: "🎲", label: "10–490\nPoints",        color: "#94A3B8", dark: "#1E2D3A", desc: "10–490 Points (random)",                              weight: 400  },
 ];
 
+const TOTAL_WEIGHT = SEGMENTS.reduce((s, seg) => s + seg.weight, 0);
 const NUM_SEGMENTS = SEGMENTS.length;
 const SEGMENT_ANGLE = 360 / NUM_SEGMENTS;
 
@@ -81,6 +83,56 @@ function WheelSVG({ rotation }: { rotation: number }) {
   );
 }
 
+// ── Prizes Info Dialog ────────────────────────────────────────────────────────
+function PrizesDialog() {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          className="w-7 h-7 rounded-full border-2 border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition-colors flex items-center justify-center flex-shrink-0"
+          aria-label="View possible prizes"
+        >
+          <Info className="w-3.5 h-3.5" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm rounded-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            🎡 Possible Prizes
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2 pt-1">
+          {SEGMENTS.map(seg => {
+            const pct = ((seg.weight / TOTAL_WEIGHT) * 100).toFixed(2);
+            return (
+              <div key={seg.id} className="flex items-center gap-3 py-1.5 px-2 rounded-xl hover:bg-muted/50 transition-colors">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-base"
+                  style={{ backgroundColor: seg.color + "22", border: `2px solid ${seg.color}40` }}
+                >
+                  {seg.emoji}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium leading-snug">{seg.desc}</p>
+                </div>
+                <div
+                  className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: seg.color + "22", color: seg.color }}
+                >
+                  {pct}%
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground pt-1 pb-1 text-center">
+          Percentages represent the probability of landing on each prize.
+        </p>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function SpinPage() {
   const { isAuthenticated } = useAuth();
@@ -112,8 +164,6 @@ export default function SpinPage() {
       const segIndex = SEGMENTS.findIndex(s => s.id === spinResult.segmentId);
       const segIndex2 = segIndex === -1 ? 0 : segIndex;
 
-      // Bring segment centre to top (pointer). The segment centre is at (segIndex + 0.5) * SEGMENT_ANGLE from top.
-      // To place it at the pointer (top), we need to rotate the wheel so that offset is at 0°.
       const targetAngle = 360 - (segIndex2 + 0.5) * SEGMENT_ANGLE;
       const currentMod = rotation % 360;
       const diff = ((targetAngle - currentMod) % 360 + 360) % 360;
@@ -142,7 +192,10 @@ export default function SpinPage() {
 
         {/* Header */}
         <div className="text-center space-y-1">
-          <h1 className="text-2xl font-extrabold tracking-tight">🎡 Wheel of Fortune</h1>
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-2xl font-extrabold tracking-tight">🎡 Wheel of Fortune</h1>
+            <PrizesDialog />
+          </div>
           <p className="text-muted-foreground text-sm">Spend a Spinning Voucher to win amazing rewards</p>
         </div>
 
@@ -217,20 +270,6 @@ export default function SpinPage() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Reward table */}
-        <div className="rounded-2xl border bg-card p-4 space-y-3">
-          <h3 className="font-bold text-sm">Possible Rewards</h3>
-          <div className="space-y-1.5">
-            {SEGMENTS.map(seg => (
-              <div key={seg.id} className="flex items-center gap-2.5 text-sm">
-                <span className="text-base">{seg.emoji}</span>
-                <span className="flex-1 text-muted-foreground">{seg.label.replace("\n", " ")}</span>
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: seg.color }} />
-              </div>
-            ))}
-          </div>
-        </div>
 
       </div>
     </Layout>
