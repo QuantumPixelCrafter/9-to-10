@@ -5,7 +5,7 @@ import type { ShopItem } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Globe, Globe2, Palette, Trash2, AlertTriangle, Search, ChevronLeft, AtSign } from "lucide-react";
+import { LogOut, Trophy, Brain, Leaf, Sparkles, Star, User, GraduationCap, CheckCircle2, Medal, ShoppingBag, Camera, Pencil, X, Check, Zap, Lock, Eye, EyeOff, Globe, Globe2, Palette, Trash2, AlertTriangle, Search, AtSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -93,12 +93,9 @@ export default function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  // Country / grade dialog
+  // Country dialog
   const [showCountryDialog, setShowCountryDialog] = useState(false);
-  const [countryStep, setCountryStep] = useState<"country" | "grade">("country");
   const [countrySearch, setCountrySearch] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState<CountryDef | null>(null);
-  const [selectedGradeIndex, setSelectedGradeIndex] = useState<number | null>(null);
   const [savingCountry, setSavingCountry] = useState(false);
   const [togglingDevMode, setTogglingDevMode] = useState(false);
   // Username change
@@ -215,14 +212,14 @@ export default function ProfilePage() {
     }
   };
 
-  const handleCountrySave = async (countryCode: string, gradeIndex: number) => {
+  const handleCountrySave = async (countryCode: string) => {
     setSavingCountry(true);
     try {
       await customFetch("/api/auth/profile", {
         method: "PUT",
-        body: JSON.stringify({ country: countryCode, gradeIndex }),
+        body: JSON.stringify({ country: countryCode }),
       });
-      toast({ title: "Country & grade saved!" });
+      toast({ title: "Country saved!" });
       setShowCountryDialog(false);
       window.location.reload();
     } catch (err: any) {
@@ -708,8 +705,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   <Button variant="outline" size="sm" className="rounded-xl text-xs" onClick={() => {
-                    setCountryStep("country"); setCountrySearch(""); setSelectedCountry(null); setSelectedGradeIndex(null);
-                    setShowCountryDialog(true);
+                    setCountrySearch(""); setShowCountryDialog(true);
                   }}>
                     Change
                   </Button>
@@ -718,10 +714,9 @@ export default function ProfilePage() {
                 <div className="text-center py-4">
                   <p className="text-sm text-muted-foreground mb-3">No country or grade set.</p>
                   <Button variant="outline" className="rounded-xl" onClick={() => {
-                    setCountryStep("country"); setCountrySearch(""); setSelectedCountry(null); setSelectedGradeIndex(null);
-                    setShowCountryDialog(true);
+                    setCountrySearch(""); setShowCountryDialog(true);
                   }}>
-                    <Globe className="w-4 h-4 mr-2" /> Set Country &amp; Grade
+                    <Globe className="w-4 h-4 mr-2" /> Set Country
                   </Button>
                 </div>
               )}
@@ -1088,104 +1083,48 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* ── Country & Grade Dialog ─────────────────────────────────────── */}
+      {/* ── Country Dialog ──────────────────────────────────────────────── */}
       {showCountryDialog && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowCountryDialog(false)}>
           <div className="bg-card rounded-3xl border border-border/60 shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center gap-3 p-5 border-b border-border/40 shrink-0">
-              {countryStep === "grade" && (
-                <button
-                  onClick={() => { setCountryStep("country"); setSelectedCountry(null); setSelectedGradeIndex(null); }}
-                  className="p-1.5 rounded-xl hover:bg-muted/60 transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-              )}
               <div className="flex-1">
-                {countryStep === "country"
-                  ? <h3 className="font-bold text-base">Select Your Country</h3>
-                  : <div>
-                      <h3 className="font-bold text-base">Select Your Grade</h3>
-                      {selectedCountry && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{selectedCountry.flag} {selectedCountry.name}</p>
-                      )}
-                    </div>
-                }
+                <h3 className="font-bold text-base">Select Your Country</h3>
               </div>
               <button onClick={() => setShowCountryDialog(false)} className="p-1.5 rounded-xl hover:bg-muted/60 transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Step 1: Country */}
-            {countryStep === "country" && (
-              <>
-                <div className="p-4 shrink-0">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                      autoFocus
-                      type="text"
-                      value={countrySearch}
-                      onChange={e => setCountrySearch(e.target.value)}
-                      placeholder="Search countries…"
-                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-                <div className="overflow-y-auto flex-1 px-4 pb-4 space-y-1">
-                  {searchCountries(countrySearch).map(c => (
-                    <button
-                      key={c.code}
-                      onClick={() => { setSelectedCountry(c); setSelectedGradeIndex(null); setCountryStep("grade"); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/60 transition-colors text-left"
-                    >
-                      <span className="text-xl">{c.flag}</span>
-                      <span className="font-medium text-sm">{c.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Step 2: Grade */}
-            {countryStep === "grade" && selectedCountry && (() => {
-              const groups = Array.from(new Set(selectedCountry.grades.map(g => g.group)));
-              const GROUP_LABELS: Record<string, string> = {
-                preschool: "Pre-school / Kindergarten",
-                primary: "Primary / Elementary",
-                secondary: "Secondary / High School",
-                university: "University / College",
-              };
-              return (
-                <div className="overflow-y-auto flex-1 px-4 pb-4 space-y-4 pt-3">
-                  {groups.map(group => (
-                    <div key={group}>
-                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">{GROUP_LABELS[group]}</p>
-                      <div className="space-y-1">
-                        {selectedCountry.grades.map((grade, idx) => {
-                          if (grade.group !== group) return null;
-                          return (
-                            <button
-                              key={grade.code}
-                              disabled={savingCountry}
-                              onClick={() => { setSelectedGradeIndex(idx); handleCountrySave(selectedCountry.code, idx); }}
-                              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-muted/60 transition-colors text-left disabled:opacity-50"
-                            >
-                              <span className="font-medium text-sm">{grade.name}</span>
-                              {savingCountry && selectedGradeIndex === idx && (
-                                <span className="text-xs text-muted-foreground">Saving…</span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
+            {/* Country list */}
+            <div className="p-4 shrink-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={countrySearch}
+                  onChange={e => setCountrySearch(e.target.value)}
+                  placeholder="Search countries…"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </div>
+            <div className="overflow-y-auto flex-1 px-4 pb-4 space-y-1">
+              {searchCountries(countrySearch).map(c => (
+                <button
+                  key={c.code}
+                  disabled={savingCountry}
+                  onClick={() => handleCountrySave(c.code)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/60 transition-colors text-left disabled:opacity-50"
+                >
+                  <span className="text-xl">{c.flag}</span>
+                  <span className="font-medium text-sm">{c.name}</span>
+                  {savingCountry && <span className="ml-auto text-xs text-muted-foreground">Saving…</span>}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
