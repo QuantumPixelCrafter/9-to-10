@@ -77,17 +77,26 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { key: "memory_match",    title: "Memory Pro",      description: "You've entered the memory arena.",                                  requirement: "Complete a Memory Match game",                         icon: "🃏", points: 100,  category: "games" },
   { key: "bubble_pop",      title: "Pop Star",        description: "Let the bubbles fly!",                                             requirement: "Play a round of Bubble Pop",                           icon: "🫧", points: 100,  category: "games" },
   { key: "all_games",       title: "Triple Threat",   description: "Mastering all three—a true all-rounder.",                          requirement: "Play Memory Match, Bubble Pop, and complete a Quiz",   icon: "🎮", points: 240,  category: "games" },
-  { key: "bubbles_200",     title: "Bubble Deity",    description: "Beyond mortal limits—you've ascended to divine popping status.",   requirement: "Pop 200 bubbles total (ever)",                         icon: "🔮", points: 1440, category: "games" },
+  { key: "bubbles_200",     title: "Bubble Veteran",  description: "Two hundred pops and counting—you're no newcomer.",               requirement: "Pop 200 bubbles total (ever)",                         icon: "🔮", points: 800,  category: "games" },
+  { key: "bubbles_500",     title: "Pop Obsessed",    description: "Five hundred pops? You clearly can't stop.",                      requirement: "Pop 500 bubbles total (ever)",                         icon: "🌊", points: 1600, category: "games" },
+  { key: "bubbles_1000",    title: "Bubble Deity",    description: "A thousand pops—beyond mortal limits, you've ascended.",          requirement: "Pop 1,000 bubbles total (ever)",                       icon: "💠", points: 2800, category: "games" },
+  { key: "bubbles_5000",    title: "Bubble God",      description: "Five thousand pops. There are no words. Only bubbles.",           requirement: "Pop 5,000 bubbles total (ever)",                       icon: "🌌", points: 5000, category: "games" },
   { key: "memory_under_50", title: "Swift Starter",   description: "You've proven you can finish fast—speed is on your side.",         requirement: "Complete Memory Match in under 50 seconds",            icon: "⏱️", points: 150,  category: "games" },
   { key: "memory_under_30", title: "Rapid Runner",    description: "Your reflexes and focus are razor sharp.",                         requirement: "Complete Memory Match in under 30 seconds",            icon: "🏃", points: 290,  category: "games" },
   { key: "memory_under_20", title: "Lightning Striker",description: "You blaze through challenges with electrifying speed.",           requirement: "Complete Memory Match in under 20 seconds",            icon: "⚡", points: 480,  category: "games" },
   { key: "memory_under_15", title: "Blazing Phantom", description: "Almost untouchable—your moves are a blur.",                        requirement: "Complete Memory Match in under 15 seconds",            icon: "👻", points: 960,  category: "games" },
   { key: "memory_under_10", title: "Time-Breaker",    description: "So hard, yet you did it. You've shattered the limits of possibility.", requirement: "Complete Memory Match in under 10 seconds",         icon: "💥", points: 2400, category: "games" },
-  // Periodic
-  { key: "bubbles_10",  title: "Pop Rookie",      description: "Ten bubbles this week—the popping spree begins!",                 requirement: "Pop 10 bubbles this week",                             icon: "🫧", points: 100, category: "games", periodic: "weekly"   },
-  { key: "bubbles_25",  title: "Bubble Breaker",  description: "25 bubbles this month—your aim is sharpening.",                   requirement: "Pop 25 bubbles this month",                            icon: "💦", points: 200, category: "games", periodic: "monthly"  },
-  { key: "bubbles_50",  title: "Burst Specialist",description: "50 bubbles this month—precision and speed combined.",             requirement: "Pop 50 bubbles this month",                            icon: "⚡", points: 360, category: "games", periodic: "monthly"  },
-  { key: "bubbles_100", title: "Bubble Storm",    description: "A hundred bubbles this season—an unstoppable flurry.",            requirement: "Pop 100 bubbles this season",                          icon: "🌪️", points: 720, category: "games", periodic: "seasonal" },
+  // Periodic — weekly
+  { key: "bubbles_weekly_30",   title: "Pop Warm-Up",        description: "Thirty pops this week—you're just getting started.",            requirement: "Pop 30 bubbles this week",     icon: "🫧", points: 150,  category: "games", periodic: "weekly"   },
+  { key: "bubbles_weekly_75",   title: "Pop Enthusiast",     description: "Seventy-five pops this week—there's no stopping you.",          requirement: "Pop 75 bubbles this week",     icon: "💦", points: 320,  category: "games", periodic: "weekly"   },
+  { key: "bubbles_weekly_150",  title: "Weekly Pop Machine", description: "A hundred-fifty pops this week—relentless and unstoppable.",    requirement: "Pop 150 bubbles this week",    icon: "⚡", points: 600,  category: "games", periodic: "weekly"   },
+  // Periodic — monthly
+  { key: "bubbles_monthly_100", title: "Bubble Breaker",     description: "A hundred pops this month—your aim is sharpening.",             requirement: "Pop 100 bubbles this month",   icon: "💥", points: 300,  category: "games", periodic: "monthly"  },
+  { key: "bubbles_monthly_300", title: "Burst Specialist",   description: "Three hundred pops this month—precision and speed combined.",   requirement: "Pop 300 bubbles this month",   icon: "🌊", points: 600,  category: "games", periodic: "monthly"  },
+  { key: "bubbles_monthly_600", title: "Pop Fanatic",        description: "Six hundred pops this month—an absolute force of nature.",      requirement: "Pop 600 bubbles this month",   icon: "🌪️", points: 960, category: "games", periodic: "monthly"  },
+  // Periodic — seasonal
+  { key: "bubbles_seasonal_500",  title: "Bubble Storm",        description: "Five hundred pops this season—an unstoppable flurry.",       requirement: "Pop 500 bubbles this season",   icon: "🌀", points: 1200, category: "games", periodic: "seasonal" },
+  { key: "bubbles_seasonal_1500", title: "Seasonal Bubble Titan", description: "Fifteen hundred pops in one season—you're a popping legend.", requirement: "Pop 1,500 bubbles this season", icon: "👑", points: 2400, category: "games", periodic: "seasonal" },
 
   // ─── Donations ───────────────────────────────────────────────────────────────
   { key: "donated_seed",   title: "Seed Backer",   description: "You planted the first seed. Every great journey starts with a single step — thank you for yours.", requirement: "Donate $1 via the Store",  icon: "🌱", points: 240,  category: "general" },
@@ -327,6 +336,9 @@ export async function checkAndAwardAchievements(userId: string): Promise<Achieve
     quiz_master_200:  quizScoreCount >= 200,
     all_games:        gameTypes.has("memory-match") && gameTypes.has("bubble-pop") && gameTypes.has("quiz"),
     bubbles_200:      bubbleTotal >= 200,
+    bubbles_500:      bubbleTotal >= 500,
+    bubbles_1000:     bubbleTotal >= 1000,
+    bubbles_5000:     bubbleTotal >= 5000,
     game_level_1:     gameLevel >= 1,
     game_level_25:    gameLevel >= 25,
     game_level_50:    gameLevel >= 50,
@@ -365,10 +377,14 @@ export async function checkAndAwardAchievements(userId: string): Promise<Achieve
     [`quiz_knowledge_seeker__${seasonKey}`]: seasonalQuizCount >= 100,
 
     // ── Periodic: Games (Bubble Pop) ───────────────────────────────────────────
-    [`bubbles_10__${weekKey}`]:   wBubbles >= 10,
-    [`bubbles_25__${monthKey}`]:  mBubbles >= 25,
-    [`bubbles_50__${monthKey}`]:  mBubbles >= 50,
-    [`bubbles_100__${seasonKey}`]: sBubbles >= 100,
+    [`bubbles_weekly_30__${weekKey}`]:    wBubbles >= 30,
+    [`bubbles_weekly_75__${weekKey}`]:    wBubbles >= 75,
+    [`bubbles_weekly_150__${weekKey}`]:   wBubbles >= 150,
+    [`bubbles_monthly_100__${monthKey}`]: mBubbles >= 100,
+    [`bubbles_monthly_300__${monthKey}`]: mBubbles >= 300,
+    [`bubbles_monthly_600__${monthKey}`]: mBubbles >= 600,
+    [`bubbles_seasonal_500__${seasonKey}`]:  sBubbles >= 500,
+    [`bubbles_seasonal_1500__${seasonKey}`]: sBubbles >= 1500,
 
     // ── Periodic: Challenges ───────────────────────────────────────────────────
     [`weekly_quiz_5__${weekKey}`]:    weeklyQuizCount >= 5,
