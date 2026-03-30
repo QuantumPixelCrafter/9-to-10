@@ -141,7 +141,7 @@ function getSeasonStart(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), q * 3, 1));
 }
 
-function getSeasonKey(date: Date): string {
+export function getSeasonKey(date: Date): string {
   const q = Math.floor(date.getUTCMonth() / 3) + 1;
   return `${date.getUTCFullYear()}-Q${q}`;
 }
@@ -164,15 +164,29 @@ export async function getUserAchievements(userId: string): Promise<AchievementWi
 
   const earnedMap = new Map(earned.map(e => [e.achievementKey, e.earnedAt]));
 
+  const now = new Date();
+  const currentWeekKey   = getWeekKey(now);
+  const currentMonthKey  = getMonthKey(now);
+  const currentSeasonKey = getSeasonKey(now);
+
   return ACHIEVEMENTS.map(a => {
     if (a.periodic) {
       const prefix = `${a.key}__`;
       const matches = earned.filter(e => e.achievementKey.startsWith(prefix));
       const timesEarned = matches.length;
       const latest = matches.sort((x, y) => y.earnedAt.getTime() - x.earnedAt.getTime())[0];
+
+      // Only mark as earned if it was completed in the CURRENT period.
+      // This ensures weekly objectives reset each week, monthly each month, etc.
+      const currentPeriodKey =
+        a.periodic === "weekly"   ? currentWeekKey   :
+        a.periodic === "monthly"  ? currentMonthKey  :
+                                    currentSeasonKey;
+      const earnedThisPeriod = matches.some(e => e.achievementKey === `${a.key}__${currentPeriodKey}`);
+
       return {
         ...a,
-        earned: timesEarned > 0,
+        earned: earnedThisPeriod,
         earnedAt: latest?.earnedAt.toISOString(),
         timesEarned,
       };
