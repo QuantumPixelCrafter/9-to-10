@@ -49,6 +49,7 @@ const INTERACTIVE_TYPES = ["developer_request", "developer_request_rejected", "f
 
 function getSenderName(sender: InboxMessage["sender"]) {
   if (!sender) return "System";
+  if (sender.isDeveloper) return "By the development team";
   return [sender.firstName, sender.lastName].filter(Boolean).join(" ") || sender.username || "Unknown";
 }
 
