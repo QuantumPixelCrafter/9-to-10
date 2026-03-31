@@ -157,6 +157,14 @@ CRITICAL RULES — you MUST follow these exactly:
       return;
     }
 
+    // Shuffle options so the correct answer is evenly distributed across all positions
+    questions = questions.map((q: { id: number; question: string; options: string[]; correctAnswer: number; explanation: string }) => {
+      const correctText = q.options[q.correctAnswer];
+      const shuffled = [...q.options].sort(() => Math.random() - 0.5);
+      const newCorrectIndex = shuffled.indexOf(correctText);
+      return { ...q, options: shuffled, correctAnswer: newCorrectIndex };
+    });
+
     res.json({ level, subject, topic, difficulty, questions });
   } catch (err: any) {
     console.error("Curriculum quiz error:", err?.message);
