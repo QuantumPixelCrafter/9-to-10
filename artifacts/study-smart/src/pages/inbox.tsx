@@ -47,9 +47,11 @@ interface InboxMessage {
 
 const INTERACTIVE_TYPES = ["developer_request", "developer_request_rejected", "friend_request", "stripe_claim", "stranger_message_request"];
 
-function getSenderName(sender: InboxMessage["sender"]) {
+const DEV_TEAM_TYPES = ["developer_request", "retry_pass_grant"];
+
+function getSenderName(sender: InboxMessage["sender"], type?: string) {
   if (!sender) return "System";
-  if (sender.isDeveloper) return "By the development team";
+  if (sender.isDeveloper && type && DEV_TEAM_TYPES.includes(type)) return "By the development team";
   return [sender.firstName, sender.lastName].filter(Boolean).join(" ") || sender.username || "Unknown";
 }
 
@@ -254,7 +256,7 @@ export default function InboxPage() {
                     {msg.sender?.profileImageUrl ? (
                       <img src={msg.sender.profileImageUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      getSenderName(msg.sender).slice(0, 2).toUpperCase()
+                      getSenderName(msg.sender, msg.type).slice(0, 2).toUpperCase()
                     )}
                   </div>
 
@@ -263,7 +265,7 @@ export default function InboxPage() {
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5">
                         <span className={`text-sm ${!msg.readAt ? "font-bold" : "font-normal text-muted-foreground"}`}>
-                          {getSenderName(msg.sender)}
+                          {getSenderName(msg.sender, msg.type)}
                         </span>
                         {msg.sender?.isDeveloper && <BadgeCheck className="w-4 h-4 text-blue-500 shrink-0" />}
                       </div>
