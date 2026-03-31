@@ -98,6 +98,7 @@ export default function QuizPage() {
   const [topic, setTopic] = useState<QuizTopic | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [questionCount, setQuestionCount] = useState<QCount>(10);
+  const [recentConcepts, setRecentConcepts] = useState("");
 
   const [quiz, setQuiz] = useState<QuizData | null>(null);
   const [currentQ, setCurrentQ] = useState(0);
@@ -135,7 +136,7 @@ export default function QuizPage() {
   });
 
   const generateMut = useMutation({
-    mutationFn: async (params: { level: string; subject: string; topic: string; difficulty: string; questionCount: number }) => {
+    mutationFn: async (params: { level: string; subject: string; topic: string; difficulty: string; questionCount: number; recentConcepts?: string }) => {
       const sid = localStorage.getItem("study_smart_sid");
       const res = await fetch("/api/curriculum-quiz/generate", {
         method: "POST",
@@ -146,7 +147,10 @@ export default function QuizPage() {
         credentials: "include",
         body: JSON.stringify(params),
       });
-      if (!res.ok) throw new Error("Failed to generate quiz");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(errData.error ?? "Failed to generate quiz");
+      }
       return res.json() as Promise<QuizData>;
     },
   });
@@ -214,7 +218,7 @@ export default function QuizPage() {
     }
 
     try {
-      const data = await generateMut.mutateAsync({ level, subject: subject.name, topic: topic.name, difficulty, questionCount });
+      const data = await generateMut.mutateAsync({ level, subject: subject.name, topic: topic.name, difficulty, questionCount, recentConcepts: recentConcepts.trim() || undefined });
       setQuiz(data);
       setStep("playing");
     } catch {
@@ -289,6 +293,7 @@ export default function QuizPage() {
     setEliminatedOptions(new Set());
     setWrongAnswers([]);
     setReviewSent(false);
+    setRecentConcepts("");
     resetStreakState();
   };
 
@@ -302,6 +307,7 @@ export default function QuizPage() {
     setEliminatedOptions(new Set());
     setWrongAnswers([]);
     setReviewSent(false);
+    setRecentConcepts("");
     resetStreakState();
   };
 
@@ -527,6 +533,23 @@ export default function QuizPage() {
                   </div>
                 </div>
 
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <p className="text-sm font-bold">Recent concepts</p>
+                    <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    What have you been learning recently? Our AI will tailor the quiz to these. Separate each concept with a semicolon (;)
+                  </p>
+                  <textarea
+                    value={recentConcepts}
+                    onChange={(e) => setRecentConcepts(e.target.value)}
+                    placeholder={`e.g. ${subject?.name === "Mathematics" ? "Pythagoras theorem; trigonometry; surds" : "photosynthesis; cellular respiration; osmosis"}`}
+                    rows={2}
+                    className="w-full rounded-xl border border-border/60 bg-card px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/40"
+                  />
+                </div>
+
                 {/* Power-up activations */}
                 {(doubleQty > 0 || hintQty > 0 || randomBonusQty > 0) && (
                   <div className="space-y-2">
@@ -593,7 +616,7 @@ export default function QuizPage() {
 
                 {generateMut.isError && (
                   <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-sm text-red-600 dark:text-red-400 text-center">
-                    {tl.quiz.failedGenerate}
+                    {(generateMut.error as Error)?.message || tl.quiz.failedGenerate}
                   </div>
                 )}
 

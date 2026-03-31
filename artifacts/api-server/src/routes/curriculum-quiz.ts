@@ -35,7 +35,7 @@ const DIFFICULTY_INSTRUCTIONS: Record<string, string> = {
 };
 
 router.post("/curriculum-quiz/generate", async (req, res) => {
-  const { level, subject, topic, difficulty = "normal", questionCount = 10 } = req.body;
+  const { level, subject, topic, difficulty = "normal", questionCount = 10, recentConcepts } = req.body;
 
   if (!level || !subject || !topic) {
     res.status(400).json({ error: "level, subject, and topic are required" });
@@ -52,6 +52,35 @@ router.post("/curriculum-quiz/generate", async (req, res) => {
   const diffInstruction = DIFFICULTY_INSTRUCTIONS[difficulty] ?? DIFFICULTY_INSTRUCTIONS.normal;
   const count = Math.min(Math.max(Number(questionCount) || 10, 3), 20);
 
+  const parsedConcepts: string[] = recentConcepts
+    ? recentConcepts.split(";").map((c: string) => c.trim()).filter(Boolean)
+    : [];
+
+  if (parsedConcepts.length > 0) {
+    try {
+      const validation = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        max_completion_tokens: 200,
+        messages: [
+          { role: "system", content: "You are a validation assistant. Respond only with valid JSON, no markdown." },
+          {
+            role: "user",
+            content: `Are these concepts related to the subject "${subject}"? Concepts: ${parsedConcepts.join(", ")}\n\nReply with JSON only: {"allRelated": true, "unrelatedConcepts": []} or {"allRelated": false, "unrelatedConcepts": ["concept1"]}`,
+          },
+        ],
+      });
+      const raw = validation.choices[0]?.message?.content ?? "{}";
+      let result: { allRelated?: boolean; unrelatedConcepts?: string[] } = {};
+      try { result = JSON.parse(raw); } catch { result = { allRelated: true }; }
+      if (!result.allRelated && result.unrelatedConcepts && result.unrelatedConcepts.length > 0) {
+        res.status(400).json({ error: `These concepts don't appear to be related to ${subject}: ${result.unrelatedConcepts.join(", ")}. Please check and try again.` });
+        return;
+      }
+    } catch {
+      // Validation failed silently — proceed without it
+    }
+  }
+
   const isMath = /math/i.test(subject);
 
   const mathSection = isMath ? `
@@ -63,12 +92,16 @@ MATHEMATICS-SPECIFIC RULES (this is a maths quiz — these override all other in
 - Re-verify: mentally substitute your answer back into the question to confirm it is correct
 - NEVER guess a numerical answer — always compute it` : "";
 
+  const conceptsSection = parsedConcepts.length > 0
+    ? `\nRecently studied concepts to focus on: ${parsedConcepts.join("; ")}\n- Prioritise these concepts when writing questions — most questions should directly test one of these concepts\n- You may include 1–2 questions on other parts of the topic for breadth\n`
+    : "";
+
   const prompt = `Generate a ${difficulty} difficulty quiz with exactly ${count} multiple-choice questions on the topic "${topic}" within the subject "${subject}" for ${levelLabel} students.
 
 Level-appropriate instruction: ${levelInstruction}
 
 Difficulty instruction: ${diffInstruction}
-${mathSection}
+${conceptsSection}${mathSection}
 Important guidelines:
 - All questions must be specific to the topic "${topic}" in "${subject}"
 - Tailor vocabulary, complexity and depth to ${levelLabel} level
