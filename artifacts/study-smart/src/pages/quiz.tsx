@@ -107,6 +107,9 @@ export default function QuizPage() {
   const [score, setScore] = useState(0);
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
 
+  const [nextBtnEnabled, setNextBtnEnabled] = useState(false);
+  const [nextBtnCountdown, setNextBtnCountdown] = useState(5);
+
   const [doublePointsActive, setDoublePointsActive] = useState(false);
   const [doublePointsUsed, setDoublePointsUsed] = useState(false);
   const [hintUsedThisQ, setHintUsedThisQ] = useState(false);
@@ -334,6 +337,27 @@ export default function QuizPage() {
       })
       .catch(() => setStreakRecorded(true));
   }, [step, isAuthenticated]);
+
+  useEffect(() => {
+    if (!showExp) {
+      setNextBtnEnabled(false);
+      setNextBtnCountdown(5);
+      return;
+    }
+    setNextBtnEnabled(false);
+    setNextBtnCountdown(5);
+    const interval = setInterval(() => {
+      setNextBtnCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setNextBtnEnabled(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [showExp]);
 
   const respondToFreeze = async (useFreeze: boolean) => {
     setFreezeLoading(true);
@@ -743,8 +767,21 @@ export default function QuizPage() {
                       <p className="font-bold mb-1">{selected === q.correctAnswer ? `✓ ${tl.quiz.correctAnswer}` : `✗ ${tl.quiz.notQuite}`}</p>
                       <p className="text-sm leading-relaxed opacity-90">{q.explanation}</p>
                     </div>
-                    <Button className="w-full mt-3 rounded-2xl gap-2" onClick={nextQuestion}>
-                      {currentQ < quiz.questions.length - 1 ? (<>{tl.quiz.nextQuestion} <ArrowRight className="w-4 h-4" /></>) : (<><Trophy className="w-4 h-4" /> {tl.quiz.seeResults}</>)}
+                    <Button
+                      className="w-full mt-3 rounded-2xl gap-2 transition-opacity"
+                      onClick={nextQuestion}
+                      disabled={!nextBtnEnabled}
+                    >
+                      {!nextBtnEnabled ? (
+                        <>
+                          <span className="w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
+                          {nextBtnCountdown}s
+                        </>
+                      ) : currentQ < quiz.questions.length - 1 ? (
+                        <>{tl.quiz.nextQuestion} <ArrowRight className="w-4 h-4" /></>
+                      ) : (
+                        <><Trophy className="w-4 h-4" /> {tl.quiz.seeResults}</>
+                      )}
                     </Button>
                   </motion.div>
                 )}
