@@ -8,7 +8,7 @@ import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, CheckCircle2, XCircle, ArrowRight, Trophy, Upload, RotateCcw, Sparkles, BookOpen, Lightbulb, Zap } from "lucide-react";
+import { ChevronLeft, CheckCircle2, XCircle, ArrowRight, Trophy, Upload, RotateCcw, Sparkles, BookOpen, Lightbulb, Zap, X } from "lucide-react";
 import {
   type LevelGroup, type QuizSubject, type QuizTopic, type Difficulty,
   LEVEL_GROUP_INFO, LEVEL_TO_GROUP, LEVEL_LABELS, LEVEL_GROUP_SECTIONS,
@@ -107,6 +107,7 @@ export default function QuizPage() {
   const [score, setScore] = useState(0);
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
 
+  const [forfeited, setForfeited] = useState(false);
   const [nextBtnEnabled, setNextBtnEnabled] = useState(false);
   const [nextBtnCountdown, setNextBtnCountdown] = useState(5);
 
@@ -283,6 +284,11 @@ export default function QuizPage() {
     setPostFreezeResult(null);
   };
 
+  const forfeit = () => {
+    setForfeited(true);
+    setStep("results");
+  };
+
   const reset = () => {
     setStep("levelGroup");
     setLevelGroup(null);
@@ -290,6 +296,7 @@ export default function QuizPage() {
     setTopic(null);
     setQuiz(null);
     setScoreSubmitted(false);
+    setForfeited(false);
     setDoublePointsActive(false);
     setDoublePointsUsed(false);
     setHintUsedThisQ(false);
@@ -304,6 +311,7 @@ export default function QuizPage() {
     setQuiz(null);
     setStep("settings");
     setScoreSubmitted(false);
+    setForfeited(false);
     setDoublePointsActive(false);
     setDoublePointsUsed(false);
     setHintUsedThisQ(false);
@@ -379,8 +387,8 @@ export default function QuizPage() {
   const failed = score === 0 && (quiz?.questions.length ?? 0) > 0;
   const rawScore = quiz ? calcScore(score, quiz.level, user?.level ?? "", quiz.difficulty) : 0;
   const belowGrade = quiz ? isQuizBelowGrade(quiz.level, user?.level ?? "") : false;
-  // No points for 0 correct; double-points power-up still applies for above/at-grade quizzes
-  const finalScore = score === 0 ? 0 : (doublePointsActive ? rawScore * 2 : rawScore);
+  // No points for 0 correct, forfeit, or below grade; double-points power-up still applies for above/at-grade quizzes
+  const finalScore = forfeited || score === 0 ? 0 : (doublePointsActive ? rawScore * 2 : rawScore);
   const pct = quiz ? Math.round((score / quiz.questions.length) * 100) : 0;
   const subjects = levelGroup ? getSubjectsForGroup(levelGroup) : [];
   const groupInfo = levelGroup ? LEVEL_GROUP_INFO[levelGroup] : null;
@@ -670,122 +678,135 @@ export default function QuizPage() {
           )}
 
           {/* ─── PLAYING ─────────────────────────────────────────────── */}
-          {step === "playing" && q && quiz && (
-            <motion.div key={`q-${currentQ}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-              className="space-y-4">
-              {/* HUD */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <BookOpen className="w-4 h-4" />
-                  <span className="font-medium">{quiz.topic}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {doublePointsActive && (
-                    <div className="flex items-center gap-1 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-400/30">
-                      ⚡ 2×
+          {step === "playing" && quiz && (
+            <motion.div key="playing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] bg-background overflow-y-auto">
+              <div className="max-w-2xl mx-auto py-4 px-4 space-y-4">
+                {/* Top bar: exit + HUD */}
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    onClick={forfeit}
+                    className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors shrink-0 text-muted-foreground hover:text-foreground"
+                    aria-label="Leave quiz"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                  <div className="flex items-center gap-2 flex-1 justify-end">
+                    {doublePointsActive && (
+                      <div className="flex items-center gap-1 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-400/30">
+                        ⚡ 2×
+                      </div>
+                    )}
+                    {q && !showExp && hintQty > 0 && !hintUsedThisQ && (
+                      <button
+                        onClick={handleUseHint}
+                        disabled={usePowerupMut.isPending}
+                        className="flex items-center gap-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-1 rounded-full border border-blue-400/30 transition-all"
+                      >
+                        <Lightbulb className="w-3 h-3" /> {tl.quiz.hint} ×{hintQty}
+                      </button>
+                    )}
+                    {hintUsedThisQ && (
+                      <div className="text-[10px] text-muted-foreground font-medium bg-muted px-2 py-0.5 rounded-full">
+                        💡 {tl.quiz.hintUsed}
+                      </div>
+                    )}
+                    <div className="text-sm font-bold text-primary">{score} / {currentQ + (showExp ? 1 : 0)} {tl.quiz.correct}</div>
+                    <div className="text-xs text-muted-foreground font-medium bg-muted px-2 py-1 rounded-full">
+                      {currentQ + 1} / {quiz.questions.length}
                     </div>
-                  )}
-                  {!showExp && hintQty > 0 && !hintUsedThisQ && (
-                    <button
-                      onClick={handleUseHint}
-                      disabled={usePowerupMut.isPending}
-                      className="flex items-center gap-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-1 rounded-full border border-blue-400/30 transition-all"
-                    >
-                      <Lightbulb className="w-3 h-3" /> {tl.quiz.hint} ×{hintQty}
-                    </button>
-                  )}
-                  {hintUsedThisQ && (
-                    <div className="text-[10px] text-muted-foreground font-medium bg-muted px-2 py-0.5 rounded-full">
-                      💡 {tl.quiz.hintUsed}
-                    </div>
-                  )}
-                  <div className="text-sm font-bold text-primary">{score} / {currentQ + (showExp ? 1 : 0)} {tl.quiz.correct}</div>
-                  <div className="text-xs text-muted-foreground font-medium bg-muted px-2 py-1 rounded-full">
-                    {currentQ + 1} / {quiz.questions.length}
                   </div>
                 </div>
-              </div>
 
-              {/* Progress bar */}
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <motion.div className="h-full bg-primary rounded-full"
-                  animate={{ width: `${((currentQ) / quiz.questions.length) * 100}%` }} transition={{ duration: 0.4 }} />
-              </div>
+                {/* Progress bar */}
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                  <motion.div className="h-full bg-primary rounded-full"
+                    animate={{ width: `${((currentQ) / quiz.questions.length) * 100}%` }} transition={{ duration: 0.4 }} />
+                </div>
 
-              {/* Question card */}
-              <div className="bg-card border border-border/60 rounded-3xl p-6 shadow-sm">
-                <p className="text-base font-semibold leading-snug">{q.question}</p>
-              </div>
+                {/* Per-question animated content */}
+                <AnimatePresence mode="wait">
+                  {q && (
+                    <motion.div key={`q-${currentQ}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                      className="space-y-4">
+                      {/* Question card */}
+                      <div className="bg-card border border-border/60 rounded-3xl p-6 shadow-sm">
+                        <p className="text-base font-semibold leading-snug">{q.question}</p>
+                      </div>
 
-              {/* Options */}
-              <div className="space-y-2.5">
-                {q.options.map((opt, idx) => {
-                  const isCorrect = idx === q.correctAnswer;
-                  const isSelected = idx === selected;
-                  const isEliminated = eliminatedOptions.has(idx);
-                  return (
-                    <motion.button key={idx} onClick={() => handleAnswer(idx)} whileTap={{ scale: 0.99 }}
-                      disabled={showExp || isEliminated}
-                      className={cn(
-                        "w-full text-left p-4 rounded-2xl border transition-all duration-200 flex items-center gap-3",
-                        isEliminated
-                          ? "opacity-30 bg-muted/20 border-border/20 cursor-not-allowed line-through"
-                          : !showExp ? "bg-card border-border/60 hover:border-primary/40 hover:bg-primary/5 cursor-pointer"
-                          : isCorrect ? "bg-green-500/10 border-green-500 text-green-700 dark:text-green-300"
-                          : isSelected ? "bg-red-500/10 border-red-500 text-red-700 dark:text-red-300"
-                          : "bg-muted/30 border-border/30 text-muted-foreground cursor-default"
-                      )}>
-                      <span className={cn(
-                        "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
-                        isEliminated ? "bg-muted/40 text-muted-foreground/40"
-                          : !showExp ? "bg-muted text-muted-foreground"
-                          : isCorrect ? "bg-green-500 text-white"
-                          : isSelected ? "bg-red-500 text-white"
-                          : "bg-muted text-muted-foreground"
-                      )}>
-                        {["A","B","C","D"][idx]}
-                      </span>
-                      <span className="text-sm font-medium flex-1">{opt}</span>
-                      {showExp && isCorrect && <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />}
-                      {showExp && isSelected && !isCorrect && <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
-                      {isEliminated && <XCircle className="w-4 h-4 text-muted-foreground/30 shrink-0" />}
-                    </motion.button>
-                  );
-                })}
-              </div>
+                      {/* Options */}
+                      <div className="space-y-2.5">
+                        {q.options.map((opt, idx) => {
+                          const isCorrect = idx === q.correctAnswer;
+                          const isSelected = idx === selected;
+                          const isEliminated = eliminatedOptions.has(idx);
+                          return (
+                            <motion.button key={idx} onClick={() => handleAnswer(idx)} whileTap={{ scale: 0.99 }}
+                              disabled={showExp || isEliminated}
+                              className={cn(
+                                "w-full text-left p-4 rounded-2xl border transition-all duration-200 flex items-center gap-3",
+                                isEliminated
+                                  ? "opacity-30 bg-muted/20 border-border/20 cursor-not-allowed line-through"
+                                  : !showExp ? "bg-card border-border/60 hover:border-primary/40 hover:bg-primary/5 cursor-pointer"
+                                  : isCorrect ? "bg-green-500/10 border-green-500 text-green-700 dark:text-green-300"
+                                  : isSelected ? "bg-red-500/10 border-red-500 text-red-700 dark:text-red-300"
+                                  : "bg-muted/30 border-border/30 text-muted-foreground cursor-default"
+                              )}>
+                              <span className={cn(
+                                "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
+                                isEliminated ? "bg-muted/40 text-muted-foreground/40"
+                                  : !showExp ? "bg-muted text-muted-foreground"
+                                  : isCorrect ? "bg-green-500 text-white"
+                                  : isSelected ? "bg-red-500 text-white"
+                                  : "bg-muted text-muted-foreground"
+                              )}>
+                                {["A","B","C","D"][idx]}
+                              </span>
+                              <span className="text-sm font-medium flex-1">{opt}</span>
+                              {showExp && isCorrect && <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />}
+                              {showExp && isSelected && !isCorrect && <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
+                              {isEliminated && <XCircle className="w-4 h-4 text-muted-foreground/30 shrink-0" />}
+                            </motion.button>
+                          );
+                        })}
+                      </div>
 
-              {/* Explanation */}
-              <AnimatePresence>
-                {showExp && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden">
-                    <div className={cn(
-                      "rounded-2xl p-4 border text-sm",
-                      selected === q.correctAnswer
-                        ? "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-300"
-                        : "bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-300"
-                    )}>
-                      <p className="font-bold mb-1">{selected === q.correctAnswer ? `✓ ${tl.quiz.correctAnswer}` : `✗ ${tl.quiz.notQuite}`}</p>
-                      <p className="text-sm leading-relaxed opacity-90">{q.explanation}</p>
-                    </div>
-                    <Button
-                      className="w-full mt-3 rounded-2xl gap-2 transition-opacity"
-                      onClick={nextQuestion}
-                      disabled={!nextBtnEnabled}
-                    >
-                      {!nextBtnEnabled ? (
-                        <>
-                          <span className="w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
-                          {nextBtnCountdown}s
-                        </>
-                      ) : currentQ < quiz.questions.length - 1 ? (
-                        <>{tl.quiz.nextQuestion} <ArrowRight className="w-4 h-4" /></>
-                      ) : (
-                        <><Trophy className="w-4 h-4" /> {tl.quiz.seeResults}</>
-                      )}
-                    </Button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                      {/* Explanation */}
+                      <AnimatePresence>
+                        {showExp && (
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden">
+                            <div className={cn(
+                              "rounded-2xl p-4 border text-sm",
+                              selected === q.correctAnswer
+                                ? "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-300"
+                                : "bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-300"
+                            )}>
+                              <p className="font-bold mb-1">{selected === q.correctAnswer ? `✓ ${tl.quiz.correctAnswer}` : `✗ ${tl.quiz.notQuite}`}</p>
+                              <p className="text-sm leading-relaxed opacity-90">{q.explanation}</p>
+                            </div>
+                            <Button
+                              className="w-full mt-3 rounded-2xl gap-2 transition-opacity"
+                              onClick={nextQuestion}
+                              disabled={!nextBtnEnabled}
+                            >
+                              {!nextBtnEnabled ? (
+                                <>
+                                  <span className="w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
+                                  {nextBtnCountdown}s
+                                </>
+                              ) : currentQ < quiz.questions.length - 1 ? (
+                                <>{tl.quiz.nextQuestion} <ArrowRight className="w-4 h-4" /></>
+                              ) : (
+                                <><Trophy className="w-4 h-4" /> {tl.quiz.seeResults}</>
+                              )}
+                            </Button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </motion.div>
           )}
 
@@ -795,14 +816,19 @@ export default function QuizPage() {
               className="space-y-5">
               <div className="text-center">
                 <motion.div className="text-6xl mb-4" animate={{ rotate: [0,-10,10,-10,10,0] }} transition={{ duration: 0.6, delay: 0.2 }}>
-                  {failed ? "💪" : pct >= 80 ? "🏆" : pct >= 50 ? "🎯" : "📚"}
+                  {forfeited ? "🚪" : failed ? "💪" : pct >= 80 ? "🏆" : pct >= 50 ? "🎯" : "📚"}
                 </motion.div>
-                <h2 className="text-2xl font-bold mb-1">{failed ? tl.quiz.dontGiveUp : pct >= 80 ? tl.quiz.excellent : pct >= 50 ? tl.quiz.goodJob : tl.quiz.keepStudying}</h2>
+                <h2 className="text-2xl font-bold mb-1">{forfeited ? "Quiz ended early" : failed ? tl.quiz.dontGiveUp : pct >= 80 ? tl.quiz.excellent : pct >= 50 ? tl.quiz.goodJob : tl.quiz.keepStudying}</h2>
                 <p className="text-muted-foreground text-sm">{quiz.topic} · {LEVEL_LABELS[quiz.level] ?? quiz.level}</p>
-                {failed && (
+                {forfeited && (
+                  <div className="mt-3 bg-orange-500/10 border border-orange-500/20 rounded-2xl p-3 text-sm text-orange-700 dark:text-orange-400 text-center">
+                    You left the quiz before finishing — no points have been awarded.
+                  </div>
+                )}
+                {!forfeited && failed && (
                   <p className="text-sm text-muted-foreground mt-2 italic">{tl.quiz.mistakesMsg}</p>
                 )}
-                {!failed && doublePointsActive && (
+                {!forfeited && !failed && doublePointsActive && (
                   <div className="inline-flex items-center gap-1.5 mt-2 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs font-bold px-3 py-1 rounded-full border border-amber-400/30">
                     ⚡ {tl.quiz.doubleApplied}
                   </div>
@@ -934,7 +960,7 @@ export default function QuizPage() {
                   </div>
                 )}
 
-                {isAuthenticated && !scoreSubmitted && !belowGrade && score > 0 && (
+                {isAuthenticated && !forfeited && !scoreSubmitted && !belowGrade && score > 0 && (
                   <Button onClick={async () => {
                     await submitScoreMut.mutateAsync({ data: {
                       gameType: "quiz", score: finalScore,
