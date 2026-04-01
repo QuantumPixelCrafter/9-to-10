@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, FolderPlus, Plus, Search, Trash2, Edit3, MoreVertical, Sparkles, Folder, AlertCircle, Maximize2, Minimize2, X, Save, Bold, Italic, Underline, List, Globe2, EyeOff, Clock, CheckCircle2, Users } from "lucide-react";
+import { BookOpen, FolderPlus, Plus, Search, Trash2, Edit3, MoreVertical, Sparkles, Folder, AlertCircle, Maximize2, Minimize2, X, Save, Bold, Italic, Underline, List, Globe2, EyeOff, Clock, CheckCircle2, Users, Share2 } from "lucide-react";
 import { QuizModal } from "@/components/quiz-modal";
 import { motion, AnimatePresence } from "framer-motion";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -184,6 +184,7 @@ export default function NotesPage() {
   };
 
   const filteredNotes = notes.filter(n => n.title.toLowerCase().includes(search.toLowerCase()));
+  const editingNote = editingNoteId ? notes.find(n => n.id === editingNoteId) : null;
 
   const handlePublish = async (noteId: number) => {
     try {
@@ -271,22 +272,29 @@ export default function NotesPage() {
         <div className="flex-1 bg-card rounded-3xl border border-border/50 shadow-sm flex flex-col overflow-hidden">
           <div className="p-4 border-b border-border/50 bg-muted/20 space-y-3">
             {/* Tab switcher */}
-            <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-fit">
-              <button
-                onClick={() => setNotesTab("my")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${notesTab === "my" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                <BookOpen className="w-3.5 h-3.5" /> My Notes
-              </button>
-              <button
-                onClick={() => setNotesTab("community")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${notesTab === "community" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                <Users className="w-3.5 h-3.5" /> Community
-                {communityNotes.length > 0 && (
-                  <span className="bg-primary/20 text-primary rounded-full px-1.5 text-[10px]">{communityNotes.length}</span>
-                )}
-              </button>
+            <div className="flex items-center gap-3 justify-between">
+              <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-fit">
+                <button
+                  onClick={() => setNotesTab("my")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${notesTab === "my" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <BookOpen className="w-3.5 h-3.5" /> My Notes
+                </button>
+                <button
+                  onClick={() => setNotesTab("community")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${notesTab === "community" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <Users className="w-3.5 h-3.5" /> Community
+                  {communityNotes.length > 0 && (
+                    <span className="bg-primary/20 text-primary rounded-full px-1.5 text-[10px]">{communityNotes.length}</span>
+                  )}
+                </button>
+              </div>
+              {notesTab === "community" && (
+                <Button size="sm" onClick={openNewNote} className="rounded-xl shadow-md shadow-primary/20 text-xs h-8 px-3">
+                  <Plus className="w-3.5 h-3.5 mr-1" /> New Note
+                </Button>
+              )}
             </div>
             {notesTab === "my" && (
               <div className="flex items-center gap-4">
@@ -585,6 +593,33 @@ export default function NotesPage() {
                 {noteContent.replace(/<[^>]+>/g, " ").trim().split(/\s+/).filter(Boolean).length} words
               </span>
 
+              {/* Share to Community in fullscreen — existing notes + public account only */}
+              {editingNoteId && isPublicAccount && (
+                editingNote?.isPublic ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleUnpublish(editingNoteId)}
+                    disabled={unpublishNoteMut.isPending}
+                    className="rounded-lg gap-1.5 text-muted-foreground"
+                  >
+                    <EyeOff className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Unpublish</span>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handlePublish(editingNoteId)}
+                    disabled={publishNoteMut.isPending}
+                    className="rounded-lg gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">{publishNoteMut.isPending ? "Sharing…" : "Share"}</span>
+                  </Button>
+                )
+              )}
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -750,15 +785,42 @@ export default function NotesPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setNoteOpen(false)} className="rounded-xl">Cancel</Button>
-              <Button
-                onClick={handleSaveNote}
-                disabled={updateNoteMut.isPending || createNoteMut.isPending || subjects.length === 0}
-                className="rounded-xl px-8 shadow-lg shadow-primary/20"
-              >
-                {updateNoteMut.isPending || createNoteMut.isPending ? "Saving…" : "Save Note"}
-              </Button>
+            <div className="flex items-center justify-between gap-3">
+              {/* Share to Community — only for existing notes on public accounts */}
+              {editingNoteId && isPublicAccount ? (
+                editingNote?.isPublic ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleUnpublish(editingNoteId)}
+                    disabled={unpublishNoteMut.isPending}
+                    className="rounded-xl gap-2 text-muted-foreground border-border/60"
+                  >
+                    <EyeOff className="w-3.5 h-3.5" /> Unpublish
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePublish(editingNoteId)}
+                    disabled={publishNoteMut.isPending}
+                    className="rounded-xl gap-2 text-emerald-600 border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    {publishNoteMut.isPending ? "Sharing…" : "Share to Community"}
+                  </Button>
+                )
+              ) : <div />}
+              <div className="flex gap-3">
+                <Button variant="ghost" onClick={() => setNoteOpen(false)} className="rounded-xl">Cancel</Button>
+                <Button
+                  onClick={handleSaveNote}
+                  disabled={updateNoteMut.isPending || createNoteMut.isPending || subjects.length === 0}
+                  className="rounded-xl px-8 shadow-lg shadow-primary/20"
+                >
+                  {updateNoteMut.isPending || createNoteMut.isPending ? "Saving…" : "Save Note"}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
