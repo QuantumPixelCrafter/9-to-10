@@ -87,10 +87,13 @@ router.post("/curriculum-quiz/generate", async (req, res) => {
 MATHEMATICS-SPECIFIC RULES (this is a maths quiz — these override all other instructions):
 - For every calculation question, compute the answer fully step by step BEFORE writing the options
 - Write out each arithmetic step explicitly: e.g. 3x + 5 = 14 → 3x = 9 → x = 3
-- Only after computing the correct answer, write it as one of the options and set correctAnswer to its index
+- Only after computing the correct answer, write it as one of the four options and set correctAnswer to its 0-based index
+- The correct answer MUST be included verbatim in the options array at the index given by correctAnswer
 - The other 3 options must be common calculation errors (e.g. sign errors, wrong order of operations), NOT random numbers
 - Re-verify: mentally substitute your answer back into the question to confirm it is correct
-- NEVER guess a numerical answer — always compute it` : "";
+- Double-check: options[correctAnswer] must equal the value you computed — if it does not, fix it before outputting
+- NEVER guess a numerical answer — always compute it
+- NEVER set correctAnswer to an index whose value is wrong` : "";
 
   const conceptsSection = parsedConcepts.length > 0
     ? `\nRecently studied concepts to focus on: ${parsedConcepts.join("; ")}\n- Prioritise these concepts when writing questions — most questions should directly test one of these concepts\n- You may include 1–2 questions on other parts of the topic for breadth\n`
@@ -159,9 +162,16 @@ CRITICAL RULES — you MUST follow these exactly:
 
     // Shuffle options so the correct answer is evenly distributed across all positions
     questions = questions.map((q: { id: number; question: string; options: string[]; correctAnswer: number; explanation: string }) => {
-      const correctText = q.options[q.correctAnswer];
+      const correctIdx = typeof q.correctAnswer === "number" ? q.correctAnswer : 0;
+      const correctText = q.options[correctIdx];
+      // If the correctAnswer index is out of range, skip shuffling to preserve integrity
+      if (correctText === undefined || correctIdx < 0 || correctIdx >= q.options.length) {
+        return q;
+      }
       const shuffled = [...q.options].sort(() => Math.random() - 0.5);
       const newCorrectIndex = shuffled.indexOf(correctText);
+      // Safety: if somehow not found (duplicate values), keep original layout
+      if (newCorrectIndex === -1) return q;
       return { ...q, options: shuffled, correctAnswer: newCorrectIndex };
     });
 

@@ -38,9 +38,7 @@ const DIFFICULTY_PTS: Record<string, number> = { easy: 4.5, normal: 5, hard: 5.5
 
 function calcScore(correct: number, quizLevel: string, userLevel: string, difficulty: string): number {
   if (correct === 0) return 0;
-  const quizIdx = LEVEL_ORDER.indexOf(quizLevel);
-  const userIdx = LEVEL_ORDER.indexOf(userLevel);
-  const isBelowGrade = quizIdx !== -1 && userIdx !== -1 && quizIdx < userIdx;
+  const isBelowGrade = isQuizBelowGrade(quizLevel, userLevel);
   const ptsEach = isBelowGrade ? 2 : (DIFFICULTY_PTS[difficulty] ?? 5);
   return Math.round(correct * ptsEach);
 }
@@ -48,7 +46,10 @@ function calcScore(correct: number, quizLevel: string, userLevel: string, diffic
 function isQuizBelowGrade(quizLevel: string, userLevel: string): boolean {
   const quizIdx = LEVEL_ORDER.indexOf(quizLevel);
   const userIdx = LEVEL_ORDER.indexOf(userLevel);
-  return quizIdx !== -1 && userIdx !== -1 && quizIdx < userIdx;
+  if (quizIdx === -1 || userIdx === -1) return false;
+  // Within the same level group (e.g. P1–P3 all = Junior Primary) → never below grade
+  if (LEVEL_TO_GROUP[quizLevel] && LEVEL_TO_GROUP[quizLevel] === LEVEL_TO_GROUP[userLevel]) return false;
+  return quizIdx < userIdx;
 }
 
 type WrongAnswer = {
@@ -334,9 +335,9 @@ export default function QuizPage() {
     setReviewSent(false);
   };
 
-  // Record streak on first appearance of results screen
+  // Record streak on first appearance of results screen — forfeited quizzes do NOT count
   useEffect(() => {
-    if (step !== "results" || !isAuthenticated || streakRecordingRef.current) return;
+    if (step !== "results" || !isAuthenticated || streakRecordingRef.current || forfeited) return;
     streakRecordingRef.current = true;
     customFetch<StreakResult>("/api/streaks/record", { method: "POST" })
       .then(result => {
@@ -344,7 +345,7 @@ export default function QuizPage() {
         setStreakRecorded(true);
       })
       .catch(() => setStreakRecorded(true));
-  }, [step, isAuthenticated]);
+  }, [step, isAuthenticated, forfeited]);
 
   useEffect(() => {
     if (!showExp) {
@@ -529,6 +530,30 @@ export default function QuizPage() {
               </div>
 
               <div className="space-y-5">
+                {/* Grade level selector */}
+                {groupInfo && groupInfo.levels.length > 1 && (
+                  <div>
+                    <p className="text-sm font-bold mb-1">Grade level</p>
+                    <p className="text-xs text-muted-foreground mb-3">{groupInfo.levelDesc}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {groupInfo.levels.map(l => (
+                        <button
+                          key={l}
+                          onClick={() => setLevel(l)}
+                          className={cn(
+                            "px-4 py-2 rounded-xl border font-bold text-sm transition-all",
+                            level === l
+                              ? "border-primary bg-primary text-primary-foreground shadow-md"
+                              : "border-border/60 bg-card hover:border-primary/40 text-muted-foreground"
+                          )}
+                        >
+                          {LEVEL_LABELS[l]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <p className="text-sm font-bold mb-3">{tl.quiz.difficulty}</p>
                   <div className="grid grid-cols-3 gap-2">
