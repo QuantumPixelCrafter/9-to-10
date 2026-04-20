@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useGetLeaderboard, useMathBlitzLeaderboard } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Layout } from "@/components/layout";
-import { Leaf, Sparkles, Trophy, GraduationCap, BookOpen, Zap, Clock, Gift, Calculator } from "lucide-react";
+import { Leaf, Sparkles, Trophy, GraduationCap, Zap, Clock, Gift, Calculator } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
@@ -85,7 +85,6 @@ export default function LeaderboardPage() {
   };
 
   const [quizLevel, setQuizLevel] = useState<string>("");
-  const [quizSubject, setQuizSubject] = useState<string>("");
   const [mbDiff, setMbDiff] = useState<"easy" | "normal" | "hard">("easy");
   const { data: mbBoard } = useMathBlitzLeaderboard(tab === "mathBlitz");
 
@@ -96,7 +95,6 @@ export default function LeaderboardPage() {
   const params: Record<string, string> = { boardType };
   if (tab === "quiz") {
     if (quizLevel) params.quizLevel = quizLevel;
-    if (quizSubject) params.quizSubject = quizSubject;
   }
 
   const { data: lb, isLoading } = useGetLeaderboard(params);
@@ -107,7 +105,6 @@ export default function LeaderboardPage() {
 
   const levelBoardEntries: LevelBoardEntry[] = tab === "level" ? ((lb as any)?.levelBoard ?? []) : [];
   const activeTab = ALL_TABS.find(t => t.key === tab)!;
-  const quizMeta = lb?.quizMeta;
   const meta = (lb as any)?.meta as { boardType: string; nextReset: string } | undefined;
 
   const nextReset = meta?.nextReset;
@@ -251,17 +248,16 @@ export default function LeaderboardPage() {
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
             className="bg-card rounded-2xl border border-border/60 shadow-sm p-4 space-y-3">
             <p className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-              <GraduationCap className="w-4 h-4" /> Filter by Level & Subject
+              <GraduationCap className="w-4 h-4" /> Filter by Level
             </p>
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Level</p>
               <div className="flex flex-wrap gap-1.5">
                 <button onClick={() => setQuizLevel("")}
                   className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all", !quizLevel ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80")}>
                   All
                 </button>
                 {ALL_LEVELS.map(l => (
-                  <button key={l} onClick={() => { setQuizLevel(l); setQuizSubject(""); }}
+                  <button key={l} onClick={() => setQuizLevel(l)}
                     className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
                       quizLevel === l
                         ? l.startsWith("P") ? "bg-green-500 text-white shadow-md" : l.startsWith("S") ? "bg-blue-500 text-white shadow-md" : "bg-purple-500 text-white shadow-md"
@@ -274,25 +270,6 @@ export default function LeaderboardPage() {
                 ))}
               </div>
             </div>
-            {quizLevel && (quizMeta?.subjects ?? []).length > 0 && (
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Subject</p>
-                <div className="flex flex-wrap gap-1.5">
-                  <button onClick={() => setQuizSubject("")}
-                    className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
-                      !quizSubject ? "bg-amber-500 text-white shadow-md" : "bg-muted text-muted-foreground hover:bg-muted/80")}>
-                    <BookOpen className="w-3 h-3" /> All
-                  </button>
-                  {(quizMeta?.subjects ?? []).map(s => (
-                    <button key={s} onClick={() => setQuizSubject(s)}
-                      className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-                        quizSubject === s ? "bg-amber-500 text-white shadow-md" : "bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20")}>
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
             {user?.level && !quizLevel && (
               <p className="text-xs text-muted-foreground">
                 Your level is <span className="font-bold text-primary">{user.level}</span> — select it above to see your competition.
@@ -433,21 +410,14 @@ export default function LeaderboardPage() {
                             {entry.displayName}
                             {isMe && <span className="ml-2 text-xs font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">You</span>}
                           </p>
-                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                            {tab === "quiz" && entry.userLevel && (
-                              <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                                entry.userLevel.startsWith("P") ? "bg-green-500/15 text-green-700 dark:text-green-400"
-                                  : entry.userLevel.startsWith("S") ? "bg-blue-500/15 text-blue-700 dark:text-blue-400"
-                                  : "bg-purple-500/15 text-purple-700 dark:text-purple-400")}>
-                                {entry.userLevel}
-                              </span>
-                            )}
-                            {tab === "quiz" && entry.subject && (
-                              <span className="text-[10px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full">
-                                {entry.subject}
-                              </span>
-                            )}
-                          </div>
+                          {entry.userLevel && (
+                            <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-0.5 inline-block",
+                              entry.userLevel.startsWith("P") ? "bg-green-500/15 text-green-700 dark:text-green-400"
+                                : entry.userLevel.startsWith("S") ? "bg-blue-500/15 text-blue-700 dark:text-blue-400"
+                                : "bg-purple-500/15 text-purple-700 dark:text-purple-400")}>
+                              {entry.userLevel}
+                            </span>
+                          )}
                         </div>
                         <div className="text-right shrink-0">
                           <p className={cn("text-xl font-extrabold",

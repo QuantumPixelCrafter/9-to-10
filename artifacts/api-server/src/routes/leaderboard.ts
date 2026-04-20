@@ -62,7 +62,6 @@ async function buildScoreBoard(
   periodKey: string,
   isWeekly: boolean,
   quizLevel?: string,
-  quizSubject?: string,
 ) {
   const keyCol = isWeekly ? scoresTable.weekKey : scoresTable.monthKey;
   const isQuiz = gameType === "quiz";
@@ -72,11 +71,8 @@ async function buildScoreBoard(
     eq(keyCol, periodKey),
   ];
   if (quizLevel) conditions.push(eq(scoresTable.userLevel, quizLevel));
-  if (quizSubject) conditions.push(eq(scoresTable.subject, quizSubject));
 
-  // Quiz leaderboard uses the accumulated SUM of all quiz scores in the period
-  // (streak bonuses are included as they are part of the submitted score;
-  // random quiz bonus rewards go to bonusPoints only, so they are excluded).
+  // Quiz leaderboard uses the accumulated SUM of all quiz scores in the period.
   // All other boards use best (MAX) score.
   const scoreAgg = isQuiz
     ? sql<number>`sum(${scoresTable.score})`.as("best_score")
@@ -90,8 +86,6 @@ async function buildScoreBoard(
     .select({
       userId: scoresTable.userId,
       bestScore: scoreAgg,
-      subject: sql<string>`(array_agg(${scoresTable.subject} order by ${scoresTable.score} desc))[1]`.as("subject"),
-      userLevel: sql<string>`(array_agg(${scoresTable.userLevel} order by ${scoresTable.score} desc))[1]`.as("user_level"),
       createdAt: sql<Date>`max(${scoresTable.createdAt})`.as("created_at"),
       username: usersTable.username,
       firstName: usersTable.firstName,
@@ -100,6 +94,7 @@ async function buildScoreBoard(
       showNameOnLeaderboard: usersTable.showNameOnLeaderboard,
       isPublic: usersTable.isPublic,
       allowProfileView: usersTable.allowProfileView,
+      userLevel: usersTable.level,
     })
     .from(scoresTable)
     .leftJoin(usersTable, eq(scoresTable.userId, usersTable.id))
@@ -113,6 +108,7 @@ async function buildScoreBoard(
       usersTable.showNameOnLeaderboard,
       usersTable.isPublic,
       usersTable.allowProfileView,
+      usersTable.level,
     )
     .orderBy(orderAgg)
     .limit(50);
@@ -130,7 +126,6 @@ async function buildScoreBoard(
       profileViewable,
       gameType,
       score: row.bestScore,
-      subject: row.subject ?? null,
       userLevel: row.userLevel ?? null,
       createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
     };
@@ -140,8 +135,6 @@ async function buildScoreBoard(
 router.get("/leaderboard", async (req, res) => {
   const boardType = (req.query.boardType as string) === "season" ? "season" : "weekly";
   const quizLevel = typeof req.query.quizLevel === "string" ? req.query.quizLevel : undefined;
-  const quizSubject = typeof req.query.quizSubject === "string" ? req.query.quizSubject : undefined;
-
   const now = new Date();
   const isWeekly = boardType === "weekly";
   const periodKey = isWeekly ? getWeekKey(now) : getMonthKey(now);
@@ -153,36 +146,12 @@ router.get("/leaderboard", async (req, res) => {
   const [memoryMatchRaw, bubblePopRaw, quizRaw] = await Promise.all([
     buildScoreBoard("memory-match", periodKey, isWeekly),
     buildScoreBoard("bubble-pop", periodKey, isWeekly),
-    buildScoreBoard("quiz", periodKey, isWeekly, quizLevel, quizSubject),
+    buildScoreBoard("quiz", periodKey, isWeekly, quizLevel),
   ]);
 
   const memoryMatch = mergeWithBots(memoryMatchRaw, MEMORY_MATCH_BOTS);
   const bubblePop   = mergeWithBots(bubblePopRaw,   BUBBLE_POP_BOTS);
-  // For quiz bots: pass quizLevel so only matching-level bots appear when filtered.
-  // When no level filter is active (quizLevel undefined), all bots are shown.
   const quiz        = mergeWithBots(quizRaw, QUIZ_BOTS, 50, false, quizLevel);
-
-  const allQuizRows = await db
-    .select({ subject: scoresTable.subject, userLevel: scoresTable.userLevel })
-    .from(scoresTable)
-    .where(
-      and(
-        eq(scoresTable.gameType, "quiz"),
-        eq(isWeekly ? scoresTable.weekKey : scoresTable.monthKey, periodKey),
-      ),
-    );
-
-  const quizSubjects = [
-    ...new Set(
-      allQuizRows
-        .filter(r => !quizLevel || r.userLevel === quizLevel)
-        .map(r => r.subject)
-        .filter(Boolean) as string[],
-    ),
-  ].sort();
-  const quizLevels = [
-    ...new Set(allQuizRows.map(r => r.userLevel).filter(Boolean) as string[]),
-  ].sort();
 
   // Known test accounts to exclude from the level board (by full name or username).
   const TEST_DISPLAY_NAMES = [
@@ -248,7 +217,7 @@ router.get("/leaderboard", async (req, res) => {
     bubblePop,
     quiz,
     levelBoard,
-    quizMeta: { levels: quizLevels, subjects: quizSubjects },
+    quizMeta: {},
     meta: {
       boardType,
       periodKey,
