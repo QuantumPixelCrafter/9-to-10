@@ -161,21 +161,6 @@ CRITICAL RULES — you MUST follow these exactly:
       return;
     }
 
-    // Shuffle options so the correct answer is evenly distributed across all positions
-    questions = questions.map((q: { id: number; question: string; options: string[]; correctAnswer: number; explanation: string }) => {
-      const correctIdx = typeof q.correctAnswer === "number" ? q.correctAnswer : 0;
-      const correctText = q.options[correctIdx];
-      // If the correctAnswer index is out of range, skip shuffling to preserve integrity
-      if (correctText === undefined || correctIdx < 0 || correctIdx >= q.options.length) {
-        return q;
-      }
-      const shuffled = [...q.options].sort(() => Math.random() - 0.5);
-      const newCorrectIndex = shuffled.indexOf(correctText);
-      // Safety: if somehow not found (duplicate values), keep original layout
-      if (newCorrectIndex === -1) return q;
-      return { ...q, options: shuffled, correctAnswer: newCorrectIndex };
-    });
-
     res.json({ level, subject, topic, difficulty, questions });
   } catch (err: any) {
     console.error("Curriculum quiz error:", err?.message);
