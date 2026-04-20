@@ -30,9 +30,15 @@ const NOTE_SELECT = {
 
 router.get("/notes", async (req, res) => {
   const query = ListNotesQueryParams.parse(req.query);
-  const conditions = query.subjectId
-    ? eq(notesTable.subjectId, query.subjectId)
-    : undefined;
+  const userId = req.isAuthenticated() ? (req.user as any).id : null;
+
+  const userCondition = userId ? eq(notesTable.userId, userId) : undefined;
+  const subjectCondition = query.subjectId ? eq(notesTable.subjectId, query.subjectId) : undefined;
+
+  const conditions =
+    userCondition && subjectCondition
+      ? and(userCondition, subjectCondition)
+      : userCondition ?? subjectCondition;
 
   const notes = await db
     .select(NOTE_SELECT)
@@ -183,7 +189,7 @@ async function moderateNote(noteId: number, title: string, content: string) {
     const plainText = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
