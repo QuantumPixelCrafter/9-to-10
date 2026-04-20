@@ -6,6 +6,20 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
 
+type RawQuestion = { id: number; question: string; options: string[]; correctAnswer: number; explanation: string };
+
+function reconcileCorrectAnswer(q: RawQuestion): RawQuestion {
+  if (!Array.isArray(q.options) || q.options.length === 0) return q;
+  const match = q.explanation?.match(/The correct answer is ['"](.+?)['"]/i);
+  if (!match) return q;
+  const claimedText = match[1].trim().toLowerCase();
+  const currentOption = (q.options[q.correctAnswer] ?? "").trim().toLowerCase();
+  if (currentOption === claimedText) return q;
+  const fixedIdx = q.options.findIndex(o => o.trim().toLowerCase() === claimedText);
+  if (fixedIdx === -1) return q;
+  return { ...q, correctAnswer: fixedIdx };
+}
+
 const LEVEL_LABELS: Record<string, string> = {
   P1: "Primary 1", P2: "Primary 2", P3: "Primary 3",
   P4: "Primary 4", P5: "Primary 5", P6: "Primary 6",
@@ -119,6 +133,8 @@ CRITICAL RULES — you MUST follow these exactly:
     res.status(500).json({ error: "Failed to parse quiz from AI response" });
     return;
   }
+
+  questions = Array.isArray(questions) ? questions.map(reconcileCorrectAnswer) : questions;
 
   res.json({
     noteId: id,

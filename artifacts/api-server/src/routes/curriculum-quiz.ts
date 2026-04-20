@@ -3,6 +3,32 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
 
+type RawQuestion = { id: number; question: string; options: string[]; correctAnswer: number; explanation: string };
+
+/**
+ * The AI prompt requires explanations to start with:
+ *   "The correct answer is '[exact option text]' because …"
+ * We extract that text and find which option index it belongs to.
+ * If the index from the AI matches, great. If not, we correct it.
+ * This catches cases where the AI gives the right explanation but the wrong index.
+ */
+function reconcileCorrectAnswer(q: RawQuestion): RawQuestion {
+  if (!Array.isArray(q.options) || q.options.length === 0) return q;
+
+  const match = q.explanation?.match(/The correct answer is ['"](.+?)['"]/i);
+  if (!match) return q;
+
+  const claimedText = match[1].trim().toLowerCase();
+  const currentOption = (q.options[q.correctAnswer] ?? "").trim().toLowerCase();
+
+  if (currentOption === claimedText) return q; // index is already consistent
+
+  const fixedIdx = q.options.findIndex(o => o.trim().toLowerCase() === claimedText);
+  if (fixedIdx === -1) return q; // can't find a match, leave as-is
+
+  return { ...q, correctAnswer: fixedIdx };
+}
+
 const LEVEL_LABELS: Record<string, string> = {
   P1:"Primary 1",P2:"Primary 2",P3:"Primary 3",P4:"Primary 4",P5:"Primary 5",P6:"Primary 6",
   S1:"Secondary 1",S2:"Secondary 2",S3:"Secondary 3",S4:"Secondary 4",S5:"Secondary 5",S6:"Secondary 6",
@@ -160,6 +186,8 @@ CRITICAL RULES — you MUST follow these exactly:
       res.status(500).json({ error: "Failed to parse quiz from AI response" });
       return;
     }
+
+    questions = questions.map(reconcileCorrectAnswer);
 
     res.json({ level, subject, topic, difficulty, questions });
   } catch (err: any) {
