@@ -18,3 +18,4 @@ export * from "./stripe-sessions";
 export * from "./user-streaks";
 export * from "./user-blocks";
 export * from "./chat-attachments";
+export * from "./note-events";

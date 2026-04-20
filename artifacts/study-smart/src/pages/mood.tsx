@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Layout } from "@/components/layout";
-import { useMoodsData, useCreateMoodAction } from "@/hooks/use-moods";
+import { useMoodsData, useCreateMoodAction, useDeleteMoodAction } from "@/hooks/use-moods";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { format, isToday, parseISO } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import type { CreateMoodBodyMood } from "@workspace/api-client-react/src/generated/api.schemas";
-import { Calendar as CalendarIcon, Edit2 } from "lucide-react";
+import { Calendar as CalendarIcon, Edit2, Trash2 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 
 export default function MoodPage() {
@@ -15,6 +15,7 @@ export default function MoodPage() {
   const { t } = useLanguage();
   const { data: moods = [] } = useMoodsData();
   const createMut = useCreateMoodAction();
+  const deleteMut = useDeleteMoodAction();
 
   const MOODS: { val: CreateMoodBodyMood, emoji: string, label: string, color: string }[] = [
     { val: "great", emoji: "😄", label: t.mood.great, color: "text-green-500 bg-green-500/10 border-green-500/20" },
@@ -38,6 +39,15 @@ export default function MoodPage() {
       setNote("");
     } catch(e) {
       toast({ title: "Failed to log mood", variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteMut.mutateAsync(id);
+      toast({ title: "Mood entry deleted" });
+    } catch {
+      toast({ title: "Failed to delete mood", variant: "destructive" });
     }
   };
 
@@ -135,7 +145,7 @@ export default function MoodPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     key={mood.id} 
-                    className="bg-card p-5 rounded-2xl border border-border/50 flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-sm"
+                    className="bg-card p-5 rounded-2xl border border-border/50 flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-sm group"
                   >
                     <div className={`shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-sm border ${moodDef.color.split(' ').slice(1).join(' ')}`}>
                       {moodDef.emoji}
@@ -145,9 +155,19 @@ export default function MoodPage() {
                         <span className={`font-bold capitalize ${moodDef.color.split(' ')[0]}`}>
                           {moodDef.label}
                         </span>
-                        <span className="text-sm font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
-                          {format(parseISO(mood.createdAt), "MMM d, yyyy")}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                            {format(parseISO(mood.createdAt), "MMM d, yyyy")}
+                          </span>
+                          <button
+                            onClick={() => handleDelete(mood.id)}
+                            disabled={deleteMut.isPending}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                       {mood.note && (
                         <p className="text-muted-foreground text-sm italic border-l-2 border-border/60 pl-3 py-1">"{mood.note}"</p>

@@ -1,4 +1,4 @@
-import { db, notesTable, subjectsTable, goalsTable, schedulesTable, moodsTable, scoresTable, userAchievementsTable, usersTable } from "@workspace/db";
+import { db, notesTable, noteEventsTable, subjectsTable, goalsTable, schedulesTable, moodsTable, scoresTable, userAchievementsTable, usersTable } from "@workspace/db";
 import { eq, count, and, sum, isNotNull, asc, gte } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 
@@ -278,10 +278,10 @@ export async function checkAndAwardAchievements(userId: string): Promise<Achieve
     db.select({ weeklyQuizCount: count() }).from(scoresTable).where(and(eq(scoresTable.userId, userId), eq(scoresTable.gameType, "quiz"), gte(scoresTable.createdAt, weekStart))),
     db.select({ monthlyQuizCount: count() }).from(scoresTable).where(and(eq(scoresTable.userId, userId), eq(scoresTable.gameType, "quiz"), gte(scoresTable.createdAt, monthStart))),
     db.select({ seasonalQuizCount: count() }).from(scoresTable).where(and(eq(scoresTable.userId, userId), eq(scoresTable.gameType, "quiz"), gte(scoresTable.createdAt, seasonStart))),
-    // Notes per period
-    db.select({ weeklyNotesCount: count() }).from(notesTable).where(gte(notesTable.createdAt, weekStart)),
-    db.select({ monthlyNotesCount: count() }).from(notesTable).where(gte(notesTable.createdAt, monthStart)),
-    db.select({ seasonalNotesCount: count() }).from(notesTable).where(gte(notesTable.createdAt, seasonStart)),
+    // Notes per period — use note_events so deletions don't reduce progress
+    db.select({ weeklyNotesCount: count() }).from(noteEventsTable).where(and(eq(noteEventsTable.userId, userId), gte(noteEventsTable.createdAt, weekStart))),
+    db.select({ monthlyNotesCount: count() }).from(noteEventsTable).where(and(eq(noteEventsTable.userId, userId), gte(noteEventsTable.createdAt, monthStart))),
+    db.select({ seasonalNotesCount: count() }).from(noteEventsTable).where(and(eq(noteEventsTable.userId, userId), gte(noteEventsTable.createdAt, seasonStart))),
     // Mood per period
     db.select({ weeklyMoodCount: count() }).from(moodsTable).where(gte(moodsTable.createdAt, weekStart)),
     db.select({ monthlyMoodCount: count() }).from(moodsTable).where(gte(moodsTable.createdAt, monthStart)),

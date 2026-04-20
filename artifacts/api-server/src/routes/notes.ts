@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, notesTable, subjectsTable, usersTable } from "@workspace/db";
+import { db, notesTable, subjectsTable, usersTable, noteEventsTable } from "@workspace/db";
 import { eq, and, isNotNull } from "drizzle-orm";
 import {
   CreateNoteBody,
@@ -80,6 +80,9 @@ router.post("/notes", async (req, res) => {
     .insert(notesTable)
     .values({ ...body, userId, updatedAt: new Date() })
     .returning();
+  if (userId) {
+    await db.insert(noteEventsTable).values({ userId }).catch(() => {});
+  }
   res.status(201).json({ ...note, subjectName: null });
 });
 
