@@ -354,6 +354,12 @@ export default function QuizPage() {
       setNextBtnCountdown(5);
       return;
     }
+    const isCorrect = quiz && selected !== null && selected === quiz.questions[currentQ]?.correctAnswer;
+    if (isCorrect) {
+      setNextBtnEnabled(true);
+      setNextBtnCountdown(0);
+      return;
+    }
     setNextBtnEnabled(false);
     setNextBtnCountdown(5);
     const interval = setInterval(() => {
@@ -367,7 +373,7 @@ export default function QuizPage() {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [showExp]);
+  }, [showExp, selected, quiz, currentQ]);
 
   const respondToFreeze = async (useFreeze: boolean) => {
     setFreezeLoading(true);
