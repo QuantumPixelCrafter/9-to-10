@@ -108,7 +108,8 @@ CRITICAL RULES — you MUST follow these exactly:
     ],
   });
 
-  const content = completion.choices[0]?.message?.content ?? "{}";
+  const raw = completion.choices[0]?.message?.content ?? "{}";
+  const content = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
 
   let questions;
   try {

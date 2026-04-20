@@ -226,8 +226,9 @@ export default function QuizPage() {
       const data = await generateMut.mutateAsync({ level, subject: subject.name, topic: topic.name, difficulty, questionCount, recentConcepts: recentConcepts.trim() || undefined });
       setQuiz(data);
       setStep("playing");
-    } catch {
+    } catch (err: any) {
       setStep("settings");
+      toast({ title: "Failed to generate quiz", description: err?.message ?? "Please try again.", variant: "destructive" });
     }
   };
 
