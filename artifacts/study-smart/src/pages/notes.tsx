@@ -25,6 +25,21 @@ const HIGHLIGHT_COLORS = [
 
 const HIGHLIGHT_SWATCHES = ["#FACC15", "#22C55E", "#60A5FA", "#EC4899", "#F97316"];
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<\/(p|div|li|h[1-6])>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const FORMAT_BUTTONS: { cmd: string; icon: React.ReactNode; title: string }[] = [
   { cmd: "bold",      icon: <Bold className="w-3.5 h-3.5" />,      title: "Bold" },
   { cmd: "italic",    icon: <Italic className="w-3.5 h-3.5" />,    title: "Italic" },
@@ -488,7 +503,9 @@ export default function NotesPage() {
                         )}
 
                         <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed flex-1 mb-4">
-                          {note.content || <span className="italic opacity-60">No content yet</span>}
+                          {note.content
+                            ? stripHtml(note.content) || <span className="italic opacity-60">No content yet</span>
+                            : <span className="italic opacity-60">No content yet</span>}
                         </p>
 
                         {/* Generate Quiz Button - clearly visible */}
