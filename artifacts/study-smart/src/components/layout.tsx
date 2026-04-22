@@ -31,7 +31,6 @@ function buildNavItems(t: Translations["nav"]) {
     { href: "/calendar",     label: t.calendar,     icon: CalendarIcon,  color: "text-purple-500",  bg: "bg-purple-500/10"  },
     { href: "/mood",         label: t.mood,         icon: Smile,         color: "text-pink-500",    bg: "bg-pink-500/10"    },
     { href: "/games",        label: t.minigames,    icon: Gamepad2,      color: "text-emerald-500", bg: "bg-emerald-500/10" },
-    { href: "/math-blitz",   label: "Math Blitz",   icon: Calculator,    color: "text-orange-500",  bg: "bg-orange-500/10"  },
     { href: "/objectives",   label: t.objectives,   icon: Flag,          color: "text-sky-500",     bg: "bg-sky-500/10"     },
     { href: "/leaderboard",  label: t.leaderboard,  icon: Trophy,        color: "text-amber-500",   bg: "bg-amber-500/10"   },
     { href: "/achievements", label: t.achievements, icon: Medal,         color: "text-yellow-500",  bg: "bg-yellow-500/10"  },

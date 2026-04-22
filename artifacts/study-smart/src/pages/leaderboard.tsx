@@ -15,7 +15,6 @@ const ALL_LEVELS = ["P1","P2","P3","P4","P5","P6","S1","S2","S3","S4","S5","S6",
 const GAME_TABS = [
   { key: "bubblePop",   label: "Bubble Pop",   icon: Leaf,       color: "text-sky-500",    bg: "bg-sky-500/10",    gradient: "from-sky-400 to-violet-500" },
   { key: "quiz",        label: "Quiz Scores",  icon: Sparkles,   color: "text-amber-500",  bg: "bg-amber-500/10",  gradient: "from-amber-400 to-orange-500" },
-  { key: "mathBlitz",   label: "Math Blitz",   icon: Calculator, color: "text-orange-500", bg: "bg-orange-500/10", gradient: "from-orange-400 to-amber-500" },
 ] as const;
 
 const EXTRA_TABS = [

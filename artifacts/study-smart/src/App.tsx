@@ -34,7 +34,6 @@ import DeveloperPanel from "@/pages/developer-panel";
 import Preferences from "@/pages/preferences";
 import ReviewPage from "@/pages/review";
 import Spin from "@/pages/spin";
-import MathBlitz from "@/pages/math-blitz";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -99,7 +98,6 @@ function AppRoutes() {
       <Route path="/preferences" component={Preferences} />
       <Route path="/review" component={ReviewPage} />
       <Route path="/spin" component={Spin} />
-      <Route path="/math-blitz" component={MathBlitz} />
       <Route path="/users/:userId" component={UserProfile} />
       <Route path="/login" component={RedirectToHome} />
       <Route path="/signup" component={RedirectToHome} />

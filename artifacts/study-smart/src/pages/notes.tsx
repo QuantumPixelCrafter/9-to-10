@@ -371,7 +371,7 @@ export default function NotesPage() {
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-4 leading-relaxed flex-1">
                           {note.content
-                            ? stripHtml(note.content) || <span className="italic opacity-60">No content</span>
+                            ? note.content.replace(/<[^>]*>/g, " ").trim() || <span className="italic opacity-60">No content</span>
                             : <span className="italic opacity-60">No content yet</span>}
                         </p>
                       </div>
