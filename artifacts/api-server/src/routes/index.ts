@@ -26,6 +26,7 @@ import attachmentsRouter from "./attachments";
 import streaksRouter from "./streaks";
 import spinRouter from "./spin";
 import mathBlitzRouter from "./math-blitz";
+import chatbotRouter from "./chatbot";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use(attachmentsRouter);
 router.use(streaksRouter);
 router.use(spinRouter);
 router.use(mathBlitzRouter);
+router.use(chatbotRouter);
 
 export default router;

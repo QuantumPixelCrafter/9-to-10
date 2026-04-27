@@ -34,6 +34,8 @@ import DeveloperPanel from "@/pages/developer-panel";
 import Preferences from "@/pages/preferences";
 import ReviewPage from "@/pages/review";
 import Spin from "@/pages/spin";
+import Chatbot from "@/pages/chatbot";
+import { FloatingChatbot } from "@/components/floating-chatbot";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -98,6 +100,7 @@ function AppRoutes() {
       <Route path="/preferences" component={Preferences} />
       <Route path="/review" component={ReviewPage} />
       <Route path="/spin" component={Spin} />
+      <Route path="/chatbot" component={Chatbot} />
       <Route path="/users/:userId" component={UserProfile} />
       <Route path="/login" component={RedirectToHome} />
       <Route path="/signup" component={RedirectToHome} />
@@ -116,6 +119,7 @@ function App() {
             <TooltipProvider>
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                 <AppRoutes />
+                <FloatingChatbot />
               </WouterRouter>
               <Toaster />
             </TooltipProvider>

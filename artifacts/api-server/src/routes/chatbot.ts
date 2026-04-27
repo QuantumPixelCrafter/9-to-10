@@ -1,0 +1,59 @@
+import { Router, type IRouter } from "express";
+import { openai } from "@workspace/integrations-openai-ai-server";
+
+const router: IRouter = Router();
+
+const BOT_NAME = "Sage";
+
+const CASUAL_SYSTEM = `You are ${BOT_NAME}, a warm, friendly companion inside the Mind Forge study app. Chat naturally and casually about anything the user wants — hobbies, feelings, daily life, ideas, jokes. Keep your tone light, playful, and supportive. Use everyday language and feel free to add a touch of humour. Keep replies concise unless the user wants depth. Never lecture.`;
+
+const EDUCATIONAL_SYSTEM = `You are ${BOT_NAME}, an academic tutor inside the Mind Forge study app. You ONLY help with academic problems: maths, sciences, languages, humanities, exam prep, study techniques, and homework. Maintain a professional, precise, and respectful tone. Show step-by-step reasoning, define key terms, and verify answers. If the user asks about non-academic topics (small talk, gossip, entertainment, personal life), politely refuse with one sentence and invite them to switch to Chill Chat mode for casual conversation. Never break character.`;
+
+router.post("/chatbot", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const { messages, mode } = req.body as {
+    messages?: Array<{ role: "user" | "assistant"; content: string }>;
+    mode?: "casual" | "educational";
+  };
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    res.status(400).json({ error: "messages array required" });
+    return;
+  }
+
+  const cleanMessages = messages
+    .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .slice(-30)
+    .map(m => ({ role: m.role, content: m.content.slice(0, 4000) }));
+
+  if (cleanMessages.length === 0) {
+    res.status(400).json({ error: "no valid messages" });
+    return;
+  }
+
+  const systemPrompt = mode === "educational" ? EDUCATIONAL_SYSTEM : CASUAL_SYSTEM;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...cleanMessages,
+      ],
+      temperature: mode === "educational" ? 0.3 : 0.85,
+      max_tokens: 800,
+    });
+
+    const reply = completion.choices[0]?.message?.content?.trim() || "Sorry, I couldn't think of a reply.";
+    res.json({ reply, botName: BOT_NAME });
+  } catch (err: any) {
+    console.error("[chatbot] error", err?.message ?? err);
+    res.status(500).json({ error: "Chatbot is temporarily unavailable. Please try again." });
+  }
+});
+
+export default router;

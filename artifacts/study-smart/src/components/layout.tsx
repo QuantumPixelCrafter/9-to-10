@@ -5,8 +5,9 @@ import {
   Home, BookOpen, Calendar as CalendarIcon, 
   Target, Clock, Smile, Menu, Flag,
   BrainCircuit, Sparkles, ChevronRight, Gamepad2, Trophy, User, LogOut, Medal, ShoppingBag, Users,
-  Inbox, BadgeCheck, Code2, Settings, ClipboardList, Bell, X, MessageCircle, Ticket, Calculator, Package,
+  Inbox, BadgeCheck, Code2, Settings, ClipboardList, Bell, X, MessageCircle, Ticket, Calculator, Package, Bot,
 } from "lucide-react";
+import { clearAllSageData } from "@/lib/chatbot-storage";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -29,6 +30,7 @@ function buildNavItems(t: Translations["nav"]) {
     { href: "/timetable",    label: t.timetable,    icon: Clock,         color: "text-secondary",   bg: "bg-secondary/10"   },
     { href: "/goals",        label: t.goals,        icon: Target,        color: "text-accent",      bg: "bg-accent/10"      },
     { href: "/calendar",     label: t.calendar,     icon: CalendarIcon,  color: "text-purple-500",  bg: "bg-purple-500/10"  },
+    { href: "/chatbot",      label: "Sage",         icon: Bot,           color: "text-fuchsia-500", bg: "bg-fuchsia-500/10" },
     { href: "/mood",         label: t.mood,         icon: Smile,         color: "text-pink-500",    bg: "bg-pink-500/10"    },
     { href: "/games",        label: t.minigames,    icon: Gamepad2,      color: "text-emerald-500", bg: "bg-emerald-500/10" },
     { href: "/objectives",   label: t.objectives,   icon: Flag,          color: "text-sky-500",     bg: "bg-sky-500/10"     },
@@ -96,7 +98,11 @@ export function Layout({ children, title, actions }: LayoutProps) {
   const [scrolled, setScrolled] = useState(false);
   const sidebarNavRef = useRef<HTMLDivElement>(null);
   const sidebarScrollPos = useRef(0);
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout: rawLogout, isAuthenticated } = useAuth();
+  const logout = () => {
+    try { clearAllSageData(); } catch {}
+    rawLogout();
+  };
   const { t } = useLanguage();
   const { uiMode } = useUIMode();
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.username || "Student";

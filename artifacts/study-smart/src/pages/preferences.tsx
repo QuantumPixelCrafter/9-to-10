@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useThemeMode } from "@/lib/theme-context";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Bell, Coins, MessageCircle, Settings, Sun, Moon, Monitor, Globe2, EyeOff, Smartphone, Tablet } from "lucide-react";
+import { AlertTriangle, Bell, Coins, MessageCircle, Settings, Sun, Moon, Monitor, Globe2, EyeOff, Smartphone, Tablet, Bot } from "lucide-react";
 import { useUIMode } from "@/lib/ui-mode-context";
 
 const REMINDER_OPTIONS: { label: string; value: number | null }[] = [
@@ -33,6 +33,19 @@ export default function Preferences() {
 
   const currentGoalReminderDays = (user as any)?.goalReminderDays ?? null;
   const [goalReminderDays, setGoalReminderDays] = useState<number | null>(currentGoalReminderDays);
+
+  const [showFloatingSage, setShowFloatingSage] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("mf_show_floating_sage") === "1";
+  });
+
+  const handleToggleFloatingSage = (v: boolean) => {
+    setShowFloatingSage(v);
+    try {
+      localStorage.setItem("mf_show_floating_sage", v ? "1" : "0");
+      window.dispatchEvent(new Event("mf-floating-sage-changed"));
+    } catch {}
+  };
 
   useEffect(() => {
     setGoalReminderDays((user as any)?.goalReminderDays ?? null);
@@ -233,6 +246,32 @@ export default function Preferences() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Floating Sage Chatbot */}
+        <div className="bg-card border border-border/50 rounded-2xl p-6 space-y-5">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-fuchsia-500/10 shrink-0 mt-0.5">
+              <Bot className="w-5 h-5 text-fuchsia-500" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Floating Sage button</h3>
+              <p className="text-sm text-muted-foreground">Show a small round Sage chatbot button on every screen so you can chat with one tap. It's hidden during quizzes and minigames so it never gets in the way.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-xl bg-muted/30">
+            <div className="min-w-0">
+              <p className="text-sm font-medium leading-snug">Show floating Sage button</p>
+              <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">Drag it anywhere on the screen. Tap to open Sage.</p>
+            </div>
+            <Switch
+              checked={showFloatingSage}
+              onCheckedChange={handleToggleFloatingSage}
+              className="shrink-0"
+              data-testid="switch-floating-sage"
+            />
+          </div>
         </div>
 
         {/* Messaging Preferences */}
