@@ -99,6 +99,25 @@ async function autoIncrementGrade(userId: string, country: string, gradeIndex: n
   return updated;
 }
 
+router.get("/auth/check-username", async (req: Request, res: Response) => {
+  const { username } = req.query;
+  if (!username || typeof username !== "string" || username.trim().length < 3) {
+    res.json({ available: false });
+    return;
+  }
+  const trimmed = username.trim();
+  if (!/^[a-zA-Z0-9_. ]+$/.test(trimmed)) {
+    res.json({ available: false });
+    return;
+  }
+  const existing = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(ilike(usersTable.username, trimmed))
+    .limit(1);
+  res.json({ available: existing.length === 0 });
+});
+
 router.post("/auth/register", async (req: Request, res: Response) => {
   const { username, password, country, gradeIndex, preferredLanguage } = req.body;
 

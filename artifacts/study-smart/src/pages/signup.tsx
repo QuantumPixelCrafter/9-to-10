@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2, ChevronLeft, Search, ChevronRight } from "lucide-react";
+import { Sparkles, Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2, ChevronLeft, Search, ChevronRight, Loader2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   COUNTRIES, searchCountries, type CountryDef, type Grade, GROUP_LABELS, type GradeGroup,
@@ -61,6 +61,8 @@ export default function SignupPage() {
   const [confirmError, setConfirmError] = useState("");
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameChecking, setUsernameChecking] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) setLocation("/");
@@ -71,6 +73,29 @@ export default function SignupPage() {
       setTimeout(() => searchRef.current?.focus(), 100);
     }
   }, [step]);
+
+  useEffect(() => {
+    const trimmed = username.trim();
+    if (trimmed.length < 3) {
+      setUsernameAvailable(null);
+      setUsernameChecking(false);
+      return;
+    }
+    setUsernameChecking(true);
+    setUsernameAvailable(null);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/auth/check-username?username=${encodeURIComponent(trimmed)}`);
+        const data = await res.json();
+        setUsernameAvailable(data.available);
+      } catch {
+        setUsernameAvailable(null);
+      } finally {
+        setUsernameChecking(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [username]);
 
   const filteredCountries = searchCountries(countrySearch);
 
@@ -277,17 +302,32 @@ export default function SignupPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="username">{t.signup.username}</Label>
-                    <Input
-                      id="username"
-                      type="text"
-                      placeholder={t.signup.usernamePlaceholder}
-                      value={username}
-                      onChange={e => { setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, "")); clearAuthError(); }}
-                      required
-                      autoComplete="username"
-                      className="rounded-xl h-11"
-                    />
-                    <p className="text-xs text-muted-foreground">{t.signup.usernameHint}</p>
+                    <div className="relative">
+                      <Input
+                        id="username"
+                        type="text"
+                        placeholder={t.signup.usernamePlaceholder}
+                        value={username}
+                        onChange={e => { setUsername(e.target.value.replace(/[^a-zA-Z0-9_. ]/g, "")); clearAuthError(); setUsernameAvailable(null); }}
+                        required
+                        autoComplete="username"
+                        className="rounded-xl h-11 pr-10"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {usernameChecking && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        {!usernameChecking && usernameAvailable === true && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                        {!usernameChecking && usernameAvailable === false && <XCircle className="w-4 h-4 text-destructive" />}
+                      </div>
+                    </div>
+                    {!usernameChecking && usernameAvailable === true && (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400">Username is available</p>
+                    )}
+                    {!usernameChecking && usernameAvailable === false && (
+                      <p className="text-xs text-destructive">This username is already taken</p>
+                    )}
+                    {(usernameAvailable === null && !usernameChecking) && (
+                      <p className="text-xs text-muted-foreground">Letters, numbers, spaces, underscores, and dots. At least 3 characters.</p>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
