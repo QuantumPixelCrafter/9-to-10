@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable, friendshipsTable, inboxMessagesTable } from "@workspace/db";
-import { eq, or, and } from "drizzle-orm";
+import { eq, or, and, ilike, sql } from "drizzle-orm";
 import { isInappropriate } from "../lib/profanity";
 import {
   createSession,
@@ -110,8 +110,8 @@ router.post("/auth/register", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Username must be at least 3 characters." });
     return;
   }
-  if (!/^[a-zA-Z0-9_.]+$/.test(username.trim())) {
-    res.status(400).json({ error: "Username can only contain letters, numbers, underscores, and dots." });
+  if (!/^[a-zA-Z0-9_. ]+$/.test(username.trim())) {
+    res.status(400).json({ error: "Username can only contain letters, numbers, underscores, dots, and spaces." });
     return;
   }
   if (isInappropriate(username.trim())) {
@@ -126,7 +126,7 @@ router.post("/auth/register", async (req: Request, res: Response) => {
   const existing = await db
     .select({ id: usersTable.id })
     .from(usersTable)
-    .where(eq(usersTable.username, username.toLowerCase().trim()))
+    .where(ilike(usersTable.username, username.trim()))
     .limit(1);
 
   if (existing.length > 0) {
@@ -145,7 +145,7 @@ router.post("/auth/register", async (req: Request, res: Response) => {
   const [user] = await db
     .insert(usersTable)
     .values({
-      username: username.toLowerCase().trim(),
+      username: username.trim(),
       passwordHash,
       ...(country ? { country } : {}),
       ...(typeof gradeIndex === "number" ? { gradeIndex } : {}),
@@ -171,7 +171,7 @@ router.post("/auth/login", async (req: Request, res: Response) => {
   const [user] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.username, username.toLowerCase().trim()))
+    .where(ilike(usersTable.username, username.trim()))
     .limit(1);
 
   if (!user || !user.passwordHash) {
@@ -384,9 +384,9 @@ router.patch("/auth/username", async (req: Request, res: Response) => {
   if (!username || typeof username !== "string") {
     res.status(400).json({ error: "Username is required." }); return;
   }
-  const trimmed = username.trim().toLowerCase();
-  if (!/^[a-z0-9_.]{3,30}$/.test(trimmed)) {
-    res.status(400).json({ error: "Username must be 3–30 characters and contain only letters, numbers, underscores, and dots." }); return;
+  const trimmed = username.trim();
+  if (!/^[a-zA-Z0-9_. ]{3,30}$/.test(trimmed)) {
+    res.status(400).json({ error: "Username must be 3–30 characters and contain only letters, numbers, underscores, dots, and spaces." }); return;
   }
   if (isInappropriate(trimmed)) {
     res.status(400).json({ error: "This username is not allowed. Please choose a different one." }); return;
@@ -405,7 +405,7 @@ router.patch("/auth/username", async (req: Request, res: Response) => {
     }
   }
 
-  if (trimmed === currentUser.username) {
+  if (trimmed.toLowerCase() === (currentUser.username ?? "").toLowerCase()) {
     res.status(400).json({ error: "That is already your username." }); return;
   }
 
