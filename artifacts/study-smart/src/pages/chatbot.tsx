@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   type Conversation, type ChatMessage, type ChatMode,
   loadConversations, saveConversations, loadMode, saveMode,
-  loadActiveId, saveActiveId, newConversation, summariseTitle,
+  loadActiveId, saveActiveId, newConversation,
 } from "@/lib/chatbot-storage";
 
 const BOT_NAME = "Sage";
@@ -116,10 +116,11 @@ export default function Chatbot() {
       ts: Date.now(),
     };
 
+    const isFirstMessage = active.messages.length === 0;
     const updatedConvo: Conversation = {
       ...active,
       messages: [...active.messages, userMsg],
-      title: active.messages.length === 0 ? summariseTitle(text) : active.title,
+      title: isFirstMessage ? "New chat" : active.title,
       mode,
       updatedAt: Date.now(),
     };
@@ -151,6 +152,20 @@ export default function Chatbot() {
         updatedAt: Date.now(),
       };
       persist(convos.map(c => c.id === active.id ? finalConvo : nextConvos.find(x => x.id === c.id) ?? c).map(c => c.id === active.id ? finalConvo : c));
+
+      if (isFirstMessage) {
+        customFetch<{ title: string }>("/api/chatbot/title", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userMessage: text, botReply: reply }),
+        }).then(({ title }) => {
+          setConvos(prev => {
+            const updated = prev.map(c => c.id === active.id ? { ...c, title } : c);
+            if (userId) saveConversations(userId, updated);
+            return updated;
+          });
+        }).catch(() => {});
+      }
     } catch (err: any) {
       const serverMsg = err?.data?.error ?? err?.message ?? null;
       const errMsg: ChatMessage = {

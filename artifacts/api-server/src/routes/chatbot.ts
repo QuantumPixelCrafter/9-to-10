@@ -56,4 +56,41 @@ router.post("/chatbot", async (req, res) => {
   }
 });
 
+router.post("/chatbot/title", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const { userMessage, botReply } = req.body as { userMessage?: string; botReply?: string };
+
+  if (!userMessage || !botReply) {
+    res.status(400).json({ error: "userMessage and botReply are required" });
+    return;
+  }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You generate very short, descriptive chat titles. Given the first user message and the assistant's reply, respond with ONLY a title of 3-5 words that captures the topic. No punctuation at the end. No quotes. Examples: 'Photosynthesis Explained Simply', 'Weekend Plans Chat', 'Calculus Derivatives Help', 'Feeling Stressed Today'.",
+        },
+        {
+          role: "user",
+          content: `User: ${userMessage.slice(0, 300)}\nAssistant: ${botReply.slice(0, 300)}`,
+        },
+      ],
+      max_tokens: 20,
+      temperature: 0.4,
+    });
+
+    const title = completion.choices[0]?.message?.content?.trim().replace(/^["']|["']$/g, "") || "New chat";
+    res.json({ title });
+  } catch {
+    res.json({ title: "New chat" });
+  }
+});
+
 export default router;
