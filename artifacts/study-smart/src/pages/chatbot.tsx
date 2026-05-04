@@ -129,7 +129,7 @@ export default function Chatbot() {
     setSending(true);
 
     try {
-      const res = await customFetch("/api/chatbot", {
+      const data = await customFetch<{ reply: string; botName: string }>("/api/chatbot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -137,8 +137,7 @@ export default function Chatbot() {
           messages: updatedConvo.messages.map(m => ({ role: m.role, content: m.content })),
         }),
       });
-      const data = await res.json();
-      const reply = res.ok ? (data.reply ?? "…") : (data.error ?? "Something went wrong.");
+      const reply = data.reply ?? "…";
 
       const botMsg: ChatMessage = {
         id: `m_${Date.now().toString(36)}_b`,
@@ -152,11 +151,12 @@ export default function Chatbot() {
         updatedAt: Date.now(),
       };
       persist(convos.map(c => c.id === active.id ? finalConvo : nextConvos.find(x => x.id === c.id) ?? c).map(c => c.id === active.id ? finalConvo : c));
-    } catch {
+    } catch (err: any) {
+      const serverMsg = err?.data?.error ?? err?.message ?? null;
       const errMsg: ChatMessage = {
         id: `m_${Date.now().toString(36)}_e`,
         role: "assistant",
-        content: "I couldn't reach the server. Please try again.",
+        content: serverMsg ?? "I couldn't reach the server. Please try again.",
         ts: Date.now(),
       };
       const finalConvo = { ...updatedConvo, messages: [...updatedConvo.messages, errMsg], updatedAt: Date.now() };
