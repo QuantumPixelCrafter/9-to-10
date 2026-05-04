@@ -175,7 +175,7 @@ export function Layout({ children, title, actions }: LayoutProps) {
 
   const NAV_ITEMS = buildNavItems(t.nav);
   const DEVELOPER_NAV_ITEMS = [
-    { href: "/developer", label: t.nav.devPanel, icon: Code2, color: "text-violet-500", bg: "bg-violet-500/10" },
+    { href: "/developer", label: t.nav.devPanel, icon: Code2, color: "text-green-500", bg: "bg-green-500/10" },
   ];
 
   useEffect(() => {
