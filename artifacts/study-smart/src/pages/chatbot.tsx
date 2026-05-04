@@ -5,6 +5,8 @@ import { customFetch } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Menu, Plus, Send, Sparkles, Trash2, MessageCircle, GraduationCap, Smile, X, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   type Conversation, type ChatMessage, type ChatMode,
   loadConversations, saveConversations, loadMode, saveMode,
@@ -255,13 +257,38 @@ export default function Chatbot() {
               )}
               <div
                 className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap break-words",
+                  "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm break-words",
                   m.role === "user"
-                    ? "bg-primary text-primary-foreground rounded-br-md"
+                    ? "bg-primary text-primary-foreground rounded-br-md whitespace-pre-wrap"
                     : "bg-muted text-foreground rounded-bl-md"
                 )}
               >
-                {m.content}
+                {m.role === "assistant" ? (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                      strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                      em: ({ children }) => <em className="italic">{children}</em>,
+                      ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>,
+                      li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                      h1: ({ children }) => <h1 className="text-base font-bold mb-1 mt-2">{children}</h1>,
+                      h2: ({ children }) => <h2 className="text-sm font-bold mb-1 mt-2">{children}</h2>,
+                      h3: ({ children }) => <h3 className="text-sm font-semibold mb-1 mt-1">{children}</h3>,
+                      code: ({ inline, children }: any) => inline
+                        ? <code className="bg-black/10 dark:bg-white/10 rounded px-1 py-0.5 font-mono text-xs">{children}</code>
+                        : <code className="block bg-black/10 dark:bg-white/10 rounded-lg p-3 font-mono text-xs overflow-x-auto whitespace-pre my-2">{children}</code>,
+                      pre: ({ children }) => <>{children}</>,
+                      blockquote: ({ children }) => <blockquote className="border-l-2 border-muted-foreground/40 pl-3 italic text-muted-foreground my-2">{children}</blockquote>,
+                      a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:opacity-80">{children}</a>,
+                    }}
+                  >
+                    {m.content}
+                  </ReactMarkdown>
+                ) : (
+                  m.content
+                )}
               </div>
             </div>
           ))}
