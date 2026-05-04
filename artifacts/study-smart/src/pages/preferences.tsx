@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useThemeMode } from "@/lib/theme-context";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Bell, Coins, MessageCircle, Settings, Sun, Moon, Monitor, Globe2, EyeOff, Smartphone, Tablet, Bot } from "lucide-react";
+import { Bell, MessageCircle, Settings, Sun, Moon, Monitor, Globe2, EyeOff, Smartphone, Tablet, Bot } from "lucide-react";
 import { useUIMode } from "@/lib/ui-mode-context";
 
 const REMINDER_OPTIONS: { label: string; value: number | null }[] = [

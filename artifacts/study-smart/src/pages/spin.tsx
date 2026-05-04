@@ -15,7 +15,6 @@ const SEGMENTS = [
   { id: "grand_prize",    emoji: "🍀", label: "20K pts\n+ Nametag",   color: "#F59E0B", dark: "#92400E", desc: "20,000 pts + 🍀 Luckiest Person nametag",            weight: 5    },
   { id: "streak_freezes", emoji: "🧊", label: "5 Streak\nFreezes",     color: "#3B82F6", dark: "#1E3A5F", desc: "5 Streak Freezes",                                   weight: 100  },
   { id: "objective_pass", emoji: "🎯", label: "Objective\nPass",       color: "#8B5CF6", dark: "#2D1B5A", desc: "Objective Pass — clears all weekly & monthly goals",  weight: 100  },
-  { id: "message_quota",  emoji: "💬", label: "3,000\nQuotas",         color: "#EC4899", dark: "#500E30", desc: "3,000 free message quotas",                           weight: 300  },
   { id: "free_spins",     emoji: "🎡", label: "5 Free\nSpins",         color: "#06B6D4", dark: "#0E3A50", desc: "5 Free Spins (Spinning Vouchers)",                    weight: 500  },
   { id: "discount_50",    emoji: "🔥", label: "50% Shop\nDiscount",    color: "#EF4444", dark: "#4A0000", desc: "50% Shop Discount (10 min, 3 items)",                 weight: 795  },
   { id: "discount_25",    emoji: "🏷️", label: "25% Shop\nDiscount",   color: "#F97316", dark: "#4A1600", desc: "25% Shop Discount (10 min, 3 items)",                 weight: 900  },

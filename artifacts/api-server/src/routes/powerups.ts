@@ -57,7 +57,7 @@ export const POWERUP_DEFS = [
     emoji: "🎡",
     description: "One spin on the Wheel of Fortune. Rewards range from bonus points to rare items.",
     longDescription: "Head to the Wheel of Fortune page and spend one voucher to spin. Chances range from small points all the way to 20,000 pts and an exclusive nametag.",
-    price: 1000,
+    price: 500,
     purchasable: true,
   },
 ] as const;

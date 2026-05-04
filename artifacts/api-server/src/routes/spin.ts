@@ -12,7 +12,6 @@ const WHEEL_SEGMENTS = [
   { id: "grand_prize",     weight: 5,    label: "20,000 pts + 🍀 Luckiest Person" },
   { id: "streak_freezes",  weight: 100,  label: "5 Streak Freezes" },
   { id: "objective_pass",  weight: 100,  label: "Objective Pass" },
-  { id: "message_quota",   weight: 300,  label: "3,000 Message Quotas" },
   { id: "free_spins",      weight: 500,  label: "5 Free Spins" },
   { id: "discount_50",     weight: 795,  label: "50% Shop Discount (10 min)" },
   { id: "discount_25",     weight: 900,  label: "25% Shop Discount (10 min)" },
@@ -141,13 +140,6 @@ router.post("/spin/wheel", async (req: any, res) => {
         ? `Objective Pass — all weekly & monthly objectives cleared (+${pts} pts)`
         : "Objective Pass — all weekly & monthly objectives were already completed";
       bonusPts = 0; // points already inserted via achievements
-      break;
-    }
-    case "message_quota": {
-      await db.update(usersTable)
-        .set({ freeMessages: sql`${usersTable.freeMessages} + 3000`, updatedAt: new Date() })
-        .where(eq(usersTable.id, userId));
-      rewardDescription = "3,000 free message quotas";
       break;
     }
     case "free_spins": {

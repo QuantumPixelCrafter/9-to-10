@@ -36,7 +36,7 @@ router.get("/developer/users", requireDeveloper, async (req: Request, res: Respo
 });
 
 router.post("/developer/gift-all", requireDeveloper, async (req: Request, res: Response) => {
-  const { giftName, giftType = "points", points, freeMessages } = req.body;
+  const { giftName, points } = req.body;
 
   if (!giftName || typeof giftName !== "string" || giftName.trim().length === 0) {
     res.status(400).json({ error: "giftName is required." });
@@ -45,36 +45,6 @@ router.post("/developer/gift-all", requireDeveloper, async (req: Request, res: R
 
   const name = giftName.trim();
 
-  if (giftType === "free_messages") {
-    if (!freeMessages || typeof freeMessages !== "number" || freeMessages <= 0 || !Number.isInteger(freeMessages)) {
-      res.status(400).json({ error: "freeMessages must be a positive integer." });
-      return;
-    }
-    if (freeMessages > 10000) {
-      res.status(400).json({ error: "Cannot grant more than 10,000 free messages at once." });
-      return;
-    }
-
-    const allUsers = await db.select({ id: usersTable.id }).from(usersTable);
-    if (allUsers.length === 0) { res.json({ success: true, recipientCount: 0 }); return; }
-
-    await db.update(usersTable)
-      .set({ freeMessages: sql`${usersTable.freeMessages} + ${freeMessages}` });
-
-    await db.insert(inboxMessagesTable).values(
-      allUsers.map((u) => ({
-        recipientId: u.id,
-        senderId: req.user!.id,
-        type: "system",
-        message: `A gift from the development team: ${name} — you've received ${freeMessages.toLocaleString()} free chat message${freeMessages !== 1 ? "s" : ""}!`,
-      }))
-    );
-
-    res.json({ success: true, recipientCount: allUsers.length });
-    return;
-  }
-
-  // Default: points
   if (!points || typeof points !== "number" || points <= 0 || !Number.isInteger(points)) {
     res.status(400).json({ error: "points must be a positive integer." });
     return;
@@ -104,7 +74,7 @@ router.post("/developer/gift-all", requireDeveloper, async (req: Request, res: R
 });
 
 router.post("/developer/gift-user", requireDeveloper, async (req: Request, res: Response) => {
-  const { targetUserId, giftType, points, powerupKey, powerupQty, freeMessages } = req.body;
+  const { targetUserId, giftType, points, powerupKey, powerupQty } = req.body;
 
   if (!targetUserId || typeof targetUserId !== "string") {
     res.status(400).json({ error: "targetUserId is required." });
@@ -177,29 +147,7 @@ router.post("/developer/gift-user", requireDeveloper, async (req: Request, res: 
     return;
   }
 
-  if (giftType === "free_messages") {
-    if (!freeMessages || typeof freeMessages !== "number" || freeMessages <= 0 || !Number.isInteger(freeMessages)) {
-      res.status(400).json({ error: "freeMessages must be a positive integer." });
-      return;
-    }
-    if (freeMessages > 10000) {
-      res.status(400).json({ error: "Cannot grant more than 10,000 free messages at once." });
-      return;
-    }
-    await db.update(usersTable)
-      .set({ freeMessages: sql`${usersTable.freeMessages} + ${freeMessages}`, updatedAt: new Date() })
-      .where(eq(usersTable.id, targetUserId));
-    await db.insert(inboxMessagesTable).values({
-      recipientId: targetUserId,
-      senderId: req.user!.id,
-      type: "points",
-      message: `${devName} granted you ${freeMessages.toLocaleString()} free chat message${freeMessages !== 1 ? "s" : ""}! These messages won't cost any points.`,
-    });
-    res.json({ success: true, message: `Granted ${freeMessages} free messages to ${targetName}` });
-    return;
-  }
-
-  res.status(400).json({ error: "giftType must be 'points', 'powerup', or 'free_messages'." });
+  res.status(400).json({ error: "giftType must be 'points' or 'powerup'." });
 });
 
 router.post("/developer/toggle-dev-mode", requireDeveloper, async (req: Request, res: Response) => {

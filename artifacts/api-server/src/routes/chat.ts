@@ -1,11 +1,9 @@
 import { Router, type IRouter } from "express";
 import { db, chatMessagesTable, friendshipsTable, usersTable, inboxMessagesTable, userAchievementsTable, userBlocksTable } from "@workspace/db";
-import { eq, or, and, sql, isNull } from "drizzle-orm";
+import { eq, or, and, isNull, sql } from "drizzle-orm";
 import { ACHIEVEMENTS } from "../lib/achievements";
 
 const router: IRouter = Router();
-
-const MESSAGE_COST = 5;
 
 function requireAuth(req: any, res: any): boolean {
   if (!req.isAuthenticated()) {
@@ -46,18 +44,12 @@ async function getUserBalance(userId: string): Promise<number> {
   return Math.max(0, totalEarned + bonus - spent);
 }
 
-// GET current user's chat balance + warning threshold
+// GET current user's chat balance
 router.get("/chat/balance", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user.id;
-
-  const [userRow] = await db
-    .select({ chatPointWarningThreshold: usersTable.chatPointWarningThreshold, freeMessages: usersTable.freeMessages })
-    .from(usersTable)
-    .where(eq(usersTable.id, userId));
-
   const balance = await getUserBalance(userId);
-  res.json({ balance, threshold: userRow?.chatPointWarningThreshold ?? null, messageCost: MESSAGE_COST, freeMessages: userRow?.freeMessages ?? 0 });
+  res.json({ balance });
 });
 
 // GET messages with a specific user (must be friends)
@@ -105,7 +97,7 @@ router.get("/chat/:userId", async (req, res) => {
   res.json(messages);
 });
 
-// POST send a message (must be friends) — costs 10 pts for sender
+// POST send a message (must be friends)
 router.post("/chat/:userId", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const otherId = req.params.userId;
@@ -178,56 +170,6 @@ router.post("/chat/:userId", async (req, res) => {
     }
   }
 
-  // Fetch warning threshold + free message quota
-  const [userRow] = await db
-    .select({ chatPointWarningThreshold: usersTable.chatPointWarningThreshold, freeMessages: usersTable.freeMessages })
-    .from(usersTable)
-    .where(eq(usersTable.id, req.user.id));
-  const threshold = userRow?.chatPointWarningThreshold ?? null;
-  const freeMessages = userRow?.freeMessages ?? 0;
-
-  // Use a free message quota if available, otherwise deduct points
-  let balanceBefore: number;
-  let balanceAfter: number;
-  let usedFreeMessage = false;
-
-  if (freeMessages > 0) {
-    usedFreeMessage = true;
-    await db
-      .update(usersTable)
-      .set({ freeMessages: sql`${usersTable.freeMessages} - 1`, updatedAt: new Date() })
-      .where(eq(usersTable.id, req.user.id));
-    balanceBefore = await getUserBalance(req.user.id);
-    balanceAfter = balanceBefore;
-  } else {
-    // Check sender has enough points
-    balanceBefore = await getUserBalance(req.user.id);
-    if (balanceBefore < MESSAGE_COST) {
-      res.status(402).json({ error: `Not enough points — sending a message costs ${MESSAGE_COST} pts (you have ${balanceBefore} pts)` });
-      return;
-    }
-
-    // Deduct points from sender
-    await db
-      .update(usersTable)
-      .set({ pointsSpent: sql`${usersTable.pointsSpent} + ${MESSAGE_COST}`, updatedAt: new Date() })
-      .where(eq(usersTable.id, req.user.id));
-
-    balanceAfter = balanceBefore - MESSAGE_COST;
-  }
-
-  // Send inbox warning if balance just crossed below threshold
-  if (threshold !== null && balanceBefore > threshold && balanceAfter <= threshold) {
-    const SYSTEM_ID = req.user.id;
-    await db.insert(inboxMessagesTable).values({
-      recipientId: req.user.id,
-      senderId: SYSTEM_ID,
-      type: "chat_point_warning",
-      points: balanceAfter,
-      message: `Your points balance has dropped to ${balanceAfter} pts — at or below your messaging warning threshold of ${threshold} pts. Each message costs ${MESSAGE_COST} pts.`,
-    });
-  }
-
   // Insert the message
   const [msg] = await db
     .insert(chatMessagesTable)
@@ -239,7 +181,7 @@ router.post("/chat/:userId", async (req, res) => {
     })
     .returning();
 
-  res.status(201).json({ ...msg, balanceAfter, usedFreeMessage });
+  res.status(201).json(msg);
 });
 
 // GET unread message count across all friends

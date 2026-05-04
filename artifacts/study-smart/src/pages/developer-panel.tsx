@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import {
   BadgeCheck, Coins, Gift, Search, ShieldPlus, GraduationCap,
-  Check, X, Clock, CheckCircle2, XCircle, UserRound, Zap, MessageSquare, ChevronDown,
+  Check, X, Clock, CheckCircle2, XCircle, UserRound, Zap, ChevronDown,
 } from "lucide-react";
 import { getCountry, getGradeName } from "@/lib/countries-grades";
 import { cn } from "@/lib/utils";
