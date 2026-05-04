@@ -19,11 +19,16 @@ export type Conversation = {
 const KEY_PREFIX = "mf_sage_convos_";
 const MODE_KEY_PREFIX = "mf_sage_mode_";
 const ACTIVE_KEY_PREFIX = "mf_sage_active_";
+const ACTIVE_CASUAL_PREFIX = "mf_sage_active_casual_";
+const ACTIVE_EDU_PREFIX = "mf_sage_active_edu_";
 const POS_KEY = "mf_sage_floating_pos";
 
 function key(userId: string) { return `${KEY_PREFIX}${userId}`; }
 function modeKey(userId: string) { return `${MODE_KEY_PREFIX}${userId}`; }
 function activeKey(userId: string) { return `${ACTIVE_KEY_PREFIX}${userId}`; }
+function activeModeKey(userId: string, mode: ChatMode) {
+  return mode === "educational" ? `${ACTIVE_EDU_PREFIX}${userId}` : `${ACTIVE_CASUAL_PREFIX}${userId}`;
+}
 
 export function loadConversations(userId: string): Conversation[] {
   if (!userId || typeof window === "undefined") return [];
@@ -68,12 +73,28 @@ export function saveActiveId(userId: string, id: string | null) {
   } catch {}
 }
 
+export function loadActiveIdForMode(userId: string, mode: ChatMode): string | null {
+  if (!userId || typeof window === "undefined") return null;
+  try { return localStorage.getItem(activeModeKey(userId, mode)); } catch { return null; }
+}
+
+export function saveActiveIdForMode(userId: string, mode: ChatMode, id: string | null) {
+  if (!userId || typeof window === "undefined") return;
+  try {
+    const k = activeModeKey(userId, mode);
+    if (id) localStorage.setItem(k, id);
+    else localStorage.removeItem(k);
+  } catch {}
+}
+
 export function clearAllForUser(userId: string) {
   if (!userId || typeof window === "undefined") return;
   try {
     localStorage.removeItem(key(userId));
     localStorage.removeItem(modeKey(userId));
     localStorage.removeItem(activeKey(userId));
+    localStorage.removeItem(activeModeKey(userId, "casual"));
+    localStorage.removeItem(activeModeKey(userId, "educational"));
   } catch {}
 }
 
@@ -84,7 +105,11 @@ export function clearAllSageData() {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k) continue;
-      if (k.startsWith(KEY_PREFIX) || k.startsWith(MODE_KEY_PREFIX) || k.startsWith(ACTIVE_KEY_PREFIX)) {
+      if (
+        k.startsWith(KEY_PREFIX) || k.startsWith(MODE_KEY_PREFIX) ||
+        k.startsWith(ACTIVE_KEY_PREFIX) || k.startsWith(ACTIVE_CASUAL_PREFIX) ||
+        k.startsWith(ACTIVE_EDU_PREFIX)
+      ) {
         keysToRemove.push(k);
       }
     }

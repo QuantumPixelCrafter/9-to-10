@@ -10,7 +10,7 @@ import remarkGfm from "remark-gfm";
 import {
   type Conversation, type ChatMessage, type ChatMode,
   loadConversations, saveConversations, loadMode, saveMode,
-  loadActiveId, saveActiveId, newConversation,
+  loadActiveIdForMode, saveActiveIdForMode, newConversation,
 } from "@/lib/chatbot-storage";
 
 const BOT_NAME = "Sage";
@@ -32,20 +32,23 @@ export default function Chatbot() {
   useEffect(() => {
     if (!userId) return;
     const loaded = loadConversations(userId);
-    const savedActive = loadActiveId(userId);
     const savedMode = loadMode(userId);
     setMode(savedMode);
-    if (loaded.length === 0) {
+
+    const modeConvos = loaded.filter(c => c.mode === savedMode);
+    if (modeConvos.length === 0) {
       const fresh = newConversation(savedMode);
-      setConvos([fresh]);
+      const all = [...loaded, fresh];
+      setConvos(all);
       setActiveId(fresh.id);
-      saveConversations(userId, [fresh]);
-      saveActiveId(userId, fresh.id);
+      saveConversations(userId, all);
+      saveActiveIdForMode(userId, savedMode, fresh.id);
     } else {
       setConvos(loaded);
-      const id = savedActive && loaded.find(c => c.id === savedActive) ? savedActive : loaded[0].id;
+      const savedActive = loadActiveIdForMode(userId, savedMode);
+      const id = savedActive && modeConvos.find(c => c.id === savedActive) ? savedActive : modeConvos[0].id;
       setActiveId(id);
-      saveActiveId(userId, id);
+      saveActiveIdForMode(userId, savedMode, id);
     }
     setHydrated(true);
   }, [userId]);
@@ -69,43 +72,55 @@ export default function Chatbot() {
     const next = [fresh, ...convos];
     persist(next);
     setActiveId(fresh.id);
-    if (userId) saveActiveId(userId, fresh.id);
+    if (userId) saveActiveIdForMode(userId, mode, fresh.id);
     setDrawerOpen(false);
     setInput("");
   }, [mode, convos, persist, userId]);
 
   const handleSelect = useCallback((id: string) => {
     setActiveId(id);
-    if (userId) saveActiveId(userId, id);
+    if (userId) saveActiveIdForMode(userId, mode, id);
     setDrawerOpen(false);
-  }, [userId]);
+  }, [userId, mode]);
 
   const handleDelete = useCallback((id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const next = convos.filter(c => c.id !== id);
-    if (next.length === 0) {
+    const modeConvos = next.filter(c => c.mode === mode);
+    if (modeConvos.length === 0) {
       const fresh = newConversation(mode);
-      persist([fresh]);
+      const withFresh = [fresh, ...next];
+      persist(withFresh);
       setActiveId(fresh.id);
-      if (userId) saveActiveId(userId, fresh.id);
+      if (userId) saveActiveIdForMode(userId, mode, fresh.id);
     } else {
       persist(next);
       if (id === activeId) {
-        setActiveId(next[0].id);
-        if (userId) saveActiveId(userId, next[0].id);
+        const newActive = modeConvos[0].id;
+        setActiveId(newActive);
+        if (userId) saveActiveIdForMode(userId, mode, newActive);
       }
     }
   }, [convos, activeId, mode, persist, userId]);
 
   const handleModeChange = useCallback((m: ChatMode) => {
+    if (userId && activeId) saveActiveIdForMode(userId, mode, activeId);
     setMode(m);
     if (userId) saveMode(userId, m);
-    // also update active conversation's mode going forward
-    if (active) {
-      const next = convos.map(c => c.id === active.id ? { ...c, mode: m } : c);
+    const modeConvos = convos.filter(c => c.mode === m);
+    if (modeConvos.length === 0) {
+      const fresh = newConversation(m);
+      const next = [fresh, ...convos];
       persist(next);
+      setActiveId(fresh.id);
+      if (userId) saveActiveIdForMode(userId, m, fresh.id);
+    } else {
+      const savedActive = userId ? loadActiveIdForMode(userId, m) : null;
+      const id = savedActive && modeConvos.find(c => c.id === savedActive) ? savedActive : modeConvos[0].id;
+      setActiveId(id);
+      if (userId) saveActiveIdForMode(userId, m, id);
     }
-  }, [userId, active, convos, persist]);
+  }, [userId, mode, activeId, convos, persist]);
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
@@ -414,10 +429,10 @@ export default function Chatbot() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-1">
-              {convos.length === 0 && (
+              {convos.filter(c => c.mode === mode).length === 0 && (
                 <p className="text-xs text-muted-foreground px-3 py-2">No conversations yet.</p>
               )}
-              {convos.map(c => (
+              {convos.filter(c => c.mode === mode).map(c => (
                 <div
                   key={c.id}
                   onClick={() => handleSelect(c.id)}
