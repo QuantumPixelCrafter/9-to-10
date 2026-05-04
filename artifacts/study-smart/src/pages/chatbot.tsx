@@ -18,6 +18,12 @@ import {
 
 const BOT_NAME = "Sage";
 
+function preprocessMath(content: string): string {
+  return content
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_: string, m: string) => `$$${m}$$`)
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_: string, m: string) => `$${m}$`);
+}
+
 export default function Chatbot() {
   const { user } = useAuth();
   const userId = user?.id ?? "";
@@ -303,7 +309,7 @@ export default function Chatbot() {
                       a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:opacity-80">{children}</a>,
                     }}
                   >
-                    {m.content}
+                    {preprocessMath(m.content)}
                   </ReactMarkdown>
                 ) : (
                   m.content
