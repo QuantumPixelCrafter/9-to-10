@@ -161,7 +161,7 @@ CRITICAL RULES — you MUST follow these exactly:
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       max_completion_tokens: 8192,
       messages: [
         {
