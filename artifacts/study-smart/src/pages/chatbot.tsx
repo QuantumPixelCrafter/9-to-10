@@ -7,6 +7,9 @@ import { Menu, Plus, Send, Sparkles, Trash2, MessageCircle, GraduationCap, Smile
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import {
   type Conversation, type ChatMessage, type ChatMode,
   loadConversations, saveConversations, loadMode, saveMode,
@@ -280,7 +283,8 @@ export default function Chatbot() {
               >
                 {m.role === "assistant" ? (
                   <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
                     components={{
                       p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                       strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
