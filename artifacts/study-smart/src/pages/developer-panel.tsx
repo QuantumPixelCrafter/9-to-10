@@ -43,7 +43,7 @@ interface GradeChangeRequest {
 }
 
 type ActiveTab = "gift-all" | "gift-user" | "promote" | "grade-changes";
-type GiftType = "points" | "powerup" | "free_messages";
+type GiftType = "points" | "powerup";
 
 function getDisplayName(u: { firstName: string | null; lastName: string | null; username: string | null; email?: string | null }) {
   return [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || u.email || "Unknown";
@@ -76,8 +76,6 @@ export default function DeveloperPanel() {
 
   const [giftName, setGiftName] = useState("");
   const [points, setPoints] = useState("");
-  const [giftAllType, setGiftAllType] = useState<"points" | "free_messages">("points");
-  const [giftAllFreeMessages, setGiftAllFreeMessages] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [search, setSearch] = useState("");
@@ -89,7 +87,6 @@ export default function DeveloperPanel() {
   const [giftPoints, setGiftPoints] = useState("");
   const [giftPowerupKey, setGiftPowerupKey] = useState("streak_freeze");
   const [giftPowerupQty, setGiftPowerupQty] = useState("1");
-  const [giftFreeMessages, setGiftFreeMessages] = useState("");
 
   if (!user?.isDeveloper) {
     setLocation("/");
@@ -108,30 +105,20 @@ export default function DeveloperPanel() {
   });
 
   const giftAllMutation = useMutation({
-    mutationFn: (payload: { name: string; giftType: "points" | "free_messages"; pts?: number; qty?: number }) =>
+    mutationFn: (payload: { name: string; pts: number }) =>
       customFetch<{ success: boolean; recipientCount: number }>("/api/developer/gift-all", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          giftName: payload.name,
-          giftType: payload.giftType,
-          ...(payload.giftType === "points" ? { points: payload.pts } : { freeMessages: payload.qty }),
-        }),
+        body: JSON.stringify({ giftName: payload.name, points: payload.pts }),
       }),
-    onSuccess: (result, vars) => {
-      const desc = vars.giftType === "free_messages"
-        ? dp.toastGiftDeliveredDesc
-            .replace("{name}", giftName)
-            .replace("{pts}", String(vars.qty))
-            .replace("{n}", String(result.recipientCount))
-        : dp.toastGiftDeliveredDesc
-            .replace("{name}", giftName)
-            .replace("{pts}", points)
-            .replace("{n}", String(result.recipientCount));
+    onSuccess: (result) => {
+      const desc = dp.toastGiftDeliveredDesc
+        .replace("{name}", giftName)
+        .replace("{pts}", points)
+        .replace("{n}", String(result.recipientCount));
       toast({ title: dp.toastGiftSent, description: desc });
       setGiftName("");
       setPoints("");
-      setGiftAllFreeMessages("");
       queryClient.invalidateQueries({ queryKey: ["developer-users"] });
     },
     onError: (err: Error) => {
@@ -152,7 +139,6 @@ export default function DeveloperPanel() {
       setGiftUserSearch("");
       setGiftPoints("");
       setGiftPowerupQty("1");
-      setGiftFreeMessages("");
     },
     onError: (err: Error) => {
       toast({ title: t.common.error, description: err.message, variant: "destructive" });
@@ -229,21 +215,12 @@ export default function DeveloperPanel() {
       toast({ title: dp.toastMissingName, description: dp.toastMissingNameDesc, variant: "destructive" });
       return;
     }
-    if (giftAllType === "free_messages") {
-      const qty = parseInt(giftAllFreeMessages, 10);
-      if (!qty || qty <= 0) {
-        toast({ title: dp.toastInvalidQty, variant: "destructive" });
-        return;
-      }
-      giftAllMutation.mutate({ name: giftName.trim(), giftType: "free_messages", qty });
-    } else {
-      const pts = parseInt(points, 10);
-      if (!pts || pts <= 0) {
-        toast({ title: dp.toastInvalidPoints, description: dp.toastInvalidPointsDesc, variant: "destructive" });
-        return;
-      }
-      giftAllMutation.mutate({ name: giftName.trim(), giftType: "points", pts });
+    const pts = parseInt(points, 10);
+    if (!pts || pts <= 0) {
+      toast({ title: dp.toastInvalidPoints, description: dp.toastInvalidPointsDesc, variant: "destructive" });
+      return;
     }
+    giftAllMutation.mutate({ name: giftName.trim(), pts });
   }
 
   function handleGiftUserSubmit(e: React.FormEvent) {
@@ -266,13 +243,6 @@ export default function DeveloperPanel() {
         return;
       }
       giftUserMutation.mutate({ targetUserId: giftUserSelected.id, giftType: "powerup", powerupKey: giftPowerupKey, powerupQty: qty });
-    } else {
-      const msgs = parseInt(giftFreeMessages, 10);
-      if (!msgs || msgs <= 0) {
-        toast({ title: dp.toastInvalidQty, variant: "destructive" });
-        return;
-      }
-      giftUserMutation.mutate({ targetUserId: giftUserSelected.id, giftType: "free_messages", freeMessages: msgs });
     }
   }
 
@@ -333,48 +303,13 @@ export default function DeveloperPanel() {
               </p>
             </div>
 
-            {giftAllType === "points" && (
-              <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/15 flex items-start gap-3">
-                <Coins className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {dp.giftAllHint}
-                </p>
-              </div>
-            )}
-            {giftAllType === "free_messages" && (
-              <div className="p-4 rounded-xl bg-teal-500/5 border border-teal-500/15 flex items-start gap-3">
-                <MessageSquare className="w-4 h-4 text-teal-500 mt-0.5 shrink-0" />
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {dp.giftUserFreeMessagesHint}
-                </p>
-              </div>
-            )}
-
+            <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/15 flex items-start gap-3">
+              <Coins className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {dp.giftAllHint}
+              </p>
+            </div>
             <form onSubmit={handleGiftAllSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">{dp.giftUserTypeLabel}</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { key: "points" as const,        label: dp.giftUserTypePoints,       icon: Coins,         color: "text-amber-500",  bg: "bg-amber-500/10 border-amber-500/20" },
-                    { key: "free_messages" as const,  label: dp.giftUserTypeFreeMessages,  icon: MessageSquare, color: "text-teal-500",   bg: "bg-teal-500/10 border-teal-500/20" },
-                  ].map(({ key, label, icon: Icon, color, bg }) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setGiftAllType(key)}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                        giftAllType === key
-                          ? `${bg} ${color}`
-                          : "border-border/50 text-muted-foreground hover:border-border"
-                      }`}
-                    >
-                      <Icon className={`w-4 h-4 ${giftAllType === key ? color : ""}`} />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">{dp.giftAllNameLabel}</label>
                 <div className="relative">
@@ -406,50 +341,25 @@ export default function DeveloperPanel() {
                 </div>
               </div>
 
-              {giftAllType === "points" && (
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">{dp.giftAllPointsLabel}</label>
-                  <Input
-                    type="number"
-                    placeholder={dp.giftAllPointsPlaceholder}
-                    min={1}
-                    max={100000}
-                    value={points}
-                    onChange={(e) => setPoints(e.target.value)}
-                    className="rounded-xl"
-                    required
-                  />
-                </div>
-              )}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">{dp.giftAllPointsLabel}</label>
+                <Input
+                  type="number"
+                  placeholder={dp.giftAllPointsPlaceholder}
+                  min={1}
+                  max={100000}
+                  value={points}
+                  onChange={(e) => setPoints(e.target.value)}
+                  className="rounded-xl"
+                  required
+                />
+              </div>
 
-              {giftAllType === "free_messages" && (
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">{dp.giftUserFreeMessagesLabel}</label>
-                  <Input
-                    type="number"
-                    placeholder={dp.giftUserFreeMessagesPlaceholder}
-                    min={1}
-                    max={10000}
-                    value={giftAllFreeMessages}
-                    onChange={(e) => setGiftAllFreeMessages(e.target.value)}
-                    className="rounded-xl"
-                    required
-                  />
-                </div>
-              )}
-
-              {giftName.trim() && giftAllType === "points" && points && (
+              {giftName.trim() && points && (
                 <div className="p-3 rounded-xl bg-muted/60 text-sm text-muted-foreground">
                   {dp.giftAllPreviewPrefix}{" "}
                   <span className="font-medium text-foreground italic">"A gift from the development team: {giftName.trim()}"</span>
                   {" "}— <span className="text-amber-600 dark:text-amber-400 font-semibold">+{points} {dp.pts}</span> {dp.giftAllPerUser}
-                </div>
-              )}
-              {giftName.trim() && giftAllType === "free_messages" && giftAllFreeMessages && (
-                <div className="p-3 rounded-xl bg-teal-500/5 border border-teal-500/15 text-xs text-muted-foreground">
-                  {dp.giftUserPreviewWillGrant}{" "}
-                  <span className="font-semibold text-teal-600 dark:text-teal-400">{parseInt(giftAllFreeMessages, 10).toLocaleString()} {dp.giftUserTypeFreeMessages}</span>{" "}
-                  {dp.giftAllPerUser}
                 </div>
               )}
 
@@ -461,9 +371,7 @@ export default function DeveloperPanel() {
                 <Gift className="w-4 h-4 mr-2" />
                 {giftAllMutation.isPending
                   ? dp.giftAllSending
-                  : giftAllType === "free_messages"
-                    ? dp.giftAllFreeMessagesButton.replace("{qty}", giftAllFreeMessages || "?").replace("{n}", String(totalUsers))
-                    : dp.giftAllButton.replace("{pts}", points || "?").replace("{n}", String(totalUsers))}
+                  : dp.giftAllButton.replace("{pts}", points || "?").replace("{n}", String(totalUsers))}
               </Button>
             </form>
           </div>
@@ -546,11 +454,10 @@ export default function DeveloperPanel() {
                   {/* Type selector */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">{dp.giftUserTypeLabel}</label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {[
-                        { key: "points" as GiftType,        label: dp.giftUserTypePoints,       icon: Coins,          color: "text-amber-500",   bg: "bg-amber-500/10 border-amber-500/20" },
-                        { key: "powerup" as GiftType,       label: dp.giftUserTypePowerup,       icon: Zap,            color: "text-violet-500",  bg: "bg-violet-500/10 border-violet-500/20" },
-                        { key: "free_messages" as GiftType, label: dp.giftUserTypeFreeMessages,  icon: MessageSquare,  color: "text-teal-500",    bg: "bg-teal-500/10 border-teal-500/20" },
+                        { key: "points" as GiftType,  label: dp.giftUserTypePoints,  icon: Coins, color: "text-amber-500",  bg: "bg-amber-500/10 border-amber-500/20" },
+                        { key: "powerup" as GiftType, label: dp.giftUserTypePowerup, icon: Zap,   color: "text-violet-500", bg: "bg-violet-500/10 border-violet-500/20" },
                       ].map(({ key, label, icon: Icon, color, bg }) => (
                         <button
                           key={key}
@@ -618,24 +525,6 @@ export default function DeveloperPanel() {
                     </div>
                   )}
 
-                  {/* Free messages input */}
-                  {giftType === "free_messages" && (
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium">{dp.giftUserFreeMessagesLabel}</label>
-                      <Input
-                        type="number"
-                        placeholder={dp.giftUserFreeMessagesPlaceholder}
-                        min={1}
-                        max={10000}
-                        value={giftFreeMessages}
-                        onChange={(e) => setGiftFreeMessages(e.target.value)}
-                        className="rounded-xl"
-                        required
-                      />
-                      <p className="text-xs text-muted-foreground">{dp.giftUserFreeMessagesHint}</p>
-                    </div>
-                  )}
-
                   {/* Preview */}
                   {giftType === "points" && giftPoints && (
                     <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 text-xs text-muted-foreground">
@@ -647,12 +536,6 @@ export default function DeveloperPanel() {
                       {dp.giftUserPreviewWillGift} <span className="font-semibold text-violet-600 dark:text-violet-400">{giftPowerupQty}x {selectedPowerup.emoji} {selectedPowerup.name}</span> {dp.giftUserPreviewTo} {getDisplayName(giftUserSelected)}
                     </div>
                   )}
-                  {giftType === "free_messages" && giftFreeMessages && (
-                    <div className="p-3 rounded-xl bg-teal-500/5 border border-teal-500/15 text-xs text-muted-foreground">
-                      {dp.giftUserPreviewWillGrant} <span className="font-semibold text-teal-600 dark:text-teal-400">{parseInt(giftFreeMessages, 10).toLocaleString()} {dp.giftUserPreviewFreeMessages}</span> {dp.giftUserPreviewTo} {getDisplayName(giftUserSelected)}
-                    </div>
-                  )}
-
                   <Button
                     type="submit"
                     className="w-full rounded-xl"

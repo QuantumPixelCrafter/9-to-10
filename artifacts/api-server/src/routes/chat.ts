@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, chatMessagesTable, friendshipsTable, usersTable, inboxMessagesTable, userAchievementsTable, userBlocksTable } from "@workspace/db";
-import { eq, or, and, isNull, sql } from "drizzle-orm";
+import { eq, or, and, isNull } from "drizzle-orm";
 import { ACHIEVEMENTS } from "../lib/achievements";
 
 const router: IRouter = Router();
